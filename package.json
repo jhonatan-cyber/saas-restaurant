@@ -1,0 +1,41 @@
+{
+  "name": "saas-restaurant",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Gastronomic POS / SaaS multi-tenant platform",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,magenta \"bun run dev:api\" \"bun run dev:web\"",
+    "dev:api": "bun run --filter @saas/api start:dev",
+    "dev:web": "bun run --filter @saas/web dev",
+    "build": "bun run --filter '*' build",
+    "build:api": "bun run --filter @saas/api build",
+    "build:web": "bun run --filter @saas/web build",
+    "db:generate": "bun run --filter @saas/api db:generate",
+    "db:migrate": "bun run --filter @saas/api db:migrate",
+    "db:seed": "bun run --filter @saas/api db:seed",
+    "db:reset": "bun run --filter @saas/api db:reset",
+    "lint": "eslint \"{apps,packages}/*/src/**/*.{ts,tsx}\"",
+    "format": "prettier --write \"{apps,packages}/*/src/**/*.{ts,tsx,json,md}\"",
+    "format:check": "prettier --check \"{apps,packages}/*/src/**/*.{ts,tsx,json,md}\"",
+    "typecheck": "bun run --filter '*' typecheck",
+    "clean": "bun run --filter '*' clean"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "concurrently": "^8.2.2",
+    "eslint": "^8.57.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "prettier": "^3.2.5",
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "bun": ">=1.1.0",
+    "node": ">=20.0.0"
+  },
+  "packageManager": "bun@1.1.0"
+}

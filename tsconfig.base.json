@@ -1,0 +1,39 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "useDefineForClassFields": false,
+    "baseUrl": ".",
+    "paths": {
+      "@saas/shared": ["./packages/shared/src/index.ts"],
+      "@saas/shared/*": ["./packages/shared/src/*"],
+      "@saas/ui": ["./packages/ui/src/index.ts"],
+      "@saas/ui/*": ["./packages/ui/src/*"],
+      "@saas/api/*": ["./apps/api/src/*"],
+      "@saas/web/*": ["./apps/web/src/*"]
+    }
+  },
+  "exclude": ["node_modules", "dist", "build", ".turbo", ".next"]
+}

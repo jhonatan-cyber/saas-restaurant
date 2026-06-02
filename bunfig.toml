@@ -1,0 +1,15 @@
+[install]
+# Use the default registry
+registry = "https://registry.npmjs.org"
+# Hoist dependencies in the workspace root to avoid duplicate copies
+linker = "hoisted"
+# Exclude bun-specific binaries from auto-install (NestJS CLI is fine, just being explicit)
+production = false
+
+[install.scopes]
+# Use the same registry for all scopes by default
+"@nestjs" = { url = "https://registry.npmjs.org" }
+
+[run]
+# Default shell for `bun run` scripts
+shell = "bun"

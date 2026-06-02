@@ -1,0 +1,365 @@
+// =============================================================================
+// SaaS Restaurant — Prisma Schema
+// =============================================================================
+// MULTI-TENANT RULES (FUNDAMENTALES):
+//  1. Business es el TENANT raíz. Ningún dato de negocio existe sin un
+//     `businessId` apuntando a un Business.
+//  2. La unicidad de email es POR BUSINESS, no global:
+//       User: @@unique([businessId, email])
+//     Esto permite que el mismo email exista en distintos tenants (caso
+//     común: un dueño tiene varios restaurantes y usa el mismo email).
+//  3. El login SIEMPRE requiere `businessSlug` + email + password. El slug
+//     resuelve el tenant y luego el email se busca dentro de ese tenant.
+//  4. Branch es opcional en Category/Product: si `branchId IS NULL` el
+//     recurso es GLOBAL para todo el business; si tiene branch, solo aplica
+//     a esa sucursal.
+//  5. Todos los modelos llevan `createdAt`/`updatedAt` para auditoría.
+//  6. Soft-delete: Category, Product, RestaurantTable y Customer usan
+//     `deletedAt DateTime?`. Las queries deben filtrar `deletedAt: null`
+//     salvo en admin/auditoría.
+//  7. Phase 2 introduce `PreparationArea` (cocina/bar/cafetería) y
+//     `TableStateLog` para historial de cambios de estado de mesa.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================ ENUMS ========================================
+
+enum Role {
+  SUPER_ADMIN
+  OWNER
+  ADMIN
+  CAJERO
+  MESERO
+  COCINA
+  REPARTIDOR
+}
+
+enum BusinessStatus {
+  ACTIVE
+  SUSPENDED
+  TRIAL
+}
+
+enum BranchStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  INVITED
+}
+
+enum ProductType {
+  SALE       // producto normal de venta
+  COMBO      // combo de productos (Phase 2: modelado simple, items en fase futura)
+  ADDON      // adicional / extra
+  SERVICE    // servicio (ej. cover, parqueo)
+  INGREDIENT // materia prima (no se vende directo, se usa en inventario)
+}
+
+enum TableStatus {
+  FREE
+  OCCUPIED
+  RESERVED
+}
+
+enum TableLocation {
+  INDOOR
+  OUTDOOR
+  BAR
+  PATIO
+  TERRACE
+  OTHER
+}
+
+// ============================ MODELS =======================================
+
+model Business {
+  id        String         @id @default(cuid())
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  name        String
+  slug        String        @unique
+  legalName   String?
+  taxId       String?
+  email       String
+  phone       String?
+  logoUrl     String?
+  currency    String        @default("BOB")
+  timezone    String        @default("America/La_Paz")
+  status      BusinessStatus @default(ACTIVE)
+  plan        String        @default("FREE")
+  trialEndsAt DateTime?
+
+  // Relations
+  branches           Branch[]
+  users              User[]
+  categories         Category[]
+  products           Product[]
+  preparationAreas   PreparationArea[]
+  tables             RestaurantTable[]
+  customers          Customer[]
+  tableStateLogs     TableStateLog[]
+
+  @@index([slug])
+  @@index([status])
+  @@map("businesses")
+}
+
+model Branch {
+  id        String       @id @default(cuid())
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  businessId String
+  name       String
+  code       String
+  address    String?
+  phone      String?
+  isMain     Boolean      @default(false)
+  status     BranchStatus @default(ACTIVE)
+
+  // Relations
+  business         Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  users            User[]            @relation("UserDefaultBranch")
+  categories       Category[]
+  products         Product[]
+  preparationAreas PreparationArea[]
+  tables           RestaurantTable[]
+
+  // Code único por business (cada sucursal tiene su propio código)
+  @@unique([businessId, code])
+  @@index([businessId])
+  @@map("branches")
+}
+
+model User {
+  id        String     @id @default(cuid())
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  email        String
+  passwordHash String
+  fullName     String
+  phone        String?
+  avatarUrl    String?
+  role         Role       @default(CAJERO)
+  status       UserStatus @default(INVITED)
+
+  businessId String
+  defaultBranchId String?
+
+  lastLoginAt DateTime?
+
+  // Relations
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  defaultBranch Branch?  @relation("UserDefaultBranch", fields: [defaultBranchId], references: [id], onDelete: SetNull)
+
+  // MULTI-TENANT: email único por business (no global)
+  @@unique([businessId, email])
+  @@index([businessId, role])
+  @@index([businessId, status])
+  @@map("users")
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  businessId String
+  branchId   String?
+
+  name        String
+  slug        String
+  description String?
+  imageUrl    String?
+
+  displayOrder Int     @default(0)
+  isActive     Boolean @default(true)
+
+  // Relations
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch   Branch?   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  // Nota MySQL: branchId NULL se trata como DISTINTO, así que múltiples
+  // categorías "globales" con el mismo slug NO se bloquearán. Validar a
+  // nivel de aplicación si se necesita restricción dura.
+  @@unique([businessId, branchId, slug])
+  @@index([businessId, displayOrder])
+  @@index([businessId, isActive])
+  @@index([businessId, deletedAt])
+  @@map("categories")
+}
+
+model Product {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  businessId        String
+  branchId          String?
+  categoryId        String?
+  preparationAreaId String?
+
+  name        String
+  slug        String
+  description String?
+  imageUrl    String?
+
+  sku String?
+
+  price    Decimal  @db.Decimal(12, 2)
+  cost     Decimal? @db.Decimal(12, 2)
+  taxRate  Decimal? @db.Decimal(5, 2)
+
+  isActive     Boolean @default(true)
+  isAvailable  Boolean @default(true)
+
+  minStock    Int?
+  trackStock  Boolean @default(false)
+
+  // Phase 2: tipo de producto y tiempo estimado de preparación
+  productType        ProductType @default(SALE)
+  preparationTimeMin Int?
+
+  // Relations
+  business        Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch          Branch?          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  category        Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  preparationArea PreparationArea? @relation(fields: [preparationAreaId], references: [id], onDelete: SetNull)
+
+  @@unique([businessId, slug])
+  @@index([businessId, categoryId])
+  @@index([businessId, isActive])
+  @@index([businessId, sku])
+  @@index([businessId, productType])
+  @@index([businessId, deletedAt])
+  @@map("products")
+}
+
+// ==================== Phase 2: nuevas entidades ====================
+
+model PreparationArea {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  businessId String
+  branchId   String?
+
+  name        String
+  code        String
+  description String?
+  isActive    Boolean @default(true)
+  displayOrder Int    @default(0)
+
+  // Relations
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch   Branch?   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@unique([businessId, branchId, code])
+  @@index([businessId, displayOrder])
+  @@index([businessId, isActive])
+  @@map("preparation_areas")
+}
+
+model RestaurantTable {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  businessId String
+  branchId   String
+
+  number       String
+  capacity     Int           @default(4)
+  location     TableLocation @default(INDOOR)
+  status       TableStatus   @default(FREE)
+  displayOrder Int           @default(0)
+  notes        String?
+  posX         Int?
+  posY         Int?
+
+  // Relations
+  business   Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch     Branch           @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  stateLogs  TableStateLog[]
+
+  @@unique([businessId, branchId, number])
+  @@index([businessId, branchId, status])
+  @@index([branchId, displayOrder])
+  @@index([businessId, deletedAt])
+  @@map("restaurant_tables")
+}
+
+model TableStateLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  businessId       String
+  tableId          String
+  previousStatus   TableStatus
+  newStatus        TableStatus
+  changedByUserId  String
+  reason           String?
+
+  // Relations
+  business Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  table    RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+  @@index([tableId, createdAt])
+  @@index([businessId, createdAt])
+  @@map("table_state_logs")
+}
+
+model Customer {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  businessId String
+
+  name            String
+  taxId           String?
+  taxIdType       String?
+  email           String?
+  phone           String?
+  address         String?
+  addressReference String?
+  latitude        Decimal? @db.Decimal(10, 7)
+  longitude       Decimal? @db.Decimal(10, 7)
+  notes           String?
+
+  isActive     Boolean  @default(true)
+  totalOrders  Int      @default(0)
+  totalSpent   Decimal  @default(0) @db.Decimal(14, 2)
+  lastOrderAt  DateTime?
+
+  // Relations
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, isActive])
+  @@index([businessId, name])
+  @@index([businessId, taxId])
+  @@index([businessId, deletedAt])
+  @@map("customers")
+}
