@@ -1,0 +1,25 @@
+{
+  "name": "@saas/config",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Configuraciones compartidas (tsconfig base, eslint base, prettier)",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./eslint": "./eslint.base.cjs"
+  },
+  "files": [
+    "tsconfig.base.json",
+    "eslint.base.cjs",
+    "prettier.config.cjs"
+  ],
+  "scripts": {
+    "typecheck": "echo 'config package has no TS sources'",
+    "build": "echo 'config package has no build step'",
+    "clean": "rm -rf .turbo"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}
