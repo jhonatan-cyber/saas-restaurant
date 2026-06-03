@@ -22,7 +22,7 @@ const config: Config = {
   moduleFileExtensions: ['ts', 'js', 'json'],
   collectCoverage: false,
   verbose: true,
-  runInBand: true, // Sequential: all tests share the same DB
+  maxWorkers: 1, // Sequential: all tests share the same DB
   testTimeout: 30000, // E2E tests need more time for DB operations
   setupFiles: ['dotenv/config'], // Carga .env por defecto
 };
