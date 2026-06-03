@@ -60,7 +60,9 @@ $RECYCLE.BIN/
 coverage/
 .nyc_output/
 
-# Misc
+# Temp files
+tmp-*
+*.tmp
 .cache/
 .parcel-cache/
 .eslintcache
