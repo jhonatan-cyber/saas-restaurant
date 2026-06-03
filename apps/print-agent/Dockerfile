@@ -32,6 +32,8 @@ COPY --from=builder --chown=printapp:printapp /app/apps/print-agent/tsconfig.jso
 
 # Copy hoisted node_modules from workspace root
 COPY --from=builder /app/node_modules /app/node_modules
+# Copy print-agent's own node_modules (hono lives here when bun uses isolated linker)
+COPY --from=builder /app/apps/print-agent/node_modules ./node_modules
 
 USER printapp
 
