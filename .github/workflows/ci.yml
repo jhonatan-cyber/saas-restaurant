@@ -65,6 +65,11 @@ jobs:
         run: bun run test:e2e:setup
         working-directory: apps/api
 
+      - name: Create .env.test for E2E
+        run: echo "DATABASE_URL=$DATABASE_URL" > .env.test
+        working-directory: apps/api
+        shell: bash
+
       - name: E2E tests
         run: bun run test:e2e
         working-directory: apps/api
