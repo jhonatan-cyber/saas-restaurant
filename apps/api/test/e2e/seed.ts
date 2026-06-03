@@ -176,19 +176,24 @@ export async function seed(dbUrl: string): Promise<SeedData> {
     ];
     const categoryIds: string[] = [];
     for (const c of catSeed) {
-      const cat = await prisma.category.upsert({
-        where: { businessId_slug: { businessId: business.id, slug: c.slug } },
-        update: {},
-        create: {
-          businessId: business.id,
-          branchId: null,
-          name: c.name,
-          slug: c.slug,
-          description: c.name,
-          displayOrder: c.displayOrder,
-          isActive: true,
-        },
+      // For global categories (branchId=null), use findFirst instead of upsert with compound unique
+      // Prisma v7 requires non-null values in compound unique where clauses
+      let cat = await prisma.category.findFirst({
+        where: { businessId: business.id, slug: c.slug, branchId: null },
       });
+      if (!cat) {
+        cat = await prisma.category.create({
+          data: {
+            businessId: business.id,
+            branchId: null,
+            name: c.name,
+            slug: c.slug,
+            description: c.name,
+            displayOrder: c.displayOrder,
+            isActive: true,
+          },
+        });
+      }
       categoryIds.push(cat.id);
     }
 

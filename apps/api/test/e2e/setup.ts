@@ -14,7 +14,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../../src/app.module';
-import * as request from 'supertest';
+import { request } from 'supertest';
 
 /**
  * Crea la app NestJS para E2E testing.
@@ -44,4 +44,4 @@ export async function createApp(): Promise<NestExpressApplication> {
   return app;
 }
 
-export { request };
+export { default as request } from 'supertest';

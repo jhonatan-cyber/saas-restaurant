@@ -16,7 +16,8 @@
     "useDefineForClassFields": false,
     "noUncheckedIndexedAccess": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["jest", "@types/bcrypt", "@types/express", "@types/node", "@types/passport-jwt", "@types/supertest"]
   },
   "include": ["src/**/*", "src/**/*.ts"],
   "exclude": ["node_modules", "dist", "test", "prisma"]

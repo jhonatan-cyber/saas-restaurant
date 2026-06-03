@@ -12,16 +12,6 @@ import type { AuthenticatedUser, BusinessContext } from '../auth/types/jwt-paylo
 // ============================================================
 //  Tipos de los modelos Prisma que usamos (para el mockTx)
 // ============================================================
-type ModelMethods = {
-  findFirst: jest.Mock;
-  findMany: jest.Mock;
-  findUnique: jest.Mock;
-  create: jest.Mock;
-  update: jest.Mock;
-  delete: jest.Mock;
-  count: jest.Mock;
-};
-
 type ModelMethodKeys = 'findFirst' | 'findMany' | 'findUnique' | 'create' | 'update' | 'delete' | 'count';
 
 type ModelMethods = Record<ModelMethodKeys, jest.Mock>;

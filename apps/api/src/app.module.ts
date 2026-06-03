@@ -86,9 +86,9 @@ import { SubscriptionModule } from './subscription/subscription.module';
           level: config.get<string>('LOG_LEVEL', 'info'),
           autoLogging: true,
           transport:
-            config.get<string>('NODE_ENV') !== 'production'
-              ? { target: 'pino-pretty', options: { colorize: true, translateTime: 'SYS:HH:MM:ss' } }
-              : undefined,
+            config.get<string>('NODE_ENV') === 'production' || config.get<string>('NODE_ENV') === 'test'
+              ? undefined
+              : { target: 'pino-pretty', options: { colorize: true, translateTime: 'SYS:HH:MM:ss' } },
           serializers: {
             req: (req) => ({ method: req.method, url: req.url }),
             res: (res) => ({ statusCode: res.statusCode }),
