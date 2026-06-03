@@ -1274,6 +1274,79 @@ export const usersApi = {
     api<{ id: string; status: string }>(`/users/${id}`, { method: 'DELETE' }),
 };
 
+// ============== API: Plans (F7) ==============
+
+import type { PlanDTO } from '@saas/shared';
+
+export interface CreatePlanData {
+  code: string;
+  name: string;
+  description?: string;
+  price: number;
+  currency?: string;
+  billingPeriod: string;
+  maxUsers: number;
+  maxBranches: number;
+  maxProducts: number;
+  maxCategories: number;
+  maxMonthlyOrders: number;
+  maxStorageMb: number;
+  features?: string[];
+  isActive?: boolean;
+  sortOrder?: number;
+  isPublic?: boolean;
+}
+
+export type UpdatePlanData = Partial<CreatePlanData>;
+
+export interface PlanFilters {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  isActive?: boolean;
+}
+
+export const plansApi = {
+  create: (data: CreatePlanData) =>
+    api<PlanDTO>('/plans', { method: 'POST', body: data }),
+
+  list: (filters: PlanFilters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.pageSize) params.set('pageSize', String(filters.pageSize));
+    if (filters.search) params.set('search', filters.search);
+    if (filters.isActive !== undefined) params.set('isActive', String(filters.isActive));
+    const qs = params.toString();
+    return api<PaginatedResponseDTO<PlanDTO>>(`/plans${qs ? `?${qs}` : ''}`, { method: 'GET' });
+  },
+
+  listPublic: () => api<PlanDTO[]>('/plans/public', { method: 'GET', skipAuth: true }),
+
+  getById: (id: string) =>
+    api<PlanDTO>(`/plans/${id}`, { method: 'GET' }),
+
+  update: (id: string, data: UpdatePlanData) =>
+    api<PlanDTO>(`/plans/${id}`, { method: 'PATCH', body: data }),
+
+  remove: (id: string) =>
+    api<{ id: string; isActive?: boolean; deleted?: boolean }>(`/plans/${id}`, { method: 'DELETE' }),
+};
+
+// ============== API: Subscription (F7) ==============
+
+import type { SubscriptionDTO } from '@saas/shared';
+
+export const subscriptionApi = {
+  getCurrent: () =>
+    api<SubscriptionDTO | null>('/subscription/current', { method: 'GET' }),
+
+  assign: (planId: string) =>
+    api<SubscriptionDTO>('/subscription/assign', { method: 'POST', body: { planId } }),
+
+  cancel: () =>
+    api<SubscriptionDTO>('/subscription/cancel', { method: 'POST' }),
+};
+
 // ============== API: Business (F7) ==============
 
 import type { BusinessDTO } from '@saas/shared';

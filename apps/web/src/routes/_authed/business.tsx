@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { businessApi, ApiClientError, type UpdateBusinessData } from '../../lib/api';
+import { businessApi, subscriptionApi, plansApi, ApiClientError, type UpdateBusinessData } from '../../lib/api';
+import { SUBSCRIPTION_STATUS_LABELS, BILLING_PERIOD_LABELS } from '@saas/shared';
 
 export const Route = createFileRoute('/_authed/business')({
   component: BusinessSettingsPage,
@@ -288,42 +289,12 @@ function BusinessSettingsPage(): ReactNode {
             </div>
           </div>
 
-          {/* Plan info */}
-          <div className="card p-6 space-y-3">
-            <h2 className="text-lg font-semibold text-slate-900">Plan y suscripción</h2>
-            {settingsQuery.data?.planRef ? (
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-slate-500">Plan:</span>{' '}
-                  <span className="font-medium">{settingsQuery.data.planRef.name}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500">Código:</span>{' '}
-                  <span className="font-medium">{settingsQuery.data.planRef.code}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500">Precio:</span>{' '}
-                  <span className="font-medium">
-                    {settingsQuery.data.planRef.price} {settingsQuery.data.planRef.currency}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500">Ciclo:</span>{' '}
-                  <span className="font-medium">{settingsQuery.data.planRef.billingPeriod}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500">Máx. usuarios:</span>{' '}
-                  <span className="font-medium">{settingsQuery.data.planRef.maxUsers}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500">Máx. sucursales:</span>{' '}
-                  <span className="font-medium">{settingsQuery.data.planRef.maxBranches}</span>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500">Sin plan asignado</p>
-            )}
-          </div>
+          {/* Plan y suscripción */}
+          <SubscribablePlanCard
+            businessId={settingsQuery.data?.id ?? ''}
+            currentPlan={settingsQuery.data?.planRef ?? null}
+            currentSubscription={settingsQuery.data?.subscription ?? null}
+          />
 
           <div className="flex items-center justify-end gap-3">
             <button

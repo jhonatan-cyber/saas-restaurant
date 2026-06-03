@@ -23,6 +23,8 @@ import { PosStationsModule } from './pos-stations/pos-stations.module';
 import { OrdersModule } from './orders/orders.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { BusinessModule } from './business/business.module';
+import { PlansModule } from './plans/plans.module';
+import { SubscriptionModule } from './subscription/subscription.module';
 
 /**
  * Módulo raíz del API.
@@ -44,6 +46,8 @@ import { BusinessModule } from './business/business.module';
  *  - PosStationsModule (F5: activación de estaciones POS desktop)
  *  - OrdersModule (F3: motor de venta, integrado con Payments en F4)
  *  - BusinessModule (F7: configuración del negocio)
+ *  - PlansModule (F7: CRUD de planes, SUPER_ADMIN)
+ *  - SubscriptionModule (F7: asignar/cancelar plan)
  */
 @Module({
   imports: [
@@ -82,6 +86,8 @@ import { BusinessModule } from './business/business.module';
     PosStationsModule,
     OrdersModule,
     BusinessModule,
+    PlansModule,
+    SubscriptionModule,
   ],
 })
 export class AppModule {}
