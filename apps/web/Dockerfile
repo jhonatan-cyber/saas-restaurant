@@ -4,50 +4,53 @@
 FROM oven/bun:1 AS builder
 WORKDIR /app
 
-# Stage 1: Install dependencies
+# Install dependencies
 COPY package.json bun.lock ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/shared/package.json ./packages/shared/
 
 RUN bun install
 
-# Stage 2: Build application
+# Copy source code
 COPY tsconfig.base.json ./
-COPY packages/shared ./packages/shared
+COPY packages ./packages
 COPY apps/web ./apps/web
 
+# Build-time env vars for Vite
+ARG VITE_API_URL
+ARG VITE_API_BASE_URL
+ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+
+# Build application
 WORKDIR /app/apps/web
 RUN bun run build
 
-# Stage 3: Production runtime
+# ============================================================
 FROM node:22-alpine
 
-# Create non-root user for security
+# Create non-root user
 RUN addgroup -g 1100 webapp && \
     adduser -D -u 1100 -G webapp webapp
 
-WORKDIR /app
+WORKDIR /app/apps/web
 
-# Copy built output
-COPY --from=builder --chown=webapp:webapp /app/apps/web/.output ./apps/web/.output
-COPY --from=builder --chown=webapp:webapp /app/apps/web/package.json ./apps/web/
-
-# Copy node_modules (hoisted at root level)
-COPY --from=builder /app/node_modules ./node_modules
-
-# Remove source maps to reduce image size
-RUN find node_modules -type f -name "*.map" -delete && \
-    find ./apps/web/.output -type f -name "*.map" -delete
+# Copy built output and dependencies
+COPY --from=builder --chown=webapp:webapp /app/apps/web/dist ./dist
+COPY --from=builder --chown=webapp:webapp /app/apps/web/package.json ./
+COPY --chown=webapp:webapp apps/web/serve.mjs ./serve.mjs
+COPY --from=builder /app/node_modules /app/node_modules
+COPY --from=builder /app/apps/web/node_modules ./node_modules
 
 USER webapp
 
-WORKDIR /app/apps/web
 EXPOSE 3000
 
 ENV NODE_ENV=production
+ENV API_INTERNAL_URL=http://api:3001/api
+ENV API_INTERNAL_BASE_URL=http://api:3001
 
-# Health check
-HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
+HEALTHCHECK --interval=15s --timeout=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/ || exit 1
 
-CMD ["node", ".output/server/index.mjs"]
+CMD ["node", "serve.mjs"]

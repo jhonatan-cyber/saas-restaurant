@@ -1,8 +1,15 @@
 import { useAuthStore } from './auth-store';
 import { STORAGE_KEYS, type AuthenticatedUserDTO, HEADERS, type OrderStatus, type OrderType } from '@saas/shared';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-const API_ROOT_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+const isBrowser = typeof window !== 'undefined';
+
+const API_BASE_URL = isBrowser
+  ? (import.meta.env.VITE_API_URL || 'http://localhost:3001/api')
+  : (process.env.API_INTERNAL_URL || import.meta.env.VITE_API_URL || 'http://api:3001/api');
+
+const API_ROOT_URL = isBrowser
+  ? (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001')
+  : (process.env.API_INTERNAL_BASE_URL || import.meta.env.VITE_API_BASE_URL || 'http://api:3001');
 
 /**
  * Error tipado de la API.

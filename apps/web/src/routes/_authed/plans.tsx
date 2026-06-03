@@ -189,7 +189,8 @@ function PlansListPage(): ReactNode {
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Link
-                              to={`/plans/${p.id}`}
+                              to="/plans/$id"
+                              params={{ id: p.id }}
                               className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                             >
                               Editar

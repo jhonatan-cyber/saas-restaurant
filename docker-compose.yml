@@ -14,6 +14,7 @@ services:
       NODE_ENV: development
       DATABASE_URL: mysql://root:rootpass@mysql:3306/saas_restaurant
       REDIS_URL: redis://redis:6379
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost
     ports:
       - "3001:3001"
     volumes:
@@ -33,6 +34,8 @@ services:
       NODE_ENV: development
       VITE_API_URL: http://localhost:3001/api
       VITE_API_BASE_URL: http://localhost:3001
+      API_INTERNAL_URL: http://api:3001/api
+      API_INTERNAL_BASE_URL: http://api:3001
     ports:
       - "3000:3000"
     volumes:
@@ -68,7 +71,7 @@ services:
       MYSQL_DATABASE: saas_restaurant
       MYSQL_ROOT_HOST: "%"
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     command:
