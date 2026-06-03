@@ -1,9 +1,12 @@
 import 'reflect-metadata';
 
+import path from 'node:path';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { NestFactory, Reflector } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -15,11 +18,13 @@ import { HEADERS } from '@saas/shared';
  * - Configura CORS, validación global, Swagger.
  * - Registra filtro global de excepciones e interceptor de logging.
  * - Aplica JwtAuthGuard como GUARD GLOBAL (con @Public() para opt-out).
+ * - Registra IoAdapter para WebSockets (Phase 3). El middleware de auth
+ *   de socket.io se aplica en `RealtimeGateway.afterInit()`.
  */
 async function bootstrap(): Promise<void> {
   const logger = new Logger('Bootstrap');
 
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: false,
     cors: true,
   });
@@ -48,6 +53,11 @@ async function bootstrap(): Promise<void> {
   // JwtAuthGuard global: las rutas @Public() lo evaden
   app.useGlobalGuards(new JwtAuthGuard(reflector));
 
+  // ============================================================
+  //  Phase 3: WebSocket adapter (auth aplicada en RealtimeGateway)
+  // ============================================================
+  app.useWebSocketAdapter(new IoAdapter(app));
+
   // Swagger
   const swaggerConfig = new DocumentBuilder()
     .setTitle('SaaS Restaurant API')
@@ -69,11 +79,16 @@ async function bootstrap(): Promise<void> {
     swaggerOptions: { persistAuthorization: true },
   });
 
+  // Sirve archivos estáticos (uploads de reportes, imágenes, etc.)
+  const uploadsDir = path.join(process.cwd(), 'uploads');
+  app.useStaticAssets(uploadsDir, { prefix: '/uploads' });
+
   const port = Number(config.get<string>('API_PORT', '3001'));
   await app.listen(port, '0.0.0.0');
 
   logger.log(`🚀 API corriendo en http://localhost:${port}/${globalPrefix}`);
   logger.log(`📚 Swagger en http://localhost:${port}/docs`);
+  logger.log(`🔌 WebSocket en ws://localhost:${port}/ws (auth por JWT)`);
 }
 
 bootstrap().catch((error: unknown) => {

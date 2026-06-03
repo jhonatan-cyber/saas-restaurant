@@ -1,9 +1,9 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
+import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
-import type { Role } from '@saas/shared';
+import type { BillingPeriod, Role, SubscriptionStatus } from '@saas/shared';
 import type { LoginResponseDTO, JwtPayload, AuthenticatedUserDTO } from '@saas/shared';
 import type { LoginDto } from './dto/login.dto';
 
@@ -103,7 +103,15 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
-        business: true,
+        business: {
+          include: {
+            subscription: {
+              include: {
+                plan: true,
+              },
+            },
+          },
+        },
         defaultBranch: true,
       },
     });
@@ -133,6 +141,13 @@ export class AuthService {
         phone: b.phone,
         isMain: b.isMain,
         status: b.status,
+        categoriesCount: 0,
+        productsCount: 0,
+        tablesCount: 0,
+        activeOrdersCount: 0,
+        openCashRegistersCount: 0,
+        openShiftsCount: 0,
+        activePosStationsCount: 0,
         createdAt: b.createdAt.toISOString(),
         updatedAt: b.updatedAt.toISOString(),
       })),
@@ -205,17 +220,34 @@ export class AuthService {
   }
 
   private async signAccessToken(payload: Omit<JwtPayload, 'iat' | 'exp'>): Promise<string> {
-    return this.jwt.signAsync(payload, {
-      secret: this.config.get<string>('JWT_SECRET'),
-      expiresIn: this.config.get<string>('JWT_ACCESS_TTL', '15m'),
-    });
+    return this.jwt.signAsync(payload, this.buildSignOptions('JWT_ACCESS_TTL', '15m', 'JWT_SECRET'));
   }
 
   private async signRefreshToken(payload: Omit<JwtPayload, 'iat' | 'exp'>): Promise<string> {
-    return this.jwt.signAsync(payload, {
-      secret: this.config.get<string>('JWT_REFRESH_SECRET'),
-      expiresIn: this.config.get<string>('JWT_REFRESH_TTL', '7d'),
-    });
+    return this.jwt.signAsync(
+      payload,
+      this.buildSignOptions('JWT_REFRESH_TTL', '7d', 'JWT_REFRESH_SECRET'),
+    );
+  }
+
+  /**
+   * Construye las opciones de firma JWT.
+   *
+   * El cast a `never` en `expiresIn` es necesario porque `jsonwebtoken@9+`
+   * tipa esa propiedad como `number | StringValue` (template literal de
+   * el paquete `ms`). Los valores vienen de variables de entorno (string
+   * general), por lo que TS no puede validar la asignación estáticamente.
+   * En runtime la lib parsea correctamente strings como "15m" o "7d".
+   */
+  private buildSignOptions(ttlKey: string, defaultTtl: string, secretKey: string): JwtSignOptions {
+    const secret = this.config.get<string>(secretKey);
+    if (!secret) {
+      throw new Error(`${secretKey} no está configurado`);
+    }
+    return {
+      secret,
+      expiresIn: this.config.get<string>(ttlKey, defaultTtl) as never,
+    };
   }
 
   private parseTtlToSeconds(ttl: string): number {
@@ -223,27 +255,13 @@ export class AuthService {
     if (!match) return 900;
     const value = Number(match[1]);
     const unit = match[2];
+    if (!unit) return 900;
     const multipliers: Record<string, number> = { s: 1, m: 60, h: 3600, d: 86400 };
     return value * (multipliers[unit] ?? 60);
   }
 
-  private mapBusiness(b: {
-    id: string;
-    name: string;
-    slug: string;
-    legalName: string | null;
-    taxId: string | null;
-    email: string;
-    phone: string | null;
-    logoUrl: string | null;
-    currency: string;
-    timezone: string;
-    status: string;
-    plan: string;
-    trialEndsAt: Date | null;
-    createdAt: Date;
-    updatedAt: Date;
-  }): AuthenticatedUserDTO['business'] {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private mapBusiness(b: Record<string, any>): AuthenticatedUserDTO['business'] {
     return {
       id: b.id,
       name: b.name,
@@ -258,6 +276,46 @@ export class AuthService {
       status: b.status as AuthenticatedUserDTO['business']['status'],
       plan: b.plan,
       trialEndsAt: b.trialEndsAt ? b.trialEndsAt.toISOString() : null,
+      planId: b.planId,
+      subscription: b.subscription
+        ? {
+            id: b.subscription.id,
+            businessId: b.id,
+            planId: b.subscription.planId,
+            plan: b.subscription.plan
+              ? {
+                  id: b.subscription.plan.id,
+                  code: b.subscription.plan.code,
+                  name: b.subscription.plan.name,
+                  description: b.subscription.plan.description,
+                  price: b.subscription.plan.price.toString(),
+                  currency: b.subscription.plan.currency,
+                  billingPeriod: b.subscription.plan.billingPeriod as BillingPeriod,
+                  maxUsers: b.subscription.plan.maxUsers,
+                  maxBranches: b.subscription.plan.maxBranches,
+                  maxProducts: b.subscription.plan.maxProducts,
+                  maxCategories: b.subscription.plan.maxCategories,
+                  maxMonthlyOrders: b.subscription.plan.maxMonthlyOrders,
+                  maxStorageMb: b.subscription.plan.maxStorageMb,
+                  features: b.subscription.plan.features as string[],
+                  isActive: b.subscription.plan.isActive,
+                  sortOrder: b.subscription.plan.sortOrder,
+                  isPublic: b.subscription.plan.isPublic,
+                  createdAt: b.subscription.plan.createdAt.toISOString(),
+                  updatedAt: b.subscription.plan.updatedAt.toISOString(),
+                }
+              : null,
+            status: b.subscription.status as SubscriptionStatus,
+            currentPeriodStart: b.subscription.currentPeriodStart.toISOString(),
+            currentPeriodEnd: b.subscription.currentPeriodEnd.toISOString(),
+            trialEndsAt: b.subscription.trialEndsAt?.toISOString() ?? null,
+            cancelledAt: b.subscription.cancelledAt?.toISOString() ?? null,
+          }
+        : null,
+      moduleReports: b.moduleReports,
+      moduleInventory: b.moduleInventory,
+      modulePosStations: b.modulePosStations,
+      moduleDeliveryApp: b.moduleDeliveryApp,
       createdAt: b.createdAt.toISOString(),
       updatedAt: b.updatedAt.toISOString(),
     };

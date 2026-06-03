@@ -23,12 +23,10 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../../node_modules/.prisma/client"
 }
 
 datasource db {
   provider = "mysql"
-  url      = env("DATABASE_URL")
 }
 
 // ============================ ENUMS ========================================
@@ -83,6 +81,225 @@ enum TableLocation {
   OTHER
 }
 
+// ============================ Phase 3: ORDERS ============================
+// Máquina de estados del pedido (D3=A: DRAFT reservado, primer estado
+// persistido es PENDING). El orden importa para la UI.
+enum OrderStatus {
+  DRAFT              // RESERVADO — no se usa en F3 (carrito vive en frontend)
+  PENDING            // recién creado, sin enviar a cocina
+  SENT_TO_KITCHEN    // comandera impresa / KDS en pantalla
+  IN_PREPARATION     // cocina aceptó y empezó
+  READY              // listo para entregar
+  DELIVERED          // entregado al cliente
+  PAID               // pagado (terminal)
+  CANCELLED          // cancelado (terminal, requiere userId + reason)
+}
+
+enum OrderType {
+  DINE_IN    // en mesa
+  TAKEOUT    // para llevar
+  DELIVERY   // a domicilio
+}
+
+enum OrderChannel {
+  POS_WEB      // POS desde el navegador
+  POS_DESKTOP  // POS desde Tauri (F5)
+  MOBILE       // app móvil (F5)
+  KIOSK        // tótem de autoservicio (futuro)
+  ADMIN        // carga manual desde backoffice
+}
+
+// Forward-compat para F4: módulo de caja (D1=A).
+// Schema mínimo, sin CRUD en F3. El order valida OPEN cash + OPEN shift.
+enum CashRegisterStatus {
+  OPEN
+  CLOSED
+}
+
+enum ShiftStatus {
+  OPEN
+  CLOSED
+}
+
+// ==================== FASE 4: Pagos ====================
+enum PaymentMethod {
+  CASH     // efectivo
+  QR       // QR (pago móvil)
+  TRANSFER // transferencia bancaria
+  CARD     // tarjeta (POS físico)
+}
+
+// ==================== FASE 4: Movimientos de caja ====================
+enum CashMovementType {
+  CASH_IN
+  CASH_OUT
+}
+
+enum CashMovementCategory {
+  // Ingresos (no ventas)
+  OWNER_INVESTMENT  // aporte del dueño
+  SUPPLIER_REFUND   // devolución de proveedor
+  LOAN_RECEIVED     // préstamo recibido
+  TIP               // propina
+  OTHER_IN
+
+  // Egresos
+  SUPPLIES          // insumos
+  MAINTENANCE
+  SALARY_ADVANCE
+  RENT
+  UTILITIES
+  OWNER_WITHDRAWAL
+  OTHER_OUT
+}
+
+// ==================== FASE 4: Auditoría ====================
+enum AuditAction {
+  CREATE
+  UPDATE
+  SOFT_DELETE
+  HARD_DELETE
+  VOID              // cancelaciones
+  PRICE_CHANGE      // cambios de precio
+  DISCOUNT          // descuentos aplicados
+  SHIFT_OPEN
+  SHIFT_CLOSE
+  SHIFT_ARQUEO
+  CASH_MOVEMENT
+  PAYMENT
+  STATION_ACTIVATE
+  STATION_DEACTIVATE
+}
+
+// ==================== FASE 6: SaaS / Planes ====================
+enum BillingPeriod {
+  MONTHLY
+  YEARLY
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+  TRIALING
+}
+
+// ==================== FASE 6: Inventario ====================
+enum InventoryMovementType {
+  IN    // compras, ajustes positivos
+  OUT   // ventas, mermas, ajustes negativos
+  INITIAL  // carga de stock inicial
+}
+
+enum InventoryReferenceType {
+  SALE
+  PURCHASE
+  ADJUSTMENT
+  SPOILAGE
+  INITIAL
+}
+
+enum PurchaseStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+// ==================== FASE 6: Reportes ====================
+enum ReportType {
+  SALES_DAILY       // ventas del día
+  SALES_RANGE       // ventas en un rango
+  PAYMENT_METHODS   // desglose por método de pago
+  TOP_PRODUCTS      // productos más vendidos
+  GROSS_PROFIT      // utilidad bruta
+  INVENTORY         // estado del inventario
+  CLOSE_REPORT      // reporte de cierre
+}
+
+enum ReportFormat {
+  PDF
+  XLSX
+}
+
+enum ReportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ==================== PLAN / SUSCRIPCIÓN (F6: SaaS) ====================
+// Los planes definen límites del sistema. Se asignan a un Business vía
+// Subscription. El sistema bloquea creación de recursos si se exceden cuotas.
+// Plan es global (sin businessId): el SaaS provider define los tiers.
+model Plan {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  code        String  @unique  // "FREE" | "BASIC" | "PRO" | "ENTERPRISE"
+  name        String
+  description String?
+
+  price          Decimal @default(0) @db.Decimal(10, 2)
+  currency       String  @default("USD")
+  billingPeriod  BillingPeriod @default(MONTHLY)
+
+  // Límites del plan
+  maxUsers          Int @default(1)
+  maxBranches       Int @default(1)
+  maxProducts       Int @default(50)
+  maxCategories     Int @default(10)
+  maxMonthlyOrders  Int @default(500)
+  maxStorageMb      Int @default(100)
+
+  // Features habilitadas (JSON array de strings)
+  // ej: ["reports", "inventory", "kds", "multi_branch", "desktop_app", "mobile_app"]
+  features Json @default("[]")
+
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+  isPublic  Boolean @default(true)  // visible en el plan selector
+
+  subscriptions Subscription[]
+  businesses    Business[]
+
+  @@map("plans")
+}
+
+// Suscripción de un Business a un Plan.
+// Un business tiene UNA suscripción activa a la vez.
+// El stripeSubscriptionId permite integración futura con pagos recurrentes.
+model Subscription {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  businessId String
+  planId     String
+
+  status SubscriptionStatus @default(TRIALING)
+
+  currentPeriodStart DateTime @default(now())
+  currentPeriodEnd   DateTime
+  trialEndsAt        DateTime?
+  cancelledAt        DateTime?
+
+  stripeSubscriptionId String?
+  stripePriceId        String?
+
+  // Relations
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  plan     Plan     @relation(fields: [planId], references: [id])
+
+  @@unique([businessId])
+  @@index([businessId, status])
+  @@index([planId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
 // ============================ MODELS =======================================
 
 model Business {
@@ -100,8 +317,16 @@ model Business {
   currency    String        @default("BOB")
   timezone    String        @default("America/La_Paz")
   status      BusinessStatus @default(ACTIVE)
-  plan        String        @default("FREE")
-  trialEndsAt DateTime?
+  plan        String        @default("FREE") // deprecado en F6, usar relación con Plan
+  trialEndsAt DateTime?                        // deprecado en F6
+
+  // Feature flags locales (pueden sobreescribir límites del plan)
+  // null = usa el límite del plan; true/false = override
+  overrideMaxUsers         Int?    // null = usar del plan
+  moduleReports            Boolean @default(false)
+  moduleInventory          Boolean @default(false)
+  modulePosStations        Boolean @default(false)
+  moduleDeliveryApp        Boolean @default(false)
 
   // Relations
   branches           Branch[]
@@ -112,9 +337,26 @@ model Business {
   tables             RestaurantTable[]
   customers          Customer[]
   tableStateLogs     TableStateLog[]
+  orders             Order[]
+  orderItems         OrderItem[]
+  orderStateLogs     OrderStateLog[]
+  cashRegisters      CashRegister[]
+  shifts             Shift[]
+  payments           Payment[]
+  cashMovements      CashMovement[]
+  auditLogs          AuditLog[]
+  posStations        PosStation[]
+  planRef            Plan?            @relation(fields: [planId], references: [id])
+  planId             String?
+  subscription       Subscription?
+  suppliers          Supplier[]
+  purchases          Purchase[]
+  inventoryMovements InventoryMovement[]
+  reports            Report[]
 
   @@index([slug])
   @@index([status])
+  @@index([planId])
   @@map("businesses")
 }
 
@@ -138,6 +380,14 @@ model Branch {
   products         Product[]
   preparationAreas PreparationArea[]
   tables           RestaurantTable[]
+  orders           Order[]
+  cashRegisters    CashRegister[]
+  shifts           Shift[]
+  cashMovements    CashMovement[]
+  posStations      PosStation[]
+  suppliers        Supplier[]
+  purchases        Purchase[]
+  inventoryMovements InventoryMovement[]
 
   // Code único por business (cada sucursal tiene su propio código)
   @@unique([businessId, code])
@@ -166,6 +416,27 @@ model User {
   // Relations
   business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   defaultBranch Branch?  @relation("UserDefaultBranch", fields: [defaultBranchId], references: [id], onDelete: SetNull)
+
+  // Back-relations Phase 3: orders como cajero y como mesero.
+  ordersAsCashier Order[] @relation("OrderCashier")
+  ordersAsWaiter  Order[] @relation("OrderWaiter")
+
+  // Back-relations FASE 4
+  paymentsCreated      Payment[]      @relation("PaymentCashier")
+  cashMovementsCreated CashMovement[] @relation("CashMovementCreator")
+  auditLogs            AuditLog[]     @relation("AuditUser")
+
+  // Back-relations FASE 5
+  posStationsActivated PosStation[] @relation("PosStationActivator")
+
+  // Back-relations FASE 6
+  purchasesCreated Purchase[] @relation("PurchaseCreator")
+  reportsRequested Report[]   @relation("ReportRequester")
+
+  // Back-relations from Cash (FASE 3/4)
+  shiftsOwned           Shift[]        @relation("ShiftUser")
+  cashRegistersOpened   CashRegister[] @relation("CashRegisterOpener")
+  cashRegistersClosed   CashRegister[] @relation("CashRegisterCloser")
 
   // MULTI-TENANT: email único por business (no global)
   @@unique([businessId, email])
@@ -234,6 +505,9 @@ model Product {
   minStock    Int?
   trackStock  Boolean @default(false)
 
+  // FASE 6: Stock tracking
+  currentStock Decimal @default(0) @db.Decimal(12, 2)
+
   // Phase 2: tipo de producto y tiempo estimado de preparación
   productType        ProductType @default(SALE)
   preparationTimeMin Int?
@@ -243,6 +517,10 @@ model Product {
   branch          Branch?          @relation(fields: [branchId], references: [id], onDelete: Cascade)
   category        Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   preparationArea PreparationArea? @relation(fields: [preparationAreaId], references: [id], onDelete: SetNull)
+
+  suppliers        Supplier[]
+  purchaseItems    PurchaseItem[]
+  inventoryMovements InventoryMovement[]
 
   @@unique([businessId, slug])
   @@index([businessId, categoryId])
@@ -280,6 +558,144 @@ model PreparationArea {
   @@map("preparation_areas")
 }
 
+// ==================== FASE 6: Proveedores (Inventario) ====================
+// Un proveedor puede tener múltiples productos que suministra.
+// La relación es M:N vía la tabla implícita en Product.suppliers (a través de
+// SupplierProduct, agregada como array en ambos lados).
+model Supplier {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  businessId String
+  branchId   String?
+
+  name        String
+  contactName String?
+  email       String?
+  phone       String?
+  address     String?
+  taxId       String?
+  notes       String?
+
+  isActive Boolean @default(true)
+
+  // Relations
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch   Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  products Product[]
+  purchases Purchase[]
+
+  @@unique([businessId, branchId, name])
+  @@index([businessId, isActive])
+  @@map("suppliers")
+}
+
+// ==================== FASE 6: Compras (Inventario) ====================
+// Una compra agrupa items recibidos de un proveedor.
+// status: PENDING = pedido, COMPLETED = recibido, CANCELLED = anulado.
+// Al completar se crean InventoryMovement por cada item.
+model Purchase {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  businessId String
+  branchId   String
+  supplierId String?
+
+  purchaseNumber String  // número de orden interno o factura
+  status         PurchaseStatus @default(PENDING)
+
+  // Totales
+  subtotal  Decimal @default(0) @db.Decimal(14, 2)
+  taxTotal  Decimal @default(0) @db.Decimal(14, 2)
+  total     Decimal @default(0) @db.Decimal(14, 2)
+
+  notes         String?
+  receivedAt    DateTime?
+  receivedBy    String?  // userId
+  invoiceUrl    String?  // URL de factura/PDF subido
+
+  // Relations
+  business  Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch    Branch        @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  supplier  Supplier?     @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  createdBy User          @relation("PurchaseCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  createdById String
+
+  items PurchaseItem[]
+
+  @@index([businessId, branchId, createdAt])
+  @@index([businessId, status])
+  @@index([supplierId])
+  @@map("purchases")
+}
+
+// Ítem individual de compra. Snapshot de precio al momento de comprar.
+// Al completar la compra se genera un InventoryMovement por item.
+model PurchaseItem {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  purchaseId String
+  productId  String?
+
+  // Snapshot
+  productName String
+  unitCost    Decimal @db.Decimal(12, 2)
+  quantity    Decimal @db.Decimal(12, 2)  // soporta decimales (ej: 1.5 kg)
+  lineTotal   Decimal @db.Decimal(14, 2)
+
+  // Relations
+  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product  Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([purchaseId])
+  @@index([productId])
+  @@map("purchase_items")
+}
+
+// ==================== FASE 6: Movimientos de inventario (Kardex) =========
+// Cada movimiento registra entrada/salida de un producto.
+// referenceType + referenceId vinculan al documento origen.
+// El saldo (runningBalance) es el balance acumulado después del movimiento.
+// Se registran en orden cronológico y se recalcula al detectar inconsistencias.
+model InventoryMovement {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  businessId String
+  branchId   String
+  productId  String
+
+  type    InventoryMovementType  @default(IN)
+  referenceType InventoryReferenceType
+  referenceId   String?  // ID del documento origen: Purchase.id, OrderItem.id, etc.
+
+  // Cantidades
+  quantity Decimal @db.Decimal(12, 2)  // positiva para IN, negativa para OUT
+  unitCost Decimal? @db.Decimal(12, 2) // costo unitario al momento del movimiento
+  totalCost Decimal? @db.Decimal(14, 2) // quantity * unitCost
+
+  // Saldo después del movimiento (para kardex)
+  runningBalance Decimal @db.Decimal(12, 2)
+
+  notes String?
+
+  // Relations
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch   Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([productId, createdAt])
+  @@index([businessId, branchId, createdAt])
+  @@index([referenceType, referenceId])
+  @@index([businessId, createdAt])
+  @@map("inventory_movements")
+}
+
 model RestaurantTable {
   id        String    @id @default(cuid())
   createdAt DateTime  @default(now())
@@ -302,6 +718,7 @@ model RestaurantTable {
   business   Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
   branch     Branch           @relation(fields: [branchId], references: [id], onDelete: Cascade)
   stateLogs  TableStateLog[]
+  orders     Order[]
 
   @@unique([businessId, branchId, number])
   @@index([businessId, branchId, status])
@@ -356,10 +773,383 @@ model Customer {
 
   // Relations
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orders   Order[]
 
   @@index([businessId, isActive])
   @@index([businessId, name])
   @@index([businessId, taxId])
   @@index([businessId, deletedAt])
   @@map("customers")
+}
+
+// ==================== Phase 3: Orders ====================
+// Reglas de diseño críticas (R3, R4, R7, R8 del SDD):
+//  - State machine: OrderStatus es enum (hint TS) pero la transición la
+//    valida `order-state-machine.ts` en el service. NUNCA aceptar status
+//    arbitrario en PATCH.
+//  - Optimistic lock: `version` se incrementa en cada update. El cliente
+//    recibe 409 si su `version` está desfasado y debe reintentar.
+//  - Snapshot: OrderItem guarda productName/unitPrice/taxRate/areaId
+//    al momento de crear. Cambios posteriores en Product NO alteran items.
+//  - Cash (D1=A): cashRegisterId y shiftId se setean al crear.
+//  - Table auto-state (R7): OrdersService es source of truth. El service
+//    cambia RestaurantTable.status a OCCUPIED al primer order PENDING
+//    y a FREE cuando todos los orders activos están PAID/CANCELLED.
+model Order {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  businessId String
+  branchId   String  // SIEMPRE presente: toda orden es de una sucursal concreta
+
+  tableId    String?  // null para TAKEOUT/DELIVERY
+  customerId String?
+
+  cashierId String  // userId que abre la orden (del JWT al crear)
+  waiterId  String? // userId del mesero (asignable después)
+
+  type    OrderType    @default(DINE_IN)
+  channel OrderChannel @default(POS_WEB)
+  status  OrderStatus  @default(PENDING)
+
+  // Totales recalculados server-side en tx (R4). Decimals como string en DTO.
+  subtotal Decimal @db.Decimal(14, 2)
+  taxTotal Decimal @default(0) @db.Decimal(14, 2)
+  total    Decimal @db.Decimal(14, 2)
+
+  globalNotes String?
+
+  // Forward-compat F4 (D1=A): FK a sesión de caja abierta al crear.
+  cashRegisterId String?
+  shiftId        String?
+
+  // Optimistic lock (R4)
+  version Int @default(0)
+
+  // Cancelación inmutable (R6): userId + reason obligatorios al cancelar.
+  cancelledAt        DateTime?
+  cancelledByUserId  String?
+  cancellationReason String?
+
+  // Relations
+  business       Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch         Branch           @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  table          RestaurantTable? @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  customer       Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  cashier        User             @relation("OrderCashier", fields: [cashierId], references: [id], onDelete: Restrict)
+  waiter         User?            @relation("OrderWaiter", fields: [waiterId], references: [id], onDelete: SetNull)
+  cashRegister   CashRegister?    @relation(fields: [cashRegisterId], references: [id], onDelete: SetNull)
+  shift          Shift?           @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+
+  items      OrderItem[]
+  stateLogs  OrderStateLog[]
+  payments   Payment[]
+
+  // Índices pensados para las queries calientes:
+  //  - (business, branch, status) → KDS filtrado por estado
+  //  - (business, branch, tableId, status) → ver pedidos activos de una mesa
+  //  - (business, createdAt) → listado cronológico
+  @@index([businessId, branchId, status])
+  @@index([businessId, branchId, tableId, status])
+  @@index([businessId, createdAt])
+  @@index([businessId, branchId, createdAt])
+  @@index([businessId, cashierId, createdAt])
+  @@map("orders")
+}
+
+// Snapshot inmutable (R8). NO guardar FKs a Product como únicas fuentes:
+// si el product se edita o se soft-deletea, el item debe seguir intacto.
+model OrderItem {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  businessId String
+  orderId    String
+
+  // Opcional: si el product es hard-eliminado (no debería pasar por soft-delete),
+  // queda null pero el snapshot sigue válido.
+  productId String?
+
+  // ===== SNAPSHOT (R8): columnas planas, NO relaciones =====
+  productName          String
+  unitPrice            Decimal  @db.Decimal(12, 2)
+  taxRate              Decimal? @db.Decimal(5, 2)
+  preparationAreaId    String?
+  preparationAreaName  String?
+  // =======================================================
+
+  quantity   Int
+  notes      String?  // observación por ítem (ej: "sin sal", "término medio")
+  lineTotal  Decimal  @db.Decimal(14, 2)  // = unitPrice * quantity (snapshot)
+
+  // Relations
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, orderId])
+  // Para KDS: encontrar todos los items de un área de preparación
+  @@index([businessId, preparationAreaId])
+  @@map("order_items")
+}
+
+// Historial inmutable de transiciones de estado. R3 + auditoría.
+model OrderStateLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  businessId String
+  orderId    String
+
+  fromStatus  OrderStatus?
+  toStatus    OrderStatus
+  changedByUserId String
+  reason      String?
+  metadata    Json?
+
+  // Relations
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+  @@index([businessId, createdAt])
+  @@map("order_state_logs")
+}
+
+// ==================== Phase 3: Cash Foundation (D1=A) ====================
+// Schema mínimo forward-compatible con F4. En F3 NO hay CRUD; solo lectura
+// desde OrdersService para validar OPEN cash + OPEN shift antes de crear.
+model CashRegister {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  businessId String
+  branchId   String
+  code       String
+  status     CashRegisterStatus @default(OPEN)
+
+  openedAt      DateTime  @default(now())
+  closedAt      DateTime?
+  openedByUserId  String
+  closedByUserId  String?
+
+  // Relations
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch   Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  shifts   Shift[]
+  orders   Order[]
+  openedBy User     @relation("CashRegisterOpener", fields: [openedByUserId], references: [id], onDelete: Restrict)
+  closedBy User?    @relation("CashRegisterCloser", fields: [closedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([businessId, branchId, code])
+  @@index([businessId, branchId, status])
+  @@map("cash_registers")
+}
+
+model Shift {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  businessId     String
+  branchId       String
+  cashRegisterId String
+  userId         String  // cajero dueño del turno
+
+  status ShiftStatus @default(OPEN)
+
+  openedAt       DateTime @default(now())
+  closedAt       DateTime?
+  openingAmount  Decimal  @db.Decimal(14, 2)  // base de caja
+  closingAmount  Decimal? @db.Decimal(14, 2)  // lo que contó el cajero al cerrar
+  expectedAmount Decimal? @db.Decimal(14, 2)  // lo que el sistema esperaba
+  difference     Decimal? @db.Decimal(14, 2)  // diferencia (closing - expected)
+
+  // Notes al cerrar (opcional): "faltante por error de cambio", etc.
+  closingNotes String?
+
+  // Relations
+  business     Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch       Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  cashRegister CashRegister @relation(fields: [cashRegisterId], references: [id], onDelete: Cascade)
+  user         User         @relation("ShiftUser", fields: [userId], references: [id], onDelete: Restrict)
+  orders       Order[]
+  movements    CashMovement[]
+
+  // Solo puede haber UN shift OPEN por (cashRegister, user) simultáneamente
+  @@index([businessId, branchId, status])
+  @@index([cashRegisterId, status])
+  @@index([userId, status])
+  @@map("shifts")
+}
+
+// ==================== FASE 4: Pagos (1-N con Order) ====================
+// Cada Payment acredita una parte del total. Pagos mixtos = N Payment rows.
+// El Order pasa a PAID cuando Σ(payments.amount) >= order.total.
+model Payment {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  businessId String
+  orderId    String
+  method     PaymentMethod
+
+  // amount: lo que se acredita al order (NETO).
+  // Para CASH: amount = order total asignado a este pago.
+  //             tendered = lo que entregó el cliente, change = vuelto.
+  // Para QR/TRANSFER/CARD: amount = cobrado, reference = comprobante.
+  amount    Decimal  @db.Decimal(14, 2)
+  tendered  Decimal? @db.Decimal(14, 2)  // CASH: lo entregado por el cliente
+  change    Decimal? @db.Decimal(14, 2)  // CASH: vuelto
+  reference String?                       // QR/TRANSFER: número de comprobante
+
+  cashierId String  // userId que registró el cobro
+
+  // Relations
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  cashier  User     @relation("PaymentCashier", fields: [cashierId], references: [id], onDelete: Restrict)
+
+  @@index([businessId, orderId])
+  @@index([businessId, createdAt])
+  @@index([cashierId, createdAt])
+  @@index([businessId, method, createdAt])
+  @@map("payments")
+}
+
+// ==================== FASE 4: Movimientos de caja ====================
+// Egresos/Ingresos no relacionados a ventas. Vinculados opcionalmente a un
+// shift abierto. Si NO tienen shift, son movimientos directos del business
+// (ej. aporte de capital del dueño cuando aún no hay turno).
+model CashMovement {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  businessId String
+  branchId   String
+  shiftId    String?  // null = movimiento sin turno (ej. aporte inicial)
+
+  type     CashMovementType
+  category CashMovementCategory
+  amount   Decimal @db.Decimal(14, 2)
+  reason   String?  // descripción libre
+
+  createdByUserId String
+
+  // Relations
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch   Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  shift    Shift?   @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  user     User     @relation("CashMovementCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@index([businessId, branchId, createdAt])
+  @@index([shiftId])
+  @@index([createdByUserId, createdAt])
+  @@index([businessId, type, createdAt])
+  @@map("cash_movements")
+}
+
+// ==================== FASE 4: Auditoría ====================
+// Log inmutable de cambios. Intercepta:
+//  - Cambios de precio (Product.price)
+//  - Cancelaciones (Order → CANCELLED)
+//  - Soft-deletes
+//  - Apertura/cierre de shifts
+//  - Movimientos de caja
+//  - Pagos
+// before/after son snapshots JSON del entity modificado.
+model AuditLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  businessId String
+  userId     String
+
+  entity   String      // "Product" | "Order" | "Shift" | "CashMovement" | "Payment"
+  entityId String
+  action   AuditAction
+
+  before   Json?  // snapshot anterior (UPDATE, SOFT_DELETE, VOID, PRICE_CHANGE)
+  after    Json?  // snapshot nuevo (CREATE, UPDATE)
+  metadata Json?  // contexto extra (ip, userAgent, reason, etc)
+
+  // Relations
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     User     @relation("AuditUser", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([businessId, entity, entityId])
+  @@index([businessId, createdAt])
+  @@index([userId, createdAt])
+  @@index([businessId, action, createdAt])
+  @@map("audit_logs")
+}
+
+// ================= FASE 5: Estaciones POS (Desktop) =================
+
+model PosStation {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  businessId String
+  branchId   String
+
+  // Station identity
+  stationCode String  // código de activación (6-8 chars, ingresa el usuario)
+  name        String? // nombre amigable ej. "Caja Principal"
+  deviceName  String? // hostname detectado automáticamente
+
+  // Activation
+  activatedAt DateTime?
+  activatedBy String?  // userId que activó la estación
+  lastSeenAt  DateTime?
+  isActive    Boolean  @default(true)
+
+  // Relations
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch   Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  user     User?    @relation("PosStationActivator", fields: [activatedBy], references: [id], onDelete: SetNull)
+
+  @@unique([businessId, stationCode])
+  @@index([businessId, branchId])
+  @@index([businessId, isActive])
+  @@map("pos_stations")
+}
+
+// ==================== FASE 6: Reportes ====================
+// Cola de generación de reportes. Un usuario solicita un reporte,
+// BullMQ lo procesa en background, y el resultado (PDF/XLSX) se guarda
+// en storage. El frontend puede consultar el status y descargar.
+model Report {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  businessId String
+  requestedBy String
+
+  type       ReportType
+  format     ReportFormat @default(PDF)
+  status     ReportStatus @default(PENDING)
+
+  // Parámetros de generación (JSON opaco)
+  // ej: { "dateFrom": "2026-01-01", "dateTo": "2026-06-01", "branchId": "..." }
+  params Json @default("{}")
+
+  // Resultados
+  resultUrl    String?  // URL del archivo generado
+  resultSize   Int?     // tamaño en bytes
+  errorMessage String?
+  completedAt  DateTime?
+  expiresAt    DateTime? // auto-limpieza después de 7 días
+
+  // Relations
+  business  Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  requester User     @relation("ReportRequester", fields: [requestedBy], references: [id], onDelete: Restrict)
+
+  @@index([businessId, createdAt])
+  @@index([businessId, status])
+  @@index([businessId, requestedBy])
+  @@map("reports")
 }

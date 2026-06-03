@@ -1,5 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, type RestaurantTable } from '@prisma/client';
+import { Prisma, AuditAction, type RestaurantTable } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import type { AuthenticatedUser, BusinessContext } from '../auth/types/jwt-payload.type';
@@ -245,7 +245,7 @@ export class TablesService {
     await this.audit.log({
       businessId: user.businessId,
       userId: user.id,
-      action: 'TABLE_STATUS_CHANGED',
+      action: AuditAction.UPDATE,
       entity: 'RestaurantTable',
       entityId: id,
       before: { status: previous },
@@ -275,7 +275,7 @@ export class TablesService {
     await this.audit.log({
       businessId: user.businessId,
       userId: user.id,
-      action: 'TABLE_DELETED',
+      action: AuditAction.SOFT_DELETE,
       entity: 'RestaurantTable',
       entityId: id,
     });

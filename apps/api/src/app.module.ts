@@ -1,5 +1,6 @@
+import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -9,6 +10,19 @@ import { PreparationAreasModule } from './preparation-areas/preparation-areas.mo
 import { ProductsModule } from './products/products.module';
 import { TablesModule } from './tables/tables.module';
 import { CustomersModule } from './customers/customers.module';
+import { CashFoundationModule } from './cash-foundation/cash-foundation.module';
+import { CashModule } from './cash/cash.module';
+import { CashMovementsModule } from './cash-movements/cash-movements.module';
+import { PaymentsModule } from './payments/payments.module';
+import { BranchesModule } from './branches/branches.module';
+import { SuppliersModule } from './suppliers/suppliers.module';
+import { PurchasesModule } from './purchases/purchases.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { ReportsModule } from './reports/reports.module';
+import { PosStationsModule } from './pos-stations/pos-stations.module';
+import { OrdersModule } from './orders/orders.module';
+import { RealtimeModule } from './realtime/realtime.module';
+import { BusinessModule } from './business/business.module';
 
 /**
  * Módulo raíz del API.
@@ -16,11 +30,20 @@ import { CustomersModule } from './customers/customers.module';
  *  - ConfigModule (global, carga .env)
  *  - PrismaModule (global, expone PrismaService)
  *  - AuditModule (global, expone AuditService)
+ *  - RealtimeModule (global, expone RealtimeGateway para emitir eventos WS)
  *  - AuthModule (login, refresh, me)
  *  - UsersModule (servicio de usuarios usado por Auth)
  *  - CategoriesModule, PreparationAreasModule, ProductsModule (catálogo)
  *  - TablesModule (mesas)
  *  - CustomersModule (clientes)
+ *  - CashFoundationModule (F3: read-only; F4 lo extiende con CashModule)
+ *  - CashModule (F4: CRUD completo de caja y turnos)
+ *  - CashMovementsModule (F4: egresos/ingresos)
+ *  - PaymentsModule (F4: pagos, mixto, efectivo/QR/transfer)
+ *  - BranchesModule (CRUD de sucursales)
+ *  - PosStationsModule (F5: activación de estaciones POS desktop)
+ *  - OrdersModule (F3: motor de venta, integrado con Payments en F4)
+ *  - BusinessModule (F7: configuración del negocio)
  */
 @Module({
   imports: [
@@ -28,8 +51,18 @@ import { CustomersModule } from './customers/customers.module';
       isGlobal: true,
       cache: true,
     }),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (config: ConfigService) => ({
+        connection: {
+          url: config.get<string>('REDIS_URL', 'redis://localhost:6379'),
+        },
+      }),
+      inject: [ConfigService],
+    }),
     PrismaModule,
     AuditModule,
+    RealtimeModule,
     UsersModule,
     AuthModule,
     CategoriesModule,
@@ -37,6 +70,18 @@ import { CustomersModule } from './customers/customers.module';
     ProductsModule,
     TablesModule,
     CustomersModule,
+    CashFoundationModule,
+    CashModule,
+    CashMovementsModule,
+    PaymentsModule,
+    BranchesModule,
+    SuppliersModule,
+    PurchasesModule,
+    InventoryModule,
+    ReportsModule,
+    PosStationsModule,
+    OrdersModule,
+    BusinessModule,
   ],
 })
 export class AppModule {}

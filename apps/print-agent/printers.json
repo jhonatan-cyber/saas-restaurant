@@ -1,0 +1,20 @@
+[
+  {
+    "id": "ticket-printer",
+    "name": "Impresora de Tickets",
+    "type": "network",
+    "host": "192.168.1.100",
+    "port": 9100,
+    "tags": ["ticket", "close-report"],
+    "paperWidth": 80
+  },
+  {
+    "id": "comanda-printer",
+    "name": "Impresora de Cocina",
+    "type": "network",
+    "host": "192.168.1.101",
+    "port": 9100,
+    "tags": ["comanda"],
+    "paperWidth": 80
+  }
+]

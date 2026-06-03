@@ -24,10 +24,33 @@ import {
   ProductType,
   TableStatus,
   TableLocation,
+  CashRegisterStatus,
+  ShiftStatus,
+  BillingPeriod,
+  SubscriptionStatus,
 } from '@prisma/client';
+import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import * as bcrypt from 'bcrypt';
+import 'dotenv/config';
 
-const prisma = new PrismaClient();
+/**
+ * Parses a mysql:// or mariadb:// URL into a config object.
+ * Avoids the mariadb package's buggy URL parser on Windows.
+ */
+function parseDbUrl(url: string) {
+  const u = new URL(url);
+  return {
+    host: u.hostname,
+    port: Number(u.port) || 3306,
+    user: decodeURIComponent(u.username),
+    password: decodeURIComponent(u.password),
+    database: u.pathname.replace(/^\//, ''),
+    prepareCacheLength: 0,
+  };
+}
+
+const adapter = new PrismaMariaDb(parseDbUrl(process.env.DATABASE_URL!));
+const prisma = new PrismaClient({ adapter });
 
 const BCRYPT_ROUNDS = 10;
 
@@ -374,6 +397,74 @@ const CUSTOMERS: CustomerSeed[] = [
 async function main(): Promise<void> {
   console.log('🌱 Iniciando seed...\n');
 
+  // ---- 0. Plans (FASE 6: SaaS) ----
+  const plans = {
+    FREE: await prisma.plan.upsert({
+      where: { code: 'FREE' },
+      update: {},
+      create: {
+        code: 'FREE',
+        name: 'Gratuito',
+        description: 'Para empezar sin costo',
+        price: 0,
+        billingPeriod: BillingPeriod.MONTHLY,
+        maxUsers: 2,
+        maxBranches: 1,
+        maxProducts: 30,
+        maxCategories: 5,
+        maxMonthlyOrders: 200,
+        maxStorageMb: 50,
+        features: ['pos_web'],
+        isActive: true,
+        sortOrder: 10,
+        isPublic: true,
+      },
+    }),
+    BASIC: await prisma.plan.upsert({
+      where: { code: 'BASIC' },
+      update: {},
+      create: {
+        code: 'BASIC',
+        name: 'Básico',
+        description: 'Para restaurantes pequeños',
+        price: 29.99,
+        billingPeriod: BillingPeriod.MONTHLY,
+        maxUsers: 5,
+        maxBranches: 2,
+        maxProducts: 100,
+        maxCategories: 15,
+        maxMonthlyOrders: 1000,
+        maxStorageMb: 200,
+        features: ['pos_web', 'reports', 'kds', 'multi_branch'],
+        isActive: true,
+        sortOrder: 20,
+        isPublic: true,
+      },
+    }),
+    PRO: await prisma.plan.upsert({
+      where: { code: 'PRO' },
+      update: {},
+      create: {
+        code: 'PRO',
+        name: 'Profesional',
+        description: 'Para restaurantes en crecimiento',
+        price: 79.99,
+        billingPeriod: BillingPeriod.MONTHLY,
+        maxUsers: 15,
+        maxBranches: 5,
+        maxProducts: 500,
+        maxCategories: 50,
+        maxMonthlyOrders: 5000,
+        maxStorageMb: 1000,
+        features: ['pos_web', 'reports', 'inventory', 'kds', 'multi_branch', 'desktop_app', 'mobile_app', 'pos_stations'],
+        isActive: true,
+        sortOrder: 30,
+        isPublic: true,
+      },
+    }),
+  };
+  console.log(`✅ Planes: ${Object.keys(plans).join(', ')}`);
+
   // ---- 1. Business ----
   const business = await prisma.business.upsert({
     where: { slug: 'demo' },
@@ -389,9 +480,31 @@ async function main(): Promise<void> {
       timezone: 'America/La_Paz',
       status: BusinessStatus.ACTIVE,
       plan: 'PRO',
+      planId: plans.PRO.id,
+      moduleReports: true,
+      moduleInventory: true,
+      modulePosStations: true,
+      moduleDeliveryApp: true,
     },
   });
   console.log(`✅ Business: ${business.name} (slug: ${business.slug})`);
+
+  // ---- 1b. Subscription (FASE 6) ----
+  const now = new Date();
+  const periodEnd = new Date(now);
+  periodEnd.setMonth(periodEnd.getMonth() + 1);
+  await prisma.subscription.upsert({
+    where: { businessId: business.id },
+    update: { planId: plans.PRO.id },
+    create: {
+      businessId: business.id,
+      planId: plans.PRO.id,
+      status: SubscriptionStatus.ACTIVE,
+      currentPeriodStart: now,
+      currentPeriodEnd: periodEnd,
+    },
+  });
+  console.log(`✅ Suscripción: ${business.name} → PRO`);
 
   // ---- 2. Branches ----
   const centro = await prisma.branch.upsert({
@@ -462,30 +575,32 @@ async function main(): Promise<void> {
   // ---- 4. Categories ----
   const categoryMap = new Map<string, string>();
   for (const c of CATEGORIES) {
-    const cat = await prisma.category.upsert({
-      where: {
-        businessId_branchId_slug: {
+    let cat = await prisma.category.findFirst({
+      where: { businessId: business.id, branchId: null, slug: c.slug },
+    });
+    if (cat) {
+      cat = await prisma.category.update({
+        where: { id: cat.id },
+        data: {
+          name: c.name,
+          description: c.description,
+          displayOrder: c.displayOrder,
+          isActive: true,
+        },
+      });
+    } else {
+      cat = await prisma.category.create({
+        data: {
           businessId: business.id,
           branchId: null,
+          name: c.name,
           slug: c.slug,
+          description: c.description,
+          displayOrder: c.displayOrder,
+          isActive: true,
         },
-      },
-      update: {
-        name: c.name,
-        description: c.description,
-        displayOrder: c.displayOrder,
-        isActive: true,
-      },
-      create: {
-        businessId: business.id,
-        branchId: null,
-        name: c.name,
-        slug: c.slug,
-        description: c.description,
-        displayOrder: c.displayOrder,
-        isActive: true,
-      },
-    });
+      });
+    }
     categoryMap.set(c.slug, cat.id);
   }
   console.log(`✅ Categories: ${CATEGORIES.length} creadas/actualizadas`);
@@ -493,30 +608,32 @@ async function main(): Promise<void> {
   // ---- 5. Preparation Areas (Phase 2) ----
   const prepAreaMap = new Map<string, string>();
   for (const pa of PREP_AREAS) {
-    const area = await prisma.preparationArea.upsert({
-      where: {
-        businessId_branchId_code: {
+    let area = await prisma.preparationArea.findFirst({
+      where: { businessId: business.id, branchId: null, code: pa.code },
+    });
+    if (area) {
+      area = await prisma.preparationArea.update({
+        where: { id: area.id },
+        data: {
+          name: pa.name,
+          description: pa.description,
+          displayOrder: pa.displayOrder,
+          isActive: true,
+        },
+      });
+    } else {
+      area = await prisma.preparationArea.create({
+        data: {
           businessId: business.id,
           branchId: null,
+          name: pa.name,
           code: pa.code,
+          description: pa.description,
+          displayOrder: pa.displayOrder,
+          isActive: true,
         },
-      },
-      update: {
-        name: pa.name,
-        description: pa.description,
-        displayOrder: pa.displayOrder,
-        isActive: true,
-      },
-      create: {
-        businessId: business.id,
-        branchId: null,
-        name: pa.name,
-        code: pa.code,
-        description: pa.description,
-        displayOrder: pa.displayOrder,
-        isActive: true,
-      },
-    });
+      });
+    }
     prepAreaMap.set(pa.code, area.id);
   }
   console.log(`✅ Preparation Areas: ${PREP_AREAS.length} (${PREP_AREAS.map((p) => p.code).join(', ')})`);
@@ -642,6 +759,53 @@ async function main(): Promise<void> {
   }
   console.log(`✅ Customers: ${CUSTOMERS.length} cargados`);
 
+  // ---- Caja registradora + turno (F4) ----
+  // Abrimos UNA caja en la branch principal con un turno ya OPEN para que
+  // el seed quede listo para tomar órdenes sin pasos extra.
+  const cajero = USERS.find((u) => u.role === Role.CAJERO);
+  if (!cajero) throw new Error('No se encontró el usuario CAJERO en el seed');
+
+  const cajeroUser = await prisma.user.findFirstOrThrow({
+    where: { businessId: business.id, email: cajero.email },
+  });
+
+  const cashRegister = await prisma.cashRegister.upsert({
+    where: { businessId_branchId_code: { businessId: business.id, branchId: centro.id, code: 'CAJA-1' } },
+    update: {
+      status: CashRegisterStatus.OPEN,
+      openedByUserId: cajeroUser.id,
+      openedAt: new Date(),
+      closedAt: null,
+      closedByUserId: null,
+    },
+    create: {
+      businessId: business.id,
+      branchId: centro.id,
+      code: 'CAJA-1',
+      status: CashRegisterStatus.OPEN,
+      openedByUserId: cajeroUser.id,
+    },
+  });
+
+  // Shift único OPEN: si ya hay uno, lo cerramos antes de abrir el nuevo
+  // (idempotente). El seed asume arranque limpio.
+  await prisma.shift.updateMany({
+    where: { cashRegisterId: cashRegister.id, status: ShiftStatus.OPEN },
+    data: { status: ShiftStatus.CLOSED, closedAt: new Date() },
+  });
+
+  const shift = await prisma.shift.create({
+    data: {
+      businessId: business.id,
+      branchId: centro.id,
+      cashRegisterId: cashRegister.id,
+      userId: cajeroUser.id,
+      status: ShiftStatus.OPEN,
+      openingAmount: 0,
+    },
+  });
+  console.log(`✅ Caja + turno inicializados (${cashRegister.code} / shift ${shift.id.slice(-8)})`);
+
   // ---- Resumen final con credenciales ----
   console.log('\n═══════════════════════════════════════════════════════════════');
   console.log('🎉 SEED COMPLETADO');
@@ -664,7 +828,8 @@ async function main(): Promise<void> {
   console.log(`   - ${PREP_AREAS.length} preparation areas (KITCHEN, BAR, COFFEE)`);
   console.log(`   - ${PRODUCTS.length} products (${PRODUCTS.filter((p) => p.prepAreaCode).length} con prep area, ${PRODUCTS.filter((p) => p.productType && p.productType !== ProductType.SALE).length} no-SALE)`);
   console.log(`   - ${TABLES_CENTRO.length} tables en ${centro.name}`);
-  console.log(`   - ${CUSTOMERS.length} customers con distintos taxIdTypes\n`);
+  console.log(`   - ${CUSTOMERS.length} customers con distintos taxIdTypes`);
+  console.log(`   - 1 caja registradora (${cashRegister.code}) + 1 turno OPEN para que el POS funcione directo\n`);
 }
 
 main()

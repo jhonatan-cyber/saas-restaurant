@@ -1,12 +1,11 @@
 import { defineConfig } from 'vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
+import tailwindcss from '@tailwindcss/vite';
 import tsConfigPaths from 'vite-tsconfig-paths';
-import tailwindcss from 'tailwindcss';
-import autoprefixer from 'autoprefixer';
 
 /**
- * Vite config explícita (además de app.config.ts).
- * Tener ambas permite invocar `vite` directamente si se necesita.
+ * Vite config (TanStack Start plugin en lugar de Vinxi).
+ * Migrado de app.config.ts (TanStack Start ≤ 1.130) al Vite plugin nativo (≥ 1.131).
  */
 export default defineConfig({
   server: {
@@ -15,11 +14,7 @@ export default defineConfig({
   },
   plugins: [
     tsConfigPaths(),
+    tailwindcss(),
     tanstackStart(),
   ],
-  css: {
-    postcss: {
-      plugins: [tailwindcss(), autoprefixer()],
-    },
-  },
 });

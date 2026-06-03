@@ -26,16 +26,51 @@ export const categoryFormSchema = z.object({
     .regex(/^[a-z0-9-]+$/, 'Solo minúsculas, números y guiones'),
   description: z.string().trim().max(500).optional().or(z.literal('').transform(() => undefined)),
   imageUrl: z
-    .string()
-    .trim()
     .url('URL inválida')
     .optional()
-    .or(z.literal('').transform(() => undefined)),
+    .or(z.literal('').transform(() => undefined as string | undefined)),
   displayOrder: z.coerce.number().int().min(0).default(0),
   branchId: z.string().optional().or(z.literal('').transform(() => undefined)),
   isActive: z.boolean().default(true),
 });
 export type CategoryFormValues = z.infer<typeof categoryFormSchema>;
+
+// =================== Branches ===================
+
+export const branchFormSchema = z.object({
+  name: z.string().trim().min(1, 'El nombre es obligatorio').max(120),
+  code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .min(1, 'El código es obligatorio')
+    .max(20)
+    .regex(/^[A-Z0-9_-]+$/, 'Solo mayúsculas, números, guion y guion bajo'),
+  address: z.string().trim().max(255).optional().or(z.literal('').transform(() => undefined)),
+  phone: z.string().trim().max(40).optional().or(z.literal('').transform(() => undefined)),
+  isMain: z.boolean().default(false),
+});
+export type BranchFormValues = z.infer<typeof branchFormSchema>;
+
+// =================== Suppliers ===================
+
+export const supplierFormSchema = z.object({
+  name: z.string().trim().min(1, 'El nombre es obligatorio').max(160),
+  contactName: z.string().trim().max(120).optional().or(z.literal('').transform(() => undefined)),
+  email: z
+    .string()
+    .email('Email inválido')
+    .max(160)
+    .optional()
+    .or(z.literal('').transform(() => undefined as string | undefined)),
+  phone: z.string().trim().max(40).optional().or(z.literal('').transform(() => undefined)),
+  address: z.string().trim().max(255).optional().or(z.literal('').transform(() => undefined)),
+  taxId: z.string().trim().max(40).optional().or(z.literal('').transform(() => undefined)),
+  notes: z.string().trim().max(500).optional().or(z.literal('').transform(() => undefined)),
+  isActive: z.boolean().default(true),
+  branchId: z.string().optional().or(z.literal('').transform(() => undefined)),
+});
+export type SupplierFormValues = z.infer<typeof supplierFormSchema>;
 
 // =================== Products ===================
 
@@ -54,11 +89,9 @@ export const productFormSchema = z.object({
     .optional()
     .or(z.literal('').transform(() => undefined)),
   imageUrl: z
-    .string()
-    .trim()
     .url('URL inválida')
     .optional()
-    .or(z.literal('').transform(() => undefined)),
+    .or(z.literal('').transform(() => undefined as string | undefined)),
   categoryId: z.string().optional().or(z.literal('').transform(() => undefined)),
   preparationAreaId: z.string().optional().or(z.literal('').transform(() => undefined)),
   branchId: z.string().optional().or(z.literal('').transform(() => undefined)),
@@ -119,12 +152,10 @@ export const customerFormSchema = z.object({
   taxId: z.string().trim().max(40).optional().or(z.literal('').transform(() => undefined)),
   taxIdType: z.string().trim().max(16).optional().or(z.literal('').transform(() => undefined)),
   email: z
-    .string()
-    .trim()
     .email('Email inválido')
     .max(160)
     .optional()
-    .or(z.literal('').transform(() => undefined)),
+    .or(z.literal('').transform(() => undefined as string | undefined)),
   phone: z.string().trim().max(40).optional().or(z.literal('').transform(() => undefined)),
   address: z.string().trim().max(255).optional().or(z.literal('').transform(() => undefined)),
   addressReference: z

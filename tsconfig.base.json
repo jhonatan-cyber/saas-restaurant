@@ -25,7 +25,6 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "useDefineForClassFields": false,
-    "baseUrl": ".",
     "paths": {
       "@saas/shared": ["./packages/shared/src/index.ts"],
       "@saas/shared/*": ["./packages/shared/src/*"],

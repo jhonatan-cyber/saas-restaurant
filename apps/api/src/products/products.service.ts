@@ -1,5 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, type Product } from '@prisma/client';
+import { Prisma, ProductType, AuditAction, type Product } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import type { AuthenticatedUser, BusinessContext } from '../auth/types/jwt-payload.type';
@@ -63,9 +63,9 @@ export class ProductsService {
       ...(filters.search
         ? {
             OR: [
-              { name: { contains: filters.search, mode: 'insensitive' as const } },
-              { sku: { contains: filters.search, mode: 'insensitive' as const } },
-              { description: { contains: filters.search, mode: 'insensitive' as const } },
+              { name: { contains: filters.search } },
+              { sku: { contains: filters.search } },
+              { description: { contains: filters.search } },
             ],
           }
         : {}),
@@ -106,7 +106,7 @@ export class ProductsService {
     filters?: { categoryId?: string; isAvailable?: boolean },
   ): Promise<ProductListItemDTO[]> {
     const tenant = this.prisma.tenantFilter(user, context);
-    return this.prisma.product.findMany({
+    const rows = await this.prisma.product.findMany({
       where: {
         ...tenant,
         deletedAt: null,
@@ -122,10 +122,12 @@ export class ProductsService {
         categoryId: true,
         imageUrl: true,
         price: true,
+        cost: true,
         productType: true,
         isAvailable: true,
       },
     });
+    return rows.map((p) => this.toListItemDto(p));
   }
 
   /**
@@ -142,7 +144,7 @@ export class ProductsService {
     context: BusinessContext | undefined,
   ): Promise<ProductListItemDTO[]> {
     const tenant = this.prisma.tenantFilter(user, context);
-    return this.prisma.product.findMany({
+    const rows = await this.prisma.product.findMany({
       where: {
         ...tenant,
         deletedAt: null,
@@ -158,10 +160,12 @@ export class ProductsService {
         categoryId: true,
         imageUrl: true,
         price: true,
+        cost: true,
         productType: true,
         isAvailable: true,
       },
     });
+    return rows.map((p) => this.toListItemDto(p));
   }
 
   async getById(
@@ -298,9 +302,9 @@ export class ProductsService {
       await this.audit.log({
         businessId: user.businessId,
         userId: user.id,
-        action: 'PRICE_CHANGED',
-        entity: 'Product',
-        entityId: updated.id,
+      action: AuditAction.PRICE_CHANGE,
+      entity: 'Product',
+      entityId: updated.id,
         before: { price: existing.price.toString() },
         after: { price: updated.price.toString() },
       });
@@ -329,7 +333,7 @@ export class ProductsService {
     await this.audit.log({
       businessId: user.businessId,
       userId: user.id,
-      action: 'PRODUCT_DELETED',
+      action: AuditAction.SOFT_DELETE,
       entity: 'Product',
       entityId: id,
     });
@@ -367,6 +371,30 @@ export class ProductsService {
     }
   }
 
+  private toListItemDto(p: {
+    id: string;
+    name: string;
+    slug: string;
+    categoryId: string | null;
+    imageUrl: string | null;
+    price: Prisma.Decimal;
+    cost: Prisma.Decimal | null;
+    productType: ProductType;
+    isAvailable: boolean;
+  }): ProductListItemDTO {
+    return {
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      categoryId: p.categoryId,
+      imageUrl: p.imageUrl,
+      price: p.price.toString(),
+      cost: p.cost?.toString() ?? null,
+      productType: p.productType,
+      isAvailable: p.isAvailable,
+    };
+  }
+
   private toDto(p: ProductWithRelations): ProductDTO {
     return {
       id: p.id,
@@ -386,6 +414,7 @@ export class ProductsService {
       isAvailable: p.isAvailable,
       minStock: p.minStock,
       trackStock: p.trackStock,
+      currentStock: p.currentStock.toString(),
       productType: p.productType,
       preparationTimeMin: p.preparationTimeMin,
       category: p.category

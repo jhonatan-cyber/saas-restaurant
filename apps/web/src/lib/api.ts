@@ -57,7 +57,7 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
   const authHeaders: Record<string, string> = {};
   if (!skipAuth) {
     const state = useAuthStore.getState();
-    if (state.token) authHeaders.Authorization = `Bearer ${state.token}`;
+    if (state.accessToken) authHeaders.Authorization = `Bearer ${state.accessToken}`;
     if (state.user) authHeaders[HEADERS.BUSINESS_ID] = state.user.businessId;
     if (branchId !== undefined && branchId !== null) {
       authHeaders[HEADERS.BRANCH_ID] = branchId;
@@ -230,6 +230,393 @@ export const categoriesApi = {
   remove: (id: string) => api<void>(`/categories/${id}`, { method: 'DELETE' }),
 };
 
+// ============== API: Branches ==============
+
+export interface Branch {
+  id: string;
+  businessId: string;
+  name: string;
+  code: string;
+  address: string | null;
+  phone: string | null;
+  isMain: boolean;
+  status: 'ACTIVE' | 'INACTIVE';
+  categoriesCount: number;
+  productsCount: number;
+  tablesCount: number;
+  activeOrdersCount: number;
+  openCashRegistersCount: number;
+  openShiftsCount: number;
+  activePosStationsCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BranchListItem {
+  id: string;
+  name: string;
+  code: string;
+  isMain: boolean;
+  status: string;
+}
+
+export interface BranchFilters {
+  isActive?: boolean;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface CreateBranchInput {
+  name: string;
+  code: string;
+  address?: string;
+  phone?: string;
+  isMain?: boolean;
+}
+
+export type UpdateBranchInput = Partial<CreateBranchInput> & { status?: 'ACTIVE' | 'INACTIVE' };
+
+export const branchesApi = {
+  list: (filters: BranchFilters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.isActive !== undefined) params.set('isActive', String(filters.isActive));
+    if (filters.search) params.set('search', filters.search);
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.pageSize) params.set('pageSize', String(filters.pageSize));
+    const qs = params.toString();
+    return api<PaginatedResponse<Branch>>(`/branches${qs ? `?${qs}` : ''}`, { method: 'GET' });
+  },
+
+  all: (filters: { isActive?: boolean } = {}) => {
+    const params = new URLSearchParams();
+    if (filters.isActive !== undefined) params.set('isActive', String(filters.isActive));
+    const qs = params.toString();
+    return api<BranchListItem[]>(`/branches/all${qs ? `?${qs}` : ''}`, { method: 'GET' });
+  },
+
+  get: (id: string) => api<Branch>(`/branches/${id}`, { method: 'GET' }),
+
+  create: (data: CreateBranchInput) =>
+    api<Branch>('/branches', { method: 'POST', body: data }),
+
+  update: (id: string, data: UpdateBranchInput) =>
+    api<Branch>(`/branches/${id}`, { method: 'PATCH', body: data }),
+
+  remove: (id: string) => api<void>(`/branches/${id}`, { method: 'DELETE' }),
+
+  reactivate: (id: string) => api<void>(`/branches/${id}/reactivate`, { method: 'POST' }),
+};
+
+// ============== API: Purchases ==============
+
+export interface PurchaseListItem {
+  id: string;
+  purchaseNumber: string;
+  supplierName: string | null;
+  status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
+  total: string;
+  itemCount: number;
+  createdAt: string;
+}
+
+export interface PurchaseItem {
+  id: string;
+  purchaseId: string;
+  productId: string | null;
+  productName: string;
+  unitCost: string;
+  quantity: string;
+  lineTotal: string;
+  createdAt: string;
+}
+
+export interface Purchase {
+  id: string;
+  businessId: string;
+  branchId: string;
+  supplierId: string | null;
+  purchaseNumber: string;
+  status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
+  subtotal: string;
+  taxTotal: string;
+  total: string;
+  notes: string | null;
+  receivedAt: string | null;
+  receivedBy: string | null;
+  invoiceUrl: string | null;
+  createdById: string;
+  supplier: Supplier | null;
+  items: PurchaseItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PurchaseFilters {
+  branchId?: string;
+  supplierId?: string;
+  status?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface CreatePurchaseInput {
+  branchId: string;
+  supplierId?: string;
+  purchaseNumber: string;
+  notes?: string;
+  taxTotal?: number;
+  items: { productId: string; quantity: number; unitCost: number }[];
+}
+
+export const purchasesApi = {
+  list: (filters: PurchaseFilters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.branchId) params.set('branchId', filters.branchId);
+    if (filters.supplierId) params.set('supplierId', filters.supplierId);
+    if (filters.status) params.set('status', filters.status);
+    if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
+    if (filters.dateTo) params.set('dateTo', filters.dateTo);
+    if (filters.search) params.set('search', filters.search);
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.pageSize) params.set('pageSize', String(filters.pageSize));
+    const qs = params.toString();
+    return api<PaginatedResponse<PurchaseListItem>>(`/purchases${qs ? `?${qs}` : ''}`, { method: 'GET' });
+  },
+
+  get: (id: string) => api<Purchase>(`/purchases/${id}`, { method: 'GET' }),
+
+  create: (data: CreatePurchaseInput) =>
+    api<Purchase>('/purchases', { method: 'POST', body: data }),
+
+  update: (id: string, data: { purchaseNumber?: string; notes?: string | null }) =>
+    api<Purchase>(`/purchases/${id}`, { method: 'PATCH', body: data }),
+
+  complete: (id: string, receivedAt?: string) =>
+    api<Purchase>(`/purchases/${id}/complete`, { method: 'POST', body: receivedAt ? { receivedAt } : {} }),
+
+  cancel: (id: string) =>
+    api<Purchase>(`/purchases/${id}/cancel`, { method: 'POST' }),
+};
+
+// ============== API: Inventory ==============
+
+export interface InventoryMovement {
+  id: string;
+  businessId: string;
+  branchId: string;
+  productId: string;
+  productName?: string;
+  type: 'IN' | 'OUT' | 'INITIAL';
+  referenceType: string;
+  referenceId: string | null;
+  quantity: string;
+  unitCost: string | null;
+  totalCost: string | null;
+  runningBalance: string;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface InventoryKardex {
+  productId: string;
+  productName: string;
+  sku: string | null;
+  currentStock: string;
+  movements: InventoryMovement[];
+}
+
+export interface LowStockProduct {
+  id: string;
+  name: string;
+  sku: string | null;
+  currentStock: string;
+  minStock: number | null;
+}
+
+export interface InventoryFilters {
+  productId?: string;
+  branchId?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export const inventoryApi = {
+  listMovements: (filters: InventoryFilters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.productId) params.set('productId', filters.productId);
+    if (filters.branchId) params.set('branchId', filters.branchId);
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.pageSize) params.set('pageSize', String(filters.pageSize));
+    const qs = params.toString();
+    return api<PaginatedResponse<InventoryMovement>>(`/inventory/movements${qs ? `?${qs}` : ''}`, { method: 'GET' });
+  },
+
+  getKardex: (productId: string, branchId?: string) => {
+    const params = new URLSearchParams();
+    if (branchId) params.set('branchId', branchId);
+    const qs = params.toString();
+    return api<InventoryKardex>(`/inventory/kardex/${productId}${qs ? `?${qs}` : ''}`, { method: 'GET' });
+  },
+
+  getLowStock: (branchId?: string) => {
+    const params = new URLSearchParams();
+    if (branchId) params.set('branchId', branchId);
+    const qs = params.toString();
+    return api<LowStockProduct[]>(`/inventory/low-stock${qs ? `?${qs}` : ''}`, { method: 'GET' });
+  },
+};
+
+// ============== API: Reports ==============
+
+export const ReportType = {
+  SALES_DAILY: 'SALES_DAILY',
+  SALES_RANGE: 'SALES_RANGE',
+  PAYMENT_METHODS: 'PAYMENT_METHODS',
+  TOP_PRODUCTS: 'TOP_PRODUCTS',
+  GROSS_PROFIT: 'GROSS_PROFIT',
+  INVENTORY: 'INVENTORY',
+  CLOSE_REPORT: 'CLOSE_REPORT',
+} as const;
+export type ReportType = (typeof ReportType)[keyof typeof ReportType];
+
+export const ReportFormat = {
+  PDF: 'PDF',
+  XLSX: 'XLSX',
+} as const;
+export type ReportFormat = (typeof ReportFormat)[keyof typeof ReportFormat];
+
+export const ReportStatus = {
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  COMPLETED: 'COMPLETED',
+  FAILED: 'FAILED',
+} as const;
+export type ReportStatus = (typeof ReportStatus)[keyof typeof ReportStatus];
+
+export interface Report {
+  id: string;
+  businessId: string;
+  type: ReportType;
+  format: ReportFormat;
+  status: ReportStatus;
+  params: Record<string, unknown>;
+  resultUrl: string | null;
+  resultSize: number | null;
+  errorMessage: string | null;
+  completedAt: string | null;
+  expiresAt: string | null;
+  requestedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReportFilters {
+  status?: ReportStatus;
+  type?: ReportType;
+  page?: number;
+  pageSize?: number;
+}
+
+export const reportsApi = {
+  list: (filters: ReportFilters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.status) params.set('status', filters.status);
+    if (filters.type) params.set('type', filters.type);
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.pageSize) params.set('pageSize', String(filters.pageSize));
+    const qs = params.toString();
+    return api<PaginatedResponse<Report>>(`/reports${qs ? `?${qs}` : ''}`, { method: 'GET' });
+  },
+
+  getById: (id: string) => api<Report>(`/reports/${id}`, { method: 'GET' }),
+
+  request: (dto: { type: ReportType; format?: ReportFormat; params?: Record<string, unknown> }) =>
+    api<Report>('/reports', { method: 'POST', body: dto }),
+};
+
+// ============== API: Suppliers ==============
+
+export interface Supplier {
+  id: string;
+  businessId: string;
+  branchId: string | null;
+  name: string;
+  contactName: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  taxId: string | null;
+  notes: string | null;
+  isActive: boolean;
+  purchaseCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupplierListItem {
+  id: string;
+  name: string;
+  contactName: string | null;
+  phone: string | null;
+  isActive: boolean;
+}
+
+export interface SupplierFilters {
+  isActive?: boolean;
+  search?: string;
+  branchId?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface CreateSupplierInput {
+  name: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  taxId?: string;
+  notes?: string;
+  isActive?: boolean;
+  branchId?: string;
+}
+
+export type UpdateSupplierInput = Partial<CreateSupplierInput>;
+
+export const suppliersApi = {
+  list: (filters: SupplierFilters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.isActive !== undefined) params.set('isActive', String(filters.isActive));
+    if (filters.search) params.set('search', filters.search);
+    if (filters.branchId) params.set('branchId', filters.branchId);
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.pageSize) params.set('pageSize', String(filters.pageSize));
+    const qs = params.toString();
+    return api<PaginatedResponse<Supplier>>(`/suppliers${qs ? `?${qs}` : ''}`, { method: 'GET' });
+  },
+
+  all: (filters: { isActive?: boolean } = {}) => {
+    const params = new URLSearchParams();
+    if (filters.isActive !== undefined) params.set('isActive', String(filters.isActive));
+    const qs = params.toString();
+    return api<SupplierListItem[]>(`/suppliers/all${qs ? `?${qs}` : ''}`, { method: 'GET' });
+  },
+
+  get: (id: string) => api<Supplier>(`/suppliers/${id}`, { method: 'GET' }),
+
+  create: (data: CreateSupplierInput) =>
+    api<Supplier>('/suppliers', { method: 'POST', body: data }),
+
+  update: (id: string, data: UpdateSupplierInput) =>
+    api<Supplier>(`/suppliers/${id}`, { method: 'PATCH', body: data }),
+
+  remove: (id: string) => api<void>(`/suppliers/${id}`, { method: 'DELETE' }),
+};
+
 // ============== API: Products ==============
 
 export interface Product {
@@ -265,6 +652,7 @@ export interface ProductListItem {
   categoryId: string | null;
   imageUrl: string | null;
   price: string;
+  cost: string | null;
   productType: 'SALE' | 'COMBO' | 'ADDON' | 'SERVICE' | 'INGREDIENT';
   isAvailable: boolean;
 }
@@ -572,10 +960,553 @@ export const customersApi = {
   remove: (id: string) => api<void>(`/customers/${id}`, { method: 'DELETE' }),
 };
 
+// ============== API: Orders ==============
+
+/**
+ * Item de una orden. El snapshot inmutable (R8) hace que productName,
+ * unitPrice, taxRate, preparationAreaId y preparationAreaName NO cambien
+ * aunque el Product original sea editado o eliminado. Por eso el frontend
+ * NO envía unitPrice: el backend lo recalcula desde Product.
+ */
+export interface OrderItem {
+  id: string;
+  businessId: string;
+  orderId: string;
+  productId: string | null;
+  productName: string;
+  unitPrice: string;
+  taxRate: string | null;
+  preparationAreaId: string | null;
+  preparationAreaName: string | null;
+  quantity: number;
+  notes: string | null;
+  lineTotal: string;
+  createdAt: string;
+}
+
+export interface OrderStateLog {
+  id: string;
+  businessId: string;
+  orderId: string;
+  fromStatus: string | null;
+  toStatus: string;
+  changedByUserId: string;
+  reason: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface Order {
+  id: string;
+  businessId: string;
+  branchId: string;
+  tableId: string | null;
+  customerId: string | null;
+  cashierId: string;
+  waiterId: string | null;
+  type: 'DINE_IN' | 'TAKEOUT' | 'DELIVERY';
+  channel: 'POS_WEB' | 'POS_DESKTOP' | 'MOBILE' | 'KIOSK' | 'ADMIN';
+  status:
+    | 'DRAFT'
+    | 'PENDING'
+    | 'SENT_TO_KITCHEN'
+    | 'IN_PREPARATION'
+    | 'READY'
+    | 'DELIVERED'
+    | 'PAID'
+    | 'CANCELLED';
+  subtotal: string;
+  taxTotal: string;
+  total: string;
+  globalNotes: string | null;
+  cashRegisterId: string | null;
+  shiftId: string | null;
+  version: number;
+  cancelledAt: string | null;
+  cancelledByUserId: string | null;
+  cancellationReason: string | null;
+  items: OrderItem[];
+  stateLogs?: OrderStateLog[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrderListItem {
+  id: string;
+  businessId: string;
+  branchId: string;
+  tableId: string | null;
+  type: 'DINE_IN' | 'TAKEOUT' | 'DELIVERY';
+  status:
+    | 'DRAFT'
+    | 'PENDING'
+    | 'SENT_TO_KITCHEN'
+    | 'IN_PREPARATION'
+    | 'READY'
+    | 'DELIVERED'
+    | 'PAID'
+    | 'CANCELLED';
+  total: string;
+  itemCount: number;
+  cashierId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Vista KDS. El backend agrupa por preparation area para evitar que el
+ * cliente re-arme las columnas.
+ */
+export interface KdsOrder {
+  id: string;
+  tableId: string | null;
+  tableNumber: string | null;
+  status: string;
+  type: string;
+  globalNotes: string | null;
+  total: string;
+  itemCount: number;
+  createdAt: string;
+  elapsedSeconds: number;
+  items: Array<{
+    id: string;
+    productName: string;
+    quantity: number;
+    notes: string | null;
+    preparationAreaId: string | null;
+    preparationAreaName: string | null;
+  }>;
+}
+
+export interface KdsAreaGroup {
+  preparationAreaId: string;
+  preparationAreaName: string;
+  preparationAreaCode: string;
+  orders: KdsOrder[];
+}
+
+export interface KdsView {
+  branchId: string;
+  generatedAt: string;
+  areas: KdsAreaGroup[];
+}
+
+export interface OrderFilters {
+  status?: string | string[];
+  type?: 'DINE_IN' | 'TAKEOUT' | 'DELIVERY';
+  channel?: 'POS_WEB' | 'POS_DESKTOP' | 'MOBILE' | 'KIOSK' | 'ADMIN';
+  tableId?: string;
+  customerId?: string;
+  cashierId?: string;
+  branchId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface KdsFilters {
+  branchId: string;
+  preparationAreaId?: string;
+  states?: string[];
+}
+
+export interface CreateOrderItemInput {
+  productId: string;
+  quantity: number;
+  notes?: string;
+  /**
+   * IGNORADO por el backend (recalcula desde Product). Existe por compat
+   * con la Zod schema del backend pero el server-side es la única fuente
+   * de verdad del precio (guardrail #3).
+   */
+  unitPrice?: number;
+}
+
+export interface CreateOrderInput {
+  type?: 'DINE_IN' | 'TAKEOUT' | 'DELIVERY';
+  channel?: 'POS_WEB' | 'POS_DESKTOP' | 'MOBILE' | 'KIOSK' | 'ADMIN';
+  tableId?: string;
+  customerId?: string;
+  waiterId?: string;
+  globalNotes?: string;
+  items: CreateOrderItemInput[];
+}
+
+export interface UpdateOrderItemInput {
+  quantity?: number;
+  notes?: string | null;
+}
+
+export interface TransitionOrderInput {
+  to: string;
+  reason?: string;
+  /** Para optimistic lock (R4): el cliente manda la versión que vio. */
+  expectedVersion?: number;
+}
+
+export interface CancelOrderInput {
+  reason: string;
+  expectedVersion?: number;
+}
+
+export const ordersApi = {
+  kds: (filters: KdsFilters) => {
+    const params = new URLSearchParams();
+    params.set('branchId', filters.branchId);
+    if (filters.preparationAreaId) params.set('preparationAreaId', filters.preparationAreaId);
+    if (filters.states?.length) params.set('states', filters.states.join(','));
+    return api<KdsView>(`/orders/kds?${params.toString()}`, {
+      method: 'GET',
+      branchId: filters.branchId,
+    });
+  },
+
+  list: (filters: OrderFilters = {}, branchId?: string) => {
+    const params = new URLSearchParams();
+    if (filters.status) {
+      const arr = Array.isArray(filters.status) ? filters.status : [filters.status];
+      arr.forEach((s) => params.append('status', s));
+    }
+    if (filters.type) params.set('type', filters.type);
+    if (filters.channel) params.set('channel', filters.channel);
+    if (filters.tableId) params.set('tableId', filters.tableId);
+    if (filters.customerId) params.set('customerId', filters.customerId);
+    if (filters.cashierId) params.set('cashierId', filters.cashierId);
+    if (filters.branchId) params.set('branchId', filters.branchId);
+    if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
+    if (filters.dateTo) params.set('dateTo', filters.dateTo);
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.pageSize) params.set('pageSize', String(filters.pageSize));
+    const qs = params.toString();
+    return api<PaginatedResponse<OrderListItem>>(`/orders${qs ? `?${qs}` : ''}`, {
+      method: 'GET',
+      ...(branchId ? { branchId } : {}),
+    });
+  },
+
+  get: (id: string) => api<Order>(`/orders/${id}`, { method: 'GET' }),
+
+  getLogs: (id: string) => api<OrderStateLog[]>(`/orders/${id}/logs`, { method: 'GET' }),
+
+  create: (data: CreateOrderInput, branchId?: string) =>
+    api<Order>('/orders', {
+      method: 'POST',
+      body: data,
+      ...(branchId ? { branchId } : {}),
+    }),
+
+  addItem: (orderId: string, data: CreateOrderItemInput) =>
+    api<Order>(`/orders/${orderId}/items`, { method: 'POST', body: data }),
+
+  updateItem: (orderId: string, itemId: string, data: UpdateOrderItemInput) =>
+    api<Order>(`/orders/${orderId}/items/${itemId}`, { method: 'PATCH', body: data }),
+
+  removeItem: (orderId: string, itemId: string) =>
+    api<Order>(`/orders/${orderId}/items/${itemId}`, { method: 'DELETE' }),
+
+  transition: (orderId: string, data: TransitionOrderInput) =>
+    api<Order>(`/orders/${orderId}/transition`, { method: 'POST', body: data }),
+
+  cancel: (orderId: string, data: CancelOrderInput) =>
+    api<Order>(`/orders/${orderId}/cancel`, { method: 'POST', body: data }),
+};
+
 // ============== Helpers de URL ==============
 
 export const urls = {
   api: API_BASE_URL,
   apiRoot: API_ROOT_URL,
   storageKeys: STORAGE_KEYS,
+};
+
+// ============== API: Users (F7) ==============
+
+import type { UserDTO, PaginatedResponseDTO, PaginationMetaDTO } from '@saas/shared';
+
+export interface CreateUserData {
+  email: string;
+  fullName: string;
+  password: string;
+  role: string;
+  phone?: string;
+  defaultBranchId?: string;
+}
+
+export interface UpdateUserData {
+  email?: string;
+  fullName?: string;
+  role?: string;
+  phone?: string;
+  defaultBranchId?: string | null;
+}
+
+export interface UserFilters {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  role?: string;
+  status?: string;
+}
+
+export const usersApi = {
+  create: (data: CreateUserData) =>
+    api<UserDTO>('/users', { method: 'POST', body: data }),
+
+  list: (filters: UserFilters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.pageSize) params.set('pageSize', String(filters.pageSize));
+    if (filters.search) params.set('search', filters.search);
+    if (filters.role) params.set('role', filters.role);
+    if (filters.status) params.set('status', filters.status);
+    const qs = params.toString();
+    return api<PaginatedResponseDTO<UserDTO>>(`/users${qs ? `?${qs}` : ''}`, { method: 'GET' });
+  },
+
+  getById: (id: string) =>
+    api<UserDTO>(`/users/${id}`, { method: 'GET' }),
+
+  update: (id: string, data: UpdateUserData) =>
+    api<UserDTO>(`/users/${id}`, { method: 'PATCH', body: data }),
+
+  remove: (id: string) =>
+    api<{ id: string; status: string }>(`/users/${id}`, { method: 'DELETE' }),
+};
+
+// ============== API: Business (F7) ==============
+
+import type { BusinessDTO } from '@saas/shared';
+
+export interface UpdateBusinessData {
+  name?: string;
+  legalName?: string;
+  taxId?: string;
+  email?: string;
+  phone?: string;
+  currency?: string;
+  timezone?: string;
+  moduleReports?: boolean;
+  moduleInventory?: boolean;
+  modulePosStations?: boolean;
+  moduleDeliveryApp?: boolean;
+}
+
+export const businessApi = {
+  getSettings: () => api<BusinessDTO>('/business/settings', { method: 'GET' }),
+
+  updateSettings: (data: UpdateBusinessData) =>
+    api<BusinessDTO>('/business/settings', { method: 'PATCH', body: data }),
+};
+
+// ============== API: Audit (F7) ==============
+
+import type { AuditAction } from '@saas/shared';
+
+export interface AuditLogEntry {
+  id: string;
+  createdAt: string;
+  userId: string;
+  entity: string;
+  entityId: string;
+  action: AuditAction;
+  before: unknown;
+  after: unknown;
+  metadata: unknown;
+}
+
+export interface AuditFilters {
+  page?: number;
+  pageSize?: number;
+  entity?: string;
+  entityId?: string;
+  action?: string;
+  userId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export const auditApi = {
+  list: (filters: AuditFilters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.pageSize) params.set('pageSize', String(filters.pageSize));
+    if (filters.entity) params.set('entity', filters.entity);
+    if (filters.entityId) params.set('entityId', filters.entityId);
+    if (filters.action) params.set('action', filters.action);
+    if (filters.userId) params.set('userId', filters.userId);
+    if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
+    if (filters.dateTo) params.set('dateTo', filters.dateTo);
+    const qs = params.toString();
+    return api<{
+      data: AuditLogEntry[];
+      meta: { total: number; page: number; pageSize: number; totalPages: number };
+    }>(`/audit${qs ? `?${qs}` : ''}`, { method: 'GET' });
+  },
+};
+
+// ============== API: Cash (F4) ==============
+
+import type {
+  CashRegisterDTO,
+  OpenShiftInput,
+  CloseShiftInput,
+  ShiftDetailDTO,
+  ArqueoDTO,
+  CreateCashRegisterInput,
+} from '@saas/shared';
+
+export interface CashRegisterListItem {
+  id: string;
+  code: string;
+  name: string;
+  branchId: string;
+  status: 'OPEN' | 'CLOSED';
+  isPrimary: boolean;
+}
+
+export interface ShiftListItem {
+  id: string;
+  branchId: string;
+  cashRegisterId: string;
+  userId: string;
+  status: 'OPEN' | 'CLOSED';
+  openedAt: string;
+  closedAt: string | null;
+  openingAmount: string;
+  closingAmount: string | null;
+  difference: string | null;
+}
+
+export const cashApi = {
+  listRegisters: (branchId?: string) => {
+    const params = new URLSearchParams();
+    if (branchId) params.set('branchId', branchId);
+    const qs = params.toString();
+    return api<CashRegisterListItem[]>(`/cash/registers${qs ? `?${qs}` : ''}`, {
+      method: 'GET',
+      ...(branchId ? { branchId } : {}),
+    });
+  },
+
+  createRegister: (data: CreateCashRegisterInput) =>
+    api<CashRegisterDTO>('/cash/registers', { method: 'POST', body: data }),
+
+  getCurrentShift: (branchId: string) =>
+    api<ShiftDetailDTO | null>(`/cash/shifts/current?branchId=${branchId}`, {
+      method: 'GET',
+      branchId,
+    }),
+
+  openShift: (data: OpenShiftInput, branchId: string) =>
+    api<ShiftDetailDTO>('/cash/shifts/open', { method: 'POST', body: data, branchId }),
+
+  closeShift: (id: string, data: CloseShiftInput, branchId: string) =>
+    api<ShiftDetailDTO>(`/cash/shifts/${id}/close`, {
+      method: 'POST',
+      body: data,
+      branchId,
+    }),
+
+  getArqueo: (id: string, branchId: string) =>
+    api<ArqueoDTO>(`/cash/shifts/${id}/arqueo`, { method: 'GET', branchId }),
+
+  listShifts: (filters: { branchId?: string; page?: number; pageSize?: number } = {}) => {
+    const params = new URLSearchParams();
+    if (filters.branchId) params.set('branchId', filters.branchId);
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.pageSize) params.set('pageSize', String(filters.pageSize));
+    const qs = params.toString();
+    return api<PaginatedResponse<ShiftListItem>>(`/cash/shifts${qs ? `?${qs}` : ''}`, {
+      method: 'GET',
+      ...(filters.branchId ? { branchId: filters.branchId } : {}),
+    });
+  },
+};
+
+// ============== API: Payments (F4) ==============
+
+import type {
+  PaymentMethod,
+  CreatePaymentsInput,
+  PayOrderResultDTO,
+} from '@saas/shared';
+
+export interface Payment {
+  id: string;
+  method: PaymentMethod;
+  amount: string;
+  tendered: string | null;
+  change: string | null;
+  reference: string | null;
+  createdAt: string;
+}
+
+export const paymentsApi = {
+  payOrder: (orderId: string, data: CreatePaymentsInput, branchId: string) =>
+    api<PayOrderResultDTO>(`/payments/orders/${orderId}`, {
+      method: 'POST',
+      body: data,
+      branchId,
+    }),
+
+  listForOrder: (orderId: string) =>
+    api<Payment[]>(`/payments/orders/${orderId}`, { method: 'GET' }),
+
+  previewChange: (data: { amount: number; tendered: number }, branchId: string) =>
+    api<{ change: number; tendered: number; amount: number }>('/payments/preview-change', {
+      method: 'POST',
+      body: data,
+      branchId,
+    }),
+};
+
+// ============== API: Cash Movements (F4) ==============
+
+import type {
+  CashMovementDTO,
+  CreateCashMovementInput,
+  CashMovementSummaryDTO,
+  CashMovementType as CashMovementTypeEnum,
+} from '@saas/shared';
+
+export interface CashMovementFilters {
+  branchId?: string;
+  shiftId?: string;
+  type?: CashMovementTypeEnum;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export const cashMovementsApi = {
+  create: (data: CreateCashMovementInput) =>
+    api<CashMovementDTO>('/cash-movements', { method: 'POST', body: data }),
+
+  list: (filters: CashMovementFilters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.branchId) params.set('branchId', filters.branchId);
+    if (filters.shiftId) params.set('shiftId', filters.shiftId);
+    if (filters.type) params.set('type', filters.type);
+    if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
+    if (filters.dateTo) params.set('dateTo', filters.dateTo);
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.pageSize) params.set('pageSize', String(filters.pageSize));
+    const qs = params.toString();
+    return api<PaginatedResponse<CashMovementDTO>>(`/cash-movements${qs ? `?${qs}` : ''}`, {
+      method: 'GET',
+      ...(filters.branchId ? { branchId: filters.branchId } : {}),
+    });
+  },
+
+  getSummary: (filters: { branchId: string; shiftId?: string }) => {
+    const params = new URLSearchParams();
+    params.set('branchId', filters.branchId);
+    if (filters.shiftId) params.set('shiftId', filters.shiftId);
+    return api<CashMovementSummaryDTO>(
+      `/cash-movements/summary?${params.toString()}`,
+      { method: 'GET', branchId: filters.branchId },
+    );
+  },
 };

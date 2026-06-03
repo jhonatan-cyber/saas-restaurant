@@ -7,6 +7,13 @@ import {
   ProductType,
   TableStatus,
   TableLocation,
+  OrderStatus,
+  OrderType,
+  OrderChannel,
+  PurchaseStatus,
+  ReportType,
+  ReportFormat,
+  ReportStatus,
 } from './enums';
 
 /**
@@ -19,7 +26,7 @@ export const emailSchema = z
   .trim()
   .toLowerCase()
   .min(1, 'El email es obligatorio')
-  .email('Email inválido');
+  .pipe(z.string().email('Email inválido'));
 
 export const passwordSchema = z
   .string()
@@ -275,7 +282,12 @@ export const createCustomerSchema = z.object({
   name: z.string().trim().min(1).max(160),
   taxId: z.string().trim().max(40).optional(),
   taxIdType: z.string().trim().max(16).optional(),
-  email: z.string().trim().email().max(160).optional().or(z.literal('').transform(() => undefined)),
+  email: z
+    .union([
+      z.string().email('Email inválido').max(160),
+      z.literal('').transform(() => undefined as string | undefined),
+    ])
+    .optional(),
   phone: z.string().trim().max(40).optional(),
   address: z.string().trim().max(255).optional(),
   addressReference: z.string().trim().max(255).optional(),
@@ -300,9 +312,207 @@ export const customerFiltersSchema = z.object({
 });
 export type CustomerFiltersInput = z.infer<typeof customerFiltersSchema>;
 
+// ============== Orders (Phase 3) ==============
+
+/**
+ * Crear una orden. Los items son validados contra productos existentes
+ * en el service; acá solo tipamos la forma.
+ */
+export const createOrderItemSchema = z.object({
+  productId: z.string().cuid({ message: 'Producto inválido' }),
+  quantity: z.number().int().min(1).max(999),
+  notes: z.string().trim().max(500).optional(),
+  // Si el frontend calcula unitPrice y lo manda, el service lo IGNORA y
+  // recalcula desde Product. El campo existe por compat pero el backend
+  // es la única fuente de verdad del precio (guardrail #3).
+  unitPrice: z.number().nonnegative().optional(),
+});
+export type CreateOrderItemInput = z.infer<typeof createOrderItemSchema>;
+
+export const createOrderSchema = z.object({
+  type: z.nativeEnum(OrderType).default(OrderType.DINE_IN),
+  channel: z.nativeEnum(OrderChannel).default(OrderChannel.POS_WEB),
+  tableId: z.string().cuid().optional(),
+  customerId: z.string().cuid().optional(),
+  waiterId: z.string().cuid().optional(),
+  globalNotes: z.string().trim().max(1000).optional(),
+  items: z
+    .array(createOrderItemSchema)
+    .min(1, 'La orden debe tener al menos un ítem'),
+});
+export type CreateOrderInput = z.infer<typeof createOrderSchema>;
+
+/**
+ * Editar un ítem (qty y notas). No se puede cambiar productId ni unitPrice
+ * una vez creado (eso es snapshot inmutable, R8).
+ */
+export const updateOrderItemSchema = z.object({
+  quantity: z.number().int().min(1).max(999).optional(),
+  notes: z.string().trim().max(500).nullable().optional(),
+});
+export type UpdateOrderItemInput = z.infer<typeof updateOrderItemSchema>;
+
+/**
+ * Transición de estado. El service valida la matriz `canTransition`.
+ * Nunca se acepta `from` (lo deduce el service desde la BD).
+ */
+export const transitionOrderSchema = z.object({
+  to: z.nativeEnum(OrderStatus).refine(
+    (v) => v !== OrderStatus.DRAFT && v !== OrderStatus.CANCELLED,
+    { message: 'Use el endpoint /cancel para transicionar a CANCELLED' },
+  ),
+  reason: z.string().trim().max(500).optional(),
+  // Para optimistic lock (R4): el cliente manda la versión que vio.
+  expectedVersion: z.number().int().min(0).optional(),
+});
+export type TransitionOrderInput = z.infer<typeof transitionOrderSchema>;
+
+/**
+ * Cancelar una orden. Razón OBLIGATORIA (R6).
+ */
+export const cancelOrderSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(5, 'La razón debe tener al menos 5 caracteres')
+    .max(500, 'La razón es demasiado larga'),
+  expectedVersion: z.number().int().min(0).optional(),
+});
+export type CancelOrderInput = z.infer<typeof cancelOrderSchema>;
+
+export const orderFiltersSchema = z.object({
+  status: z
+    .union([
+      z.nativeEnum(OrderStatus),
+      z.array(z.nativeEnum(OrderStatus)),
+    ])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : Array.isArray(v) ? v : [v])),
+  type: z.nativeEnum(OrderType).optional(),
+  channel: z.nativeEnum(OrderChannel).optional(),
+  tableId: z.string().cuid().optional(),
+  customerId: z.string().cuid().optional(),
+  cashierId: z.string().cuid().optional(),
+  branchId: z.string().cuid().optional(),
+  dateFrom: z.coerce.date().optional(),
+  dateTo: z.coerce.date().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+export type OrderFiltersInput = z.infer<typeof orderFiltersSchema>;
+
+/**
+ * Filtro del endpoint /orders/kds: solo lo necesario para la pantalla de cocina.
+ */
+export const kdsFiltersSchema = z.object({
+  branchId: z.string().cuid(),
+  preparationAreaId: z.string().cuid().optional(),
+  // Por defecto el KDS ve SENT_TO_KITCHEN e IN_PREPARATION.
+  states: z
+    .array(z.nativeEnum(OrderStatus))
+    .default([OrderStatus.SENT_TO_KITCHEN, OrderStatus.IN_PREPARATION]),
+});
+export type KdsFiltersInput = z.infer<typeof kdsFiltersSchema>;
+
 /**
  * Re-export de enums para conveniencia en formularios.
  */
+// ============== Suppliers (FASE 6) ==============
+
+export const createSupplierSchema = z.object({
+  branchId: z.string().cuid().optional(),
+  name: z.string().trim().min(1).max(160),
+  contactName: z.string().trim().max(120).optional(),
+  email: z.union([z.string().email('Email inválido'), z.literal('').transform(() => undefined)]).optional(),
+  phone: z.string().trim().max(40).optional(),
+  address: z.string().trim().max(255).optional(),
+  taxId: z.string().trim().max(40).optional(),
+  notes: z.string().trim().max(500).optional(),
+  isActive: z.boolean().default(true),
+});
+export type CreateSupplierInput = z.infer<typeof createSupplierSchema>;
+export const updateSupplierSchema = createSupplierSchema.partial();
+export type UpdateSupplierInput = z.infer<typeof updateSupplierSchema>;
+
+export const supplierFiltersSchema = z.object({
+  isActive: z
+    .union([z.literal('true'), z.literal('false')])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v === 'true')),
+  branchId: z.string().cuid().optional(),
+  search: z.string().trim().max(120).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+export type SupplierFiltersInput = z.infer<typeof supplierFiltersSchema>;
+
+// ============== Purchases (FASE 6) ==============
+
+export const createPurchaseItemSchema = z.object({
+  productId: z.string().cuid({ message: 'Producto inválido' }),
+  quantity: z.number().positive('Cantidad debe ser mayor a 0'),
+  unitCost: z.number().nonnegative('Costo unitario inválido'),
+});
+export type CreatePurchaseItemInput = z.infer<typeof createPurchaseItemSchema>;
+
+export const createPurchaseSchema = z.object({
+  branchId: z.string().cuid({ message: 'Sucursal obligatoria' }),
+  supplierId: z.string().cuid().optional(),
+  purchaseNumber: z.string().trim().min(1, 'N° de compra obligatorio').max(64),
+  notes: z.string().trim().max(500).optional(),
+  taxTotal: z.number().nonnegative().default(0),
+  items: z.array(createPurchaseItemSchema).min(1, 'Debe tener al menos un ítem'),
+});
+export type CreatePurchaseInput = z.infer<typeof createPurchaseSchema>;
+
+export const updatePurchaseSchema = z.object({
+  supplierId: z.string().cuid().optional(),
+  purchaseNumber: z.string().trim().min(1).max(64).optional(),
+  notes: z.string().trim().max(500).nullable().optional(),
+  status: z.nativeEnum(PurchaseStatus).optional(),
+});
+export type UpdatePurchaseInput = z.infer<typeof updatePurchaseSchema>;
+
+export const completePurchaseSchema = z.object({
+  receivedAt: z.coerce.date().optional(),
+});
+
+export const purchaseFiltersSchema = z.object({
+  branchId: z.string().cuid().optional(),
+  supplierId: z.string().cuid().optional(),
+  status: z.nativeEnum(PurchaseStatus).optional(),
+  dateFrom: z.coerce.date().optional(),
+  dateTo: z.coerce.date().optional(),
+  search: z.string().trim().max(120).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+export type PurchaseFiltersInput = z.infer<typeof purchaseFiltersSchema>;
+
+// ============== Reports (FASE 6) ==============
+
+export const requestReportSchema = z.object({
+  type: z.nativeEnum(ReportType),
+  format: z.nativeEnum(ReportFormat).default(ReportFormat.PDF),
+  params: z
+    .object({
+      dateFrom: z.string().optional(),
+      dateTo: z.string().optional(),
+      branchId: z.string().cuid().optional(),
+    })
+    .optional()
+    .default({}),
+});
+export type RequestReportInput = z.infer<typeof requestReportSchema>;
+
+export const reportFiltersSchema = z.object({
+  status: z.nativeEnum(ReportStatus).optional(),
+  type: z.nativeEnum(ReportType).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+export type ReportFiltersInput = z.infer<typeof reportFiltersSchema>;
+
 export {
   Role,
   BusinessStatus,
@@ -311,4 +521,11 @@ export {
   ProductType,
   TableStatus,
   TableLocation,
+  OrderStatus,
+  OrderType,
+  OrderChannel,
+  PurchaseStatus,
+  ReportType,
+  ReportFormat,
+  ReportStatus,
 };

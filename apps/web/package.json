@@ -12,30 +12,30 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
-    "clean": "rm -rf .output .vinxi .vite dist"
+    "clean": "rm -rf .output .vite dist"
   },
   "dependencies": {
-    "@hookform/resolvers": "^3.4.2",
+    "@hookform/resolvers": "latest",
     "@saas/shared": "workspace:*",
-    "@tanstack/react-query": "^5.32.0",
-    "@tanstack/react-router": "^1.34.0",
-    "@tanstack/react-start": "^1.34.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-hook-form": "^7.51.4",
-    "zod": "^3.22.4",
-    "zustand": "^4.5.2"
+    "@tanstack/react-query": "latest",
+    "@tanstack/react-router": "latest",
+    "@tanstack/react-start": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-hook-form": "latest",
+    "socket.io-client": "latest",
+    "zod": "latest",
+    "zustand": "latest"
   },
   "devDependencies": {
-    "@tanstack/router-devtools": "^1.34.0",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-    "@vitejs/plugin-react": "^4.2.1",
-    "autoprefixer": "^10.4.19",
-    "postcss": "^8.4.38",
-    "tailwindcss": "^3.4.3",
-    "typescript": "^5.4.5",
-    "vite": "^5.2.0",
-    "vite-tsconfig-paths": "^4.3.2"
+    "@tailwindcss/vite": "latest",
+    "@tanstack/router-devtools": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@vitejs/plugin-react": "latest",
+    "tailwindcss": "latest",
+    "typescript": "latest",
+    "vite": "latest",
+    "vite-tsconfig-paths": "latest"
   }
 }

@@ -36,10 +36,10 @@ export class CustomersService {
       ...(filters.search
         ? {
             OR: [
-              { name: { contains: filters.search, mode: 'insensitive' as const } },
-              { taxId: { contains: filters.search, mode: 'insensitive' as const } },
-              { email: { contains: filters.search, mode: 'insensitive' as const } },
-              { phone: { contains: filters.search, mode: 'insensitive' as const } },
+              { name: { contains: filters.search } },
+              { taxId: { contains: filters.search } },
+              { email: { contains: filters.search } },
+              { phone: { contains: filters.search } },
             ],
           }
         : {}),
@@ -92,10 +92,10 @@ export class CustomersService {
         deletedAt: null,
         isActive: true,
         OR: [
-          { name: { contains: trimmed, mode: 'insensitive' as const } },
-          { taxId: { contains: trimmed, mode: 'insensitive' as const } },
-          { email: { contains: trimmed, mode: 'insensitive' as const } },
-          { phone: { contains: trimmed, mode: 'insensitive' as const } },
+          { name: { contains: trimmed } },
+          { taxId: { contains: trimmed } },
+          { email: { contains: trimmed } },
+          { phone: { contains: trimmed } },
         ],
       },
       orderBy: [{ name: 'asc' }],

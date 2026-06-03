@@ -1,6 +1,6 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
-import type { BusinessContext } from '../types/jwt-payload.type';
+import type { BusinessContext as BusinessContextData } from '../types/jwt-payload.type';
 
 /**
  * Extrae el contexto multi-tenant adjunto por `ScopeGuard` a `req.businessContext`.
@@ -8,13 +8,13 @@ import type { BusinessContext } from '../types/jwt-payload.type';
  *
  * @example
  *   @Get()
- *   list(@BusinessContext() ctx: BusinessContext) {
+ *   list(@BusinessContext() ctx: BusinessContextData) {
  *     // ctx.businessId, ctx.branchId (puede ser null)
  *   }
  */
 export const BusinessContext = createParamDecorator(
-  (_data: unknown, ctx: ExecutionContext): BusinessContext | undefined => {
-    const request = ctx.switchToHttp().getRequest<Request & { businessContext?: BusinessContext }>();
+  (_data: unknown, ctx: ExecutionContext): BusinessContextData | undefined => {
+    const request = ctx.switchToHttp().getRequest<Request & { businessContext?: BusinessContextData }>();
     return request.businessContext;
   },
 );

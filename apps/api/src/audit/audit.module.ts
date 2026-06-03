@@ -1,13 +1,10 @@
 import { Global, Module } from '@nestjs/common';
+import { AuditController } from './audit.controller';
 import { AuditService } from './audit.service';
 
-/**
- * AuditModule (global).
- * Phase 2: solo expone AuditService para uso en otros módulos.
- * Phase 4 sumará controller, modelo Prisma y endpoints de consulta.
- */
 @Global()
 @Module({
+  controllers: [AuditController],
   providers: [AuditService],
   exports: [AuditService],
 })

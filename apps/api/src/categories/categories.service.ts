@@ -43,7 +43,7 @@ export class CategoriesService {
       ...(filters.isActive !== undefined ? { isActive: filters.isActive } : {}),
       ...(filters.branchId ? { branchId: filters.branchId } : {}),
       ...(filters.search
-        ? { name: { contains: filters.search, mode: 'insensitive' as const } }
+        ? { name: { contains: filters.search } }
         : {}),
     };
 
