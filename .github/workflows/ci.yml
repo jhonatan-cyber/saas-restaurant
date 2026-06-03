@@ -14,6 +14,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    env:
+      DATABASE_URL: mysql://root:test_root_pass_123@localhost:3306/saas_restaurant_test
+
     services:
       mysql:
         image: mariadb:10.11
