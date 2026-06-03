@@ -1,0 +1,47 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Node
+node_modules/
+bun.lock
+
+# Build outputs
+dist/
+build/
+.out/
+.output/
+.vite/
+.turbo/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+docker-compose*.yml
+
+# Logs
+*.log
+
+# Temp
+tmp-*
+*.tmp
+
+# Desktop (needs Tauri, not for server)
+apps/desktop/
+
+# Mobile (needs Expo, not for server)
+apps/mobile/
