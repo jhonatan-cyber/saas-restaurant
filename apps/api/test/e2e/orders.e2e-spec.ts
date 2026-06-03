@@ -200,7 +200,7 @@ describe('Orders (E2E)', () => {
         .get('/api/orders')
         .set('Authorization', `Bearer ${accessToken}`)
         .set('x-branch-id', branchId)
-        .query({ status: 'PENDING,CANCELLED' });
+        .query({ status: ['PENDING', 'CANCELLED'] });
 
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body.data)).toBe(true);

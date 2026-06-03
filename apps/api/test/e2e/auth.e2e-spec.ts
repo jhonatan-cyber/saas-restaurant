@@ -147,7 +147,7 @@ describe('Auth (E2E)', () => {
       const res = await request(app.getHttpServer())
         .post('/api/auth/refresh')
         .set('Authorization', `Bearer ${refreshToken}`)
-        .send({});
+        .send({ refreshToken });
 
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty('accessToken');

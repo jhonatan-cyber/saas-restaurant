@@ -7,7 +7,7 @@
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "outDir": "./dist",
-    "baseUrl": "./",
+    "ignoreDeprecations": "6.0",
     "paths": {
       "@saas/shared": ["../../packages/shared/src/index.ts"],
       "@saas/shared/*": ["../../packages/shared/src/*"],

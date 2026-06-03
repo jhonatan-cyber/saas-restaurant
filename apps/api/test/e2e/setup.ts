@@ -11,9 +11,13 @@
  */
 import 'reflect-metadata';
 import { Test, TestingModule } from '@nestjs/testing';
+import { Reflector } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../../src/app.module';
+import { JwtAuthGuard } from '../../src/auth/guards/jwt-auth.guard';
+import { HttpExceptionFilter } from '../../src/common/filters/http-exception.filter';
+import { LoggingInterceptor } from '../../src/common/interceptors/logging.interceptor';
 import { request } from 'supertest';
 
 /**
@@ -39,6 +43,11 @@ export async function createApp(): Promise<NestExpressApplication> {
       transformOptions: { enableImplicitConversion: true },
     }),
   );
+  app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalInterceptors(new LoggingInterceptor());
+
+  const reflector = app.get(Reflector);
+  app.useGlobalGuards(new JwtAuthGuard(reflector));
 
   await app.init();
   return app;

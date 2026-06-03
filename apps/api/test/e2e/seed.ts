@@ -1,19 +1,19 @@
-/**
+﻿/**
  * E2E Test Seed
  *
- * Inserta los datos mínimos necesarios para que las pruebas corran contra
+ * Inserta los datos mÃ­nimos necesarios para que las pruebas corran contra
  * una BD real (saas_restaurant_test). Cada suite llama a seed() y luego
  * cleanup() al final.
  *
  * Datos que crea:
  *  - 1 Business (slug: e2e-test)
  *  - 1 Plan (code: E2E_TEST)
- *  - 1 Subscription (plan → business)
+ *  - 1 Subscription (plan â†’ business)
  *  - 1 Branch (code: CENTRO)
- *  - 1 Admin user (email: [email protected], pass: TestPass123!)
+ *  - 1 Admin user (email: admin@e2e-test.com, pass: TestPass123!)
  *  - 3 Preparation Areas (KITCHEN, BAR, COFFEE)
  *  - 2 Categories
- *  - 4 Products (para crear órdenes)
+ *  - 4 Products (para crear Ã³rdenes)
  *  - 4 Tables para la branch
  *  - 1 CashRegister OPEN + 1 Shift OPEN
  *  - 1 Customer
@@ -35,7 +35,7 @@ function parseDbUrl(url: string) {
 }
 
 const BUSINESS_SLUG = 'e2e-test';
-const ADMIN_EMAIL = '[email protected]';
+const ADMIN_EMAIL = 'admin@e2e-test.com';
 const ADMIN_PASSWORD = 'TestPass123!';
 
 export interface SeedData {
@@ -88,7 +88,7 @@ export async function seed(dbUrl: string): Promise<SeedData> {
         slug: BUSINESS_SLUG,
         legalName: 'E2E Test S.R.L.',
         taxId: '9999999999',
-        email: '[email protected]',
+        email: 'admin@e2e-test.com',
         phone: '+591 70000000',
         currency: 'BOB',
         timezone: 'America/La_Paz',
@@ -185,7 +185,7 @@ export async function seed(dbUrl: string): Promise<SeedData> {
         cat = await prisma.category.create({
           data: {
             businessId: business.id,
-            branchId: null,
+          branchId: branch.id,
             name: c.name,
             slug: c.slug,
             description: c.name,
@@ -202,7 +202,7 @@ export async function seed(dbUrl: string): Promise<SeedData> {
       { slug: 'e2e-hamburguesa', name: 'Hamburguesa Test', price: 50, cost: 20, categorySlug: 'e2e-entradas', prepAreaCode: 'KITCHEN', taxRate: 13 },
       { slug: 'e2e-pizza', name: 'Pizza Test', price: 80, cost: 30, categorySlug: 'e2e-principales', prepAreaCode: 'KITCHEN', taxRate: 13 },
       { slug: 'e2e-coca', name: 'Coca Test', price: 10, cost: 4, categorySlug: 'e2e-entradas', prepAreaCode: 'BAR', taxRate: 13 },
-      { slug: 'e2e-cafe', name: 'Café Test', price: 15, cost: 5, categorySlug: 'e2e-entradas', prepAreaCode: 'COFFEE', taxRate: 13 },
+      { slug: 'e2e-cafe', name: 'CafÃ© Test', price: 15, cost: 5, categorySlug: 'e2e-entradas', prepAreaCode: 'COFFEE', taxRate: 13 },
     ];
     const productIds: string[] = [];
     for (const p of productSeed) {
@@ -211,7 +211,7 @@ export async function seed(dbUrl: string): Promise<SeedData> {
         update: {},
         create: {
           businessId: business.id,
-          branchId: null,
+          branchId: branch.id,
           categoryId: categoryIds[catSeed.findIndex((c) => c.slug === p.categorySlug)],
           preparationAreaId: prepAreaIds[p.prepAreaCode],
           name: p.name,

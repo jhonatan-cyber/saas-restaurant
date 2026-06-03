@@ -191,7 +191,10 @@ function UsersListPage(): ReactNode {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <StatusBadge status={u.status} />
+                      <StatusBadge
+                        label={USER_STATUS_LABELS[u.status as keyof typeof USER_STATUS_LABELS] ?? u.status}
+                        variant={u.status === 'ACTIVE' ? 'success' : 'warning'}
+                      />
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-500">
                       {u.lastLoginAt
@@ -262,7 +265,7 @@ function UsersListPage(): ReactNode {
             ? `¿Estás seguro de desactivar a "${userToDeactivate.fullName}"? No podrá iniciar sesión.`
             : ''
         }
-        confirmLabel="Desactivar"
+        confirmText="Desactivar"
         loading={deactivateMutation.isPending}
         onConfirm={() => {
           if (userToDeactivate) deactivateMutation.mutate(userToDeactivate.id);

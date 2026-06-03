@@ -5,7 +5,9 @@
 
 # Node
 node_modules/
-bun.lock
+# bun.lock is needed for reproducible builds
+packages/*/node_modules/
+apps/*/node_modules/
 
 # Build outputs
 dist/

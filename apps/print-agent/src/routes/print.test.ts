@@ -13,7 +13,7 @@ beforeAll(() => {
 });
 
 describe('POST /print/ticket', () => {
-  it('returns 200 with valid ticket data', async () => {
+  it('returns 202 with valid ticket data', async () => {
     const res = await app.request('/print/ticket', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -31,7 +31,7 @@ describe('POST /print/ticket', () => {
       }),
     });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(202);
     const body = await res.json();
     expect(body.ok).toBe(true);
     expect(Array.isArray(body.results)).toBe(true);
@@ -39,7 +39,7 @@ describe('POST /print/ticket', () => {
 });
 
 describe('POST /print/comanda', () => {
-  it('returns 200 with valid comanda data', async () => {
+  it('returns 202 with valid comanda data', async () => {
     const res = await app.request('/print/comanda', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -53,7 +53,7 @@ describe('POST /print/comanda', () => {
       }),
     });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(202);
     const body = await res.json();
     expect(body.ok).toBe(true);
   });

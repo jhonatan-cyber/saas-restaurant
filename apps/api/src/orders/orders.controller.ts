@@ -185,6 +185,7 @@ export class OrdersController {
   // ============== STATE TRANSITIONS ==============
 
   @Post(':id/transition')
+  @HttpCode(HttpStatus.OK)
   @Roles('CAJERO', 'MESERO', 'COCINA', 'ADMIN', 'OWNER')
   @ApiOperation({
     summary: 'Transiciona el estado de la orden (validado por state machine)',
@@ -200,6 +201,7 @@ export class OrdersController {
   }
 
   @Post(':id/cancel')
+  @HttpCode(HttpStatus.OK)
   @Roles('CAJERO', 'MESERO', 'ADMIN', 'OWNER')
   @ApiOperation({ summary: 'Cancela la orden (requiere reason, registra userId)' })
   async cancel(

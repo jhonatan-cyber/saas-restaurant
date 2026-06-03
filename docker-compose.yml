@@ -1,4 +1,64 @@
 services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: saas_restaurant_api
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: mysql://root:rootpass@mysql:3306/saas_restaurant
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./apps/api/src:/app/apps/api/src
+    networks:
+      - saas_net
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: saas_restaurant_web
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: development
+      VITE_API_URL: http://localhost:3001/api
+      VITE_API_BASE_URL: http://localhost:3001
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/web/src:/app/apps/web/src
+    networks:
+      - saas_net
+
+  print-agent:
+    build:
+      context: .
+      dockerfile: apps/print-agent/Dockerfile
+    container_name: saas_restaurant_print_agent
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: development
+      API_URL: http://api:3001
+      PRINTER_NAME: POS-80
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./apps/print-agent/src:/app/apps/print-agent/src
+    networks:
+      - saas_net
+
   mysql:
     image: mysql:8.0
     container_name: saas_restaurant_mysql
@@ -39,6 +99,21 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
+    networks:
+      - saas_net
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: saas_restaurant_nginx
+    restart: unless-stopped
+    depends_on:
+      - api
+      - web
+      - print-agent
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     networks:
       - saas_net
 

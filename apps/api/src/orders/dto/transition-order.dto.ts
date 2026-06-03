@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, MaxLength, Min, MinLength } from 'class-validator';
 import { OrderStatus } from '@saas/shared';
 
 /**
@@ -38,7 +38,7 @@ export class TransitionOrderDto {
 export class CancelOrderDto {
   @ApiProperty({ description: 'Razón de cancelación (mín 5 caracteres)', minLength: 5 })
   @IsString()
-  @Min(5, { message: 'La razón debe tener al menos 5 caracteres' })
+  @MinLength(5, { message: 'La razón debe tener al menos 5 caracteres' })
   @MaxLength(500)
   reason!: string;
 

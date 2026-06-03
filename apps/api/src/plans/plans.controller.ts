@@ -14,6 +14,7 @@ import { PlansService } from './plans.service';
 import { CreatePlanDto, UpdatePlanDto, PlanFiltersDto } from './dto/plan.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { Public } from '../auth/decorators/public.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '@saas/shared';
 
@@ -39,6 +40,7 @@ export class PlansController {
     return this.plans.list(filters);
   }
 
+  @Public()
   @Get('public')
   @ApiOperation({ summary: 'Listar planes públicos activos (sin auth)' })
   listPublic() {

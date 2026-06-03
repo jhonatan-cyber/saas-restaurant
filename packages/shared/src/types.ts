@@ -545,6 +545,11 @@ export interface WsOrderCancelledPayload {
 
 // =================== Phase 3: Cash foundation (D1=A) ===================
 
+export interface CreateCashRegisterInput {
+  branchId: string;
+  code: string;
+}
+
 export interface CashRegisterDTO {
   id: string;
   businessId: string;

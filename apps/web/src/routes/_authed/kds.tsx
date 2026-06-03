@@ -6,6 +6,7 @@ import { ordersApi, type KdsOrder } from '../../lib/api';
 import { useAuthStore } from '../../lib/auth-store';
 import { useRealtimeStore } from '../../lib/realtime-store';
 import type { OrderStatus } from '@saas/shared';
+import { ordersApi, type KdsOrder } from '../../lib/api';
 
 /**
  * Pantalla de Cocina (KDS - Kitchen Display System).
@@ -147,7 +148,7 @@ function KdsPage(): ReactNode {
                   Sin órdenes
                 </div>
               ) : (
-                area.orders.map((order: KdsOrderDTO) => (
+                area.orders.map((order: KdsOrder) => (
                   <KdsOrderCard
                     key={order.id}
                     order={order}

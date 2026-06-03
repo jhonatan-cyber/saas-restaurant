@@ -24,7 +24,7 @@ const config: Config = {
   verbose: true,
   maxWorkers: 1, // Sequential: all tests share the same DB
   testTimeout: 30000, // E2E tests need more time for DB operations
-  setupFiles: ['dotenv/config'], // Carga .env por defecto
+  setupFiles: ['<rootDir>/test/e2e/load-env-test.ts'],
 };
 
 export default config;

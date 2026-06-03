@@ -243,7 +243,7 @@ function PlansListPage(): ReactNode {
               : `¿Eliminar "${planToDelete.name}" permanentemente? No se puede deshacer.`
             : ''
         }
-        confirmLabel={planToDelete?.isActive ? 'Desactivar' : 'Eliminar'}
+        confirmText={planToDelete?.isActive ? 'Desactivar' : 'Eliminar'}
         loading={deleteMutation.isPending}
         onConfirm={() => { if (planToDelete) deleteMutation.mutate(planToDelete.id); }}
         onCancel={() => { setPlanToDelete(null); setActionError(null); }}

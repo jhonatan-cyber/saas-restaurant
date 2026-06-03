@@ -21,7 +21,7 @@ printRoutes.post('/ticket', async (c) => {
     printers.map((p) => printToPrinter(p, data, `ticket-${body.orderCode}`)),
   );
 
-  return c.json({ ok: true, results });
+  return c.json({ ok: true, results }, 202);
 });
 
 // ==================== POST /print/comanda ====================
@@ -40,7 +40,7 @@ printRoutes.post('/comanda', async (c) => {
     printers.map((p) => printToPrinter(p, data, `comanda-${body.orderCode}`)),
   );
 
-  return c.json({ ok: true, results });
+  return c.json({ ok: true, results }, 202);
 });
 
 // ==================== POST /print/close-report ====================
@@ -58,7 +58,7 @@ printRoutes.post('/close-report', async (c) => {
     printers.map((p) => printToPrinter(p, data, `close-${body.branchName}`)),
   );
 
-  return c.json({ ok: true, results });
+  return c.json({ ok: true, results }, 202);
 });
 
 export { printRoutes };

@@ -50,7 +50,7 @@ export class AuthService {
     };
 
     const accessToken = await this.signAccessToken(payload);
-    const refreshToken = await this.signRefreshToken(payload);
+    const refreshToken = await this.signRefreshToken({ ...payload, typ: 'refresh' });
 
     // Actualizar lastLoginAt (best-effort: no romper el login si falla)
     await this.prisma.user

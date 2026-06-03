@@ -24,7 +24,7 @@ export class AuthController {
    * Devuelve: { accessToken, refreshToken, user }
    */
   @Public()
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: { limit: 100, ttl: 60000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login multi-tenant (requiere businessSlug)' })

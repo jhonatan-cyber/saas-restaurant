@@ -30,6 +30,15 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
@@ -75,11 +84,11 @@ jobs:
           JWT_REFRESH_TTL=7d
           API_PORT=0
           NODE_ENV=test
+          REDIS_URL=redis://localhost:6379
           EOF
         working-directory: apps/api
         shell: bash
 
       - name: E2E tests
-        continue-on-error: true # Pre-existing Prisma v7 compound unique key issue — fix separately
         run: bun run test:e2e
         working-directory: apps/api
