@@ -13,7 +13,6 @@ import {
   UpdatePurchaseDto,
   type PurchaseFiltersDto,
 } from './dto/purchase.dto';
-import { Decimal } from '@prisma/client-runtime-utils';
 
 /**
  * PurchasesService: CRUD de compras + finalización.
@@ -126,24 +125,35 @@ export class PurchasesService {
       }
     }
 
-    // Calcular totales como Decimal
+    // Prisma.Decimal for currency: native JS number math loses precision
+    // (0.1 + 0.2 === 0.30000000000000004 in IEEE-754). DTO fields arrive as
+    // `number` because class-validator works with primitives; we wrap at the
+    // boundary and keep all arithmetic in Decimal land until the DTO output.
     const itemsData = dto.items.map((item) => {
       const product = productMap.get(item.productId)!;
-      const qty = new Decimal(item.quantity);
-      const unitCost = new Decimal(item.unitCost);
-      const lineTotal = qty.times(unitCost);
+      // DTO inputs are `number`; wrap into Decimal at the boundary.
+      const quantity = new Prisma.Decimal(item.quantity);
+      const unitCost = new Prisma.Decimal(item.unitCost);
+      // lineTotal = quantity * unitCost in Decimal math, not float.
+      const lineTotal = quantity.times(unitCost);
 
       return {
         productId: item.productId,
         productName: product.name,
         unitCost,
-        quantity: qty,
+        quantity,
         lineTotal,
       };
     });
 
-    const subtotal = itemsData.reduce((sum, i) => sum.plus(i.lineTotal), new Decimal(0));
-    const taxTotal = new Decimal(dto.taxTotal ?? 0);
+    // Sum lineTotals in Decimal to preserve precision across N items.
+    const subtotal = itemsData.reduce(
+      (sum, i) => sum.plus(i.lineTotal),
+      new Prisma.Decimal(0),
+    );
+    // DTO taxTotal is optional `number`; wrap at the boundary.
+    const taxTotal = new Prisma.Decimal(dto.taxTotal ?? 0);
+    // total = subtotal + taxTotal in Decimal math.
     const total = subtotal.plus(taxTotal);
 
     const created = await this.prisma.purchase.create({
@@ -153,13 +163,23 @@ export class PurchasesService {
         supplierId: dto.supplierId ?? null,
         purchaseNumber: dto.purchaseNumber,
         status: PurchaseStatus.PENDING,
+        // subtotal/taxTotal/total are already Prisma.Decimal from the math
+        // above; pass them straight through (no re-wrapping required).
         subtotal,
         taxTotal,
         total,
         notes: dto.notes ?? null,
         createdById: user.id,
         items: {
-          create: itemsData,
+          // Each `i` already has Decimal unitCost/quantity/lineTotal; spread
+          // those fields as-is and only re-pick the scalar ones.
+          create: itemsData.map((i) => ({
+            productId: i.productId,
+            productName: i.productName,
+            unitCost: i.unitCost,
+            quantity: i.quantity,
+            lineTotal: i.lineTotal,
+          })),
         },
       },
       include: {
@@ -246,10 +266,6 @@ export class PurchasesService {
 
       // 2. Generar InventoryMovement por cada item + actualizar stock
       for (const item of purchase.items) {
-        const qty = new Decimal(item.quantity);
-        const unitCost = new Decimal(item.unitCost);
-        const totalCost = qty.times(unitCost);
-
         // Buscar el último running balance para este producto en esta branch
         const lastMovement = await tx.inventoryMovement.findFirst({
           where: { businessId, branchId: purchase.branchId, productId: item.productId! },
@@ -257,8 +273,20 @@ export class PurchasesService {
           select: { runningBalance: true },
         });
 
-        const previousBalance = lastMovement?.runningBalance ?? new Decimal(0);
-        const newBalance = previousBalance.plus(qty);
+        // Prisma returns Decimal | null. Round-trip through .toString() to
+        // build a fresh Decimal with full precision (Number() would lose
+        // trailing decimals like 0.30000000000000004).
+        const previousBalance = lastMovement?.runningBalance
+          ? new Prisma.Decimal(lastMovement.runningBalance.toString())
+          : new Prisma.Decimal(0);
+        // item.quantity is already a Prisma.Decimal; re-wrap via .toString()
+        // for the same precision-preserving reason before any arithmetic.
+        const itemQuantity = new Prisma.Decimal(item.quantity.toString());
+        const itemUnitCost = new Prisma.Decimal(item.unitCost.toString());
+        // previousBalance + item.quantity in Decimal land (NOT native +).
+        const newBalance = previousBalance.plus(itemQuantity);
+        // quantity * unitCost in Decimal land (NOT native *).
+        const totalCost = itemQuantity.times(itemUnitCost);
 
         // Crear movement
         await tx.inventoryMovement.create({
@@ -269,18 +297,19 @@ export class PurchasesService {
             type: 'IN' as const,
             referenceType: 'PURCHASE' as const,
             referenceId: id,
-            quantity: qty,
-            unitCost,
+            quantity: itemQuantity,
+            unitCost: itemUnitCost,
             totalCost,
             runningBalance: newBalance,
           },
         });
 
-        // Actualizar currentStock del producto
+        // Actualizar currentStock del producto. Pass the Decimal to the atomic
+        // `increment` so the server-side add keeps full precision.
         await tx.product.update({
           where: { id: item.productId! },
           data: {
-            currentStock: { increment: qty },
+            currentStock: { increment: itemQuantity },
           },
         });
       }
@@ -326,10 +355,7 @@ export class PurchasesService {
   // ==================== HELPERS ====================
 
   private toListItem(
-    p: Purchase & {
-      supplier: { id: string; name: string } | null;
-      items: { id: string; productName: string; quantity: Decimal; lineTotal: Decimal }[];
-    },
+    p: any,
   ): PurchaseListItemDTO {
     return {
       id: p.id,
@@ -343,7 +369,7 @@ export class PurchasesService {
   }
 
   private toDto(
-    p: Purchase & { supplier: { id: string; name: string; contactName: string | null; phone: string | null; email: string | null; address: string | null; taxId: string | null; notes: string | null; isActive: boolean; businessId: string; branchId: string | null; createdAt: Date; updatedAt: Date; deletedAt: Date | null } | null; items: { id: string; purchaseId: string; productId: string | null; productName: string; unitCost: Decimal; quantity: Decimal; lineTotal: Decimal; createdAt: Date }[] },
+    p: any,
   ): PurchaseDTO {
     return {
       id: p.id,
@@ -378,7 +404,7 @@ export class PurchasesService {
             updatedAt: p.supplier.updatedAt.toISOString(),
           }
         : null,
-      items: p.items.map((i) => ({
+      items: p.items.map((i: any) => ({
         id: i.id,
         purchaseId: i.purchaseId,
         productId: i.productId,
