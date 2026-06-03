@@ -26,11 +26,25 @@ async function bootstrap(): Promise<void> {
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: false,
-    cors: true,
   });
 
   const config = app.get(ConfigService);
   const reflector = app.get(Reflector);
+
+  // ── Helmet (seguridad de headers HTTP) ──────────────────────────────
+  // Helmet v8+ es ESM-only — usamos dynamic import para compatibilidad CJS
+  const helmetModule = await import('helmet');
+  app.use(helmetModule.default());
+
+  // ── CORS restringido ────────────────────────────────────────────────
+  const allowedOrigins = config.get<string>('CORS_ALLOWED_ORIGINS', 'http://localhost:3000');
+  const origins = allowedOrigins.split(',').map((o) => o.trim());
+  app.enableCors({
+    origin: origins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', HEADERS.BRANCH_ID],
+  });
 
   // Prefix global opcional
   const globalPrefix = config.get<string>('API_GLOBAL_PREFIX', 'api');

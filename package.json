@@ -22,6 +22,11 @@
     "format": "prettier --write \"{apps,packages}/*/src/**/*.{ts,tsx,json,md}\"",
     "format:check": "prettier --check \"{apps,packages}/*/src/**/*.{ts,tsx,json,md}\"",
     "typecheck": "bun run --filter '*' typecheck",
+    "test": "bun run test:unit && bun run test:web && bun run test:print-agent",
+    "test:unit": "bun run --filter @saas/api test",
+    "test:e2e": "bun run --filter @saas/api test:e2e",
+    "test:web": "bun run --filter @saas/web test",
+    "test:print-agent": "cd apps/print-agent && bun test",
     "clean": "bun run --filter '*' clean"
   },
   "devDependencies": {

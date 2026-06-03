@@ -56,7 +56,7 @@ export function feed(n: number): Uint8Array {
 // ==================== TEXTO CODIFICADO ====================
 
 /** Codifica texto a CP437 (latin-1 extendido para impresora térmica) */
-function encodeText(text: string): Uint8Array {
+export function encodeText(text: string): Uint8Array {
   // CP437 / latin-1: los chars 0-255 pasan directo.
   // Para ñ/Ñ/tildes mapeamos a chars aproximados de CP437.
   const table: Record<string, number> = {

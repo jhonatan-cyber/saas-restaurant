@@ -3,8 +3,8 @@ import type { Config } from 'jest';
 const config: Config = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/src'],
-  testMatch: ['**/*.spec.ts'],
+  roots: ['<rootDir>/test'],
+  testMatch: ['**/*.e2e-spec.ts'],
   moduleNameMapper: {
     '^@saas/shared$': '<rootDir>/../../packages/shared/src/index.ts',
     '^@saas/shared/(.*)$': '<rootDir>/../../packages/shared/src/$1',
@@ -20,24 +20,11 @@ const config: Config = {
     ],
   },
   moduleFileExtensions: ['ts', 'js', 'json'],
-  collectCoverage: true,
-  collectCoverageFrom: [
-    'src/orders/order-state-machine.ts',
-    'src/orders/orders.service.ts',
-    'src/payments/payments.service.ts',
-    'src/plans/plans.service.ts',
-    'src/audit/audit.service.ts',
-  ],
-  coverageThreshold: {
-    global: {
-      branches: 50,
-      functions: 60,
-      lines: 70,
-      statements: 70,
-    },
-  },
-  coverageReporters: ['text', 'lcov'],
+  collectCoverage: false,
   verbose: true,
+  runInBand: true, // Sequential: all tests share the same DB
+  testTimeout: 30000, // E2E tests need more time for DB operations
+  setupFiles: ['dotenv/config'], // Carga .env por defecto
 };
 
 export default config;

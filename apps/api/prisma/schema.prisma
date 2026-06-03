@@ -552,7 +552,7 @@ model PreparationArea {
   branch   Branch?   @relation(fields: [branchId], references: [id], onDelete: Cascade)
   products Product[]
 
-  @@unique([businessId, branchId, code])
+  @@unique([businessId, code])
   @@index([businessId, displayOrder])
   @@index([businessId, isActive])
   @@map("preparation_areas")
