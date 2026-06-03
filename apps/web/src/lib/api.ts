@@ -1,5 +1,5 @@
 import { useAuthStore } from './auth-store';
-import { STORAGE_KEYS, type AuthenticatedUserDTO, HEADERS } from '@saas/shared';
+import { STORAGE_KEYS, type AuthenticatedUserDTO, HEADERS, type OrderStatus, type OrderType } from '@saas/shared';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 const API_ROOT_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
@@ -1061,8 +1061,8 @@ export interface KdsOrder {
   id: string;
   tableId: string | null;
   tableNumber: string | null;
-  status: string;
-  type: string;
+  status: OrderStatus;
+  type: OrderType;
   globalNotes: string | null;
   total: string;
   itemCount: number;

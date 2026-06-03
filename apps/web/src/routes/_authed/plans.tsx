@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { plansApi, ApiClientError, type PlanFilters } from '../../lib/api';
-import { useAuthStore } from '../../lib/auth-store';
-import { ConfirmDialog } from '../../components/confirm-dialog';
+import { plansApi, ApiClientError, type PlanFilters } from '~/lib/api';
+import { useAuthStore } from '~/lib/auth-store';
+import { ConfirmDialog } from '~/components/confirm-dialog';
 import { BillingPeriod, BILLING_PERIOD_LABELS } from '@saas/shared';
 import { Role } from '@saas/shared';
 
@@ -244,7 +244,7 @@ function PlansListPage(): ReactNode {
             : ''
         }
         confirmText={planToDelete?.isActive ? 'Desactivar' : 'Eliminar'}
-        loading={deleteMutation.isPending}
+        isLoading={deleteMutation.isPending}
         onConfirm={() => { if (planToDelete) deleteMutation.mutate(planToDelete.id); }}
         onCancel={() => { setPlanToDelete(null); setActionError(null); }}
       />

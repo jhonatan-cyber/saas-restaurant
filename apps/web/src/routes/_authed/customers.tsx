@@ -7,10 +7,10 @@ import {
   ApiClientError,
   type Customer,
   type CustomerFilters,
-} from '../../lib/api';
-import { useAuthStore } from '../../lib/auth-store';
-import { ConfirmDialog } from '../../components/confirm-dialog';
-import { StatusBadge } from '../../components/status-badge';
+} from '~/lib/api';
+import { useAuthStore } from '~/lib/auth-store';
+import { ConfirmDialog } from '~/components/confirm-dialog';
+import { StatusBadge } from '~/components/status-badge';
 
 export const Route = createFileRoute('/_authed/customers')({
   component: CustomersListPage,

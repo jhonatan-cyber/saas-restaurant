@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { reportsApi, ReportType, ReportFormat, ReportStatus, type ReportFilters } from '../../lib/api';
-import { StatusBadge } from '../../components/status-badge';
+import { reportsApi, ReportType, ReportFormat, ReportStatus, type ReportFilters } from '~/lib/api';
+import { StatusBadge } from '~/components/status-badge';
 
 export const Route = createFileRoute('/_authed/reports')({
   component: ReportsPage,

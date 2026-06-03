@@ -4,10 +4,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { suppliersApi, ApiClientError } from '../../lib/api';
-import { supplierFormSchema, type SupplierFormValues } from '../../lib/schemas';
-import { FormField } from '../../components/form-field';
-import { SubmitButton } from '../../components/submit-button';
+import { suppliersApi, ApiClientError } from '~/lib/api';
+import { supplierFormSchema, type SupplierFormValues } from '~/lib/schemas';
+import { FormField } from '~/components/form-field';
+import { SubmitButton } from '~/components/submit-button';
 
 export const Route = createFileRoute('/_authed/suppliers/new')({
   component: NewSupplierPage,

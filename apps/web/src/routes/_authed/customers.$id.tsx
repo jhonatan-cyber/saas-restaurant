@@ -5,11 +5,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate, Link, useParams } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { customersApi, ApiClientError } from '../../../lib/api';
-import { customerFormSchema, type CustomerFormValues } from '../../../lib/schemas';
-import { FormField } from '../../../components/form-field';
-import { TextareaField } from '../../../components/textarea-field';
-import { SubmitButton } from '../../../components/submit-button';
+import { customersApi, ApiClientError } from '~/lib/api';
+import { customerFormSchema, type CustomerFormValues } from '~/lib/schemas';
+import { FormField } from '~/components/form-field';
+import { TextareaField } from '~/components/textarea-field';
+import { SubmitButton } from '~/components/submit-button';
 
 export const Route = createFileRoute('/_authed/customers/$id')({
   component: EditCustomerPage,

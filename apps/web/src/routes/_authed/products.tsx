@@ -8,11 +8,11 @@ import {
   ApiClientError,
   type Product,
   type ProductFilters,
-} from '../../lib/api';
+} from '~/lib/api';
 import { PRODUCT_TYPE_LABELS } from '@saas/shared';
-import { useAuthStore } from '../../lib/auth-store';
-import { ConfirmDialog } from '../../components/confirm-dialog';
-import { StatusBadge } from '../../components/status-badge';
+import { useAuthStore } from '~/lib/auth-store';
+import { ConfirmDialog } from '~/components/confirm-dialog';
+import { StatusBadge } from '~/components/status-badge';
 
 export const Route = createFileRoute('/_authed/products')({
   component: ProductsListPage,

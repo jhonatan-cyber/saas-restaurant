@@ -2,9 +2,9 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { cashMovementsApi } from '../../lib/api';
-import { useAuthStore } from '../../lib/auth-store';
-import { SubmitButton } from '../../components/submit-button';
+import { cashMovementsApi } from '~/lib/api';
+import { useAuthStore } from '~/lib/auth-store';
+import { SubmitButton } from '~/components/submit-button';
 import {
   CASH_MOVEMENT_TYPE_LABELS,
   CASH_MOVEMENT_TYPE_VALUES,

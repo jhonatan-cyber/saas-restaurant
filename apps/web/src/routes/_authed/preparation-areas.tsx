@@ -7,10 +7,10 @@ import {
   ApiClientError,
   type PreparationArea,
   type PreparationAreaFilters,
-} from '../../lib/api';
-import { useAuthStore } from '../../lib/auth-store';
-import { ConfirmDialog } from '../../components/confirm-dialog';
-import { StatusBadge } from '../../components/status-badge';
+} from '~/lib/api';
+import { useAuthStore } from '~/lib/auth-store';
+import { ConfirmDialog } from '~/components/confirm-dialog';
+import { StatusBadge } from '~/components/status-badge';
 
 export const Route = createFileRoute('/_authed/preparation-areas')({
   component: PrepAreasListPage,

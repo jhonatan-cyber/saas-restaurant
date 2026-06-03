@@ -7,12 +7,12 @@ import {
   ApiClientError,
   type Order,
   type OrderStateLog,
-} from '../../lib/api';
-import { useAuthStore } from '../../lib/auth-store';
-import { OrderStateBadge } from '../../components/order-state-badge';
-import { ConfirmDialog } from '../../components/confirm-dialog';
-import { SubmitButton } from '../../components/submit-button';
-import { PaymentModal } from '../../components/payment-modal';
+} from '~/lib/api';
+import { useAuthStore } from '~/lib/auth-store';
+import { OrderStateBadge } from '~/components/order-state-badge';
+import { ConfirmDialog } from '~/components/confirm-dialog';
+import { SubmitButton } from '~/components/submit-button';
+import { PaymentModal } from '~/components/payment-modal';
 import {
   ORDER_STATUS_LABELS,
   ORDER_TYPE_LABELS,
@@ -22,7 +22,7 @@ import {
 import {
   allowedTransitions,
   isTerminal,
-} from '../../lib/order-state-machine';
+} from '~/lib/order-state-machine';
 
 /**
  * Detalle de una orden.

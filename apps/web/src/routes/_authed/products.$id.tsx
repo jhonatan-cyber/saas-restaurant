@@ -10,13 +10,13 @@ import {
   categoriesApi,
   preparationAreasApi,
   ApiClientError,
-} from '../../../lib/api';
-import { productFormSchema, type ProductFormValues } from '../../../lib/schemas';
-import { FormField } from '../../../components/form-field';
-import { SelectField } from '../../../components/select-field';
-import { TextareaField } from '../../../components/textarea-field';
-import { SubmitButton } from '../../../components/submit-button';
-import { useAuthStore } from '../../../lib/auth-store';
+} from '~/lib/api';
+import { productFormSchema, type ProductFormValues } from '~/lib/schemas';
+import { FormField } from '~/components/form-field';
+import { SelectField } from '~/components/select-field';
+import { TextareaField } from '~/components/textarea-field';
+import { SubmitButton } from '~/components/submit-button';
+import { useAuthStore } from '~/lib/auth-store';
 import { PRODUCT_TYPE_LABELS, type ProductType } from '@saas/shared';
 
 export const Route = createFileRoute('/_authed/products/$id')({

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { businessApi, subscriptionApi, plansApi, ApiClientError, type UpdateBusinessData } from '../../lib/api';
+import { businessApi, subscriptionApi, plansApi, ApiClientError, type UpdateBusinessData } from '~/lib/api';
 import { SUBSCRIPTION_STATUS_LABELS, BILLING_PERIOD_LABELS } from '@saas/shared';
 
 export const Route = createFileRoute('/_authed/business')({
@@ -290,11 +290,15 @@ function BusinessSettingsPage(): ReactNode {
           </div>
 
           {/* Plan y suscripción */}
-          <SubscribablePlanCard
-            businessId={settingsQuery.data?.id ?? ''}
-            currentPlan={settingsQuery.data?.planRef ?? null}
-            currentSubscription={settingsQuery.data?.subscription ?? null}
-          />
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <h3 className="text-lg font-semibold text-slate-900">Plan y suscripción</h3>
+            <div className="mt-2 text-sm text-slate-600">
+              <p>Plan actual: {settingsQuery.data?.plan ?? 'Ninguno'}</p>
+              {settingsQuery.data?.subscription && (
+                <p>Estado: {settingsQuery.data.subscription.status}</p>
+              )}
+            </div>
+          </div>
 
           <div className="flex items-center justify-end gap-3">
             <button

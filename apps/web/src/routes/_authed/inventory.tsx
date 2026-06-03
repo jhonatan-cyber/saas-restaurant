@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { inventoryApi, type InventoryFilters } from '../../lib/api';
-import { StatusBadge } from '../../components/status-badge';
+import { inventoryApi, type InventoryFilters } from '~/lib/api';
+import { StatusBadge } from '~/components/status-badge';
 
 export const Route = createFileRoute('/_authed/inventory')({
   component: InventoryPage,

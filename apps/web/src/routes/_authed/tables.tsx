@@ -7,9 +7,9 @@ import {
   ApiClientError,
   type RestaurantTable,
   type TableFilters,
-} from '../../lib/api';
-import { useAuthStore } from '../../lib/auth-store';
-import { ConfirmDialog } from '../../components/confirm-dialog';
+} from '~/lib/api';
+import { useAuthStore } from '~/lib/auth-store';
+import { ConfirmDialog } from '~/components/confirm-dialog';
 import {
   TABLE_STATUS_LABELS,
   TABLE_LOCATION_LABELS,

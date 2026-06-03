@@ -2,9 +2,9 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { ordersApi, type OrderFilters, type OrderListItem } from '../../lib/api';
-import { useAuthStore } from '../../lib/auth-store';
-import { OrderStateBadge } from '../../components/order-state-badge';
+import { ordersApi, type OrderFilters, type OrderListItem } from '~/lib/api';
+import { useAuthStore } from '~/lib/auth-store';
+import { OrderStateBadge } from '~/components/order-state-badge';
 import {
   ORDER_STATUS_LABELS,
   ORDER_TYPE_LABELS,

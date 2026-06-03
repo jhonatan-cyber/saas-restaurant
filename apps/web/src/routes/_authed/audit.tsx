@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { auditApi, ApiClientError, type AuditFilters, type AuditLogEntry } from '../../lib/api';
+import { auditApi, ApiClientError, type AuditFilters, type AuditLogEntry } from '~/lib/api';
 import { AuditAction, AUDIT_ACTION_LABELS, AUDIT_ACTION_VALUES } from '@saas/shared';
 
 export const Route = createFileRoute('/_authed/audit')({

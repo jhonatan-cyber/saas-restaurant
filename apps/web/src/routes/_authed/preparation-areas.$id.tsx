@@ -5,15 +5,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate, Link, useParams } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { preparationAreasApi, ApiClientError } from '../../../lib/api';
+import { preparationAreasApi, ApiClientError } from '~/lib/api';
 import {
   preparationAreaFormSchema,
   type PreparationAreaFormValues,
-} from '../../../lib/schemas';
-import { FormField } from '../../../components/form-field';
-import { TextareaField } from '../../../components/textarea-field';
-import { SubmitButton } from '../../../components/submit-button';
-import { useAuthStore } from '../../../lib/auth-store';
+} from '~/lib/schemas';
+import { FormField } from '~/components/form-field';
+import { TextareaField } from '~/components/textarea-field';
+import { SubmitButton } from '~/components/submit-button';
+import { useAuthStore } from '~/lib/auth-store';
 
 export const Route = createFileRoute('/_authed/preparation-areas/$id')({
   component: EditPrepAreaPage,

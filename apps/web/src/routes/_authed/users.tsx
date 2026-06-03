@@ -2,11 +2,17 @@ import { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { usersApi, ApiClientError, type UserFilters } from '../../lib/api';
-import { useAuthStore } from '../../lib/auth-store';
-import { ConfirmDialog } from '../../components/confirm-dialog';
-import { StatusBadge } from '../../components/status-badge';
+import { usersApi, ApiClientError, type UserFilters } from '~/lib/api';
+import { useAuthStore } from '~/lib/auth-store';
+import { ConfirmDialog } from '~/components/confirm-dialog';
+import { StatusBadge } from '~/components/status-badge';
 import { Role, ROLE_LABELS } from '@saas/shared';
+
+const USER_STATUS_LABELS: Record<string, string> = {
+  ACTIVE: 'Activo',
+  INACTIVE: 'Inactivo',
+  PENDING: 'Pendiente',
+};
 
 export const Route = createFileRoute('/_authed/users')({
   component: UsersListPage,
@@ -266,7 +272,7 @@ function UsersListPage(): ReactNode {
             : ''
         }
         confirmText="Desactivar"
-        loading={deactivateMutation.isPending}
+        isLoading={deactivateMutation.isPending}
         onConfirm={() => {
           if (userToDeactivate) deactivateMutation.mutate(userToDeactivate.id);
         }}

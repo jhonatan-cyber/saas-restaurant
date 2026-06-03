@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { createFileRoute, useNavigate, useParams } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { plansApi, ApiClientError } from '../../lib/api';
+import { plansApi, ApiClientError } from '~/lib/api';
 import { BillingPeriod } from '@saas/shared';
 
 export const Route = createFileRoute('/_authed/plans/$id')({

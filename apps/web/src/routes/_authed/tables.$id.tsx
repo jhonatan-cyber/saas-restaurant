@@ -5,12 +5,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate, Link, useParams } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { tablesApi, ApiClientError } from '../../../lib/api';
-import { tableFormSchema, type TableFormValues } from '../../../lib/schemas';
-import { FormField } from '../../../components/form-field';
-import { SelectField } from '../../../components/select-field';
-import { TextareaField } from '../../../components/textarea-field';
-import { SubmitButton } from '../../../components/submit-button';
+import { tablesApi, ApiClientError } from '~/lib/api';
+import { tableFormSchema, type TableFormValues } from '~/lib/schemas';
+import { FormField } from '~/components/form-field';
+import { SelectField } from '~/components/select-field';
+import { TextareaField } from '~/components/textarea-field';
+import { SubmitButton } from '~/components/submit-button';
 import { TABLE_LOCATION_LABELS, type TableLocation } from '@saas/shared';
 
 export const Route = createFileRoute('/_authed/tables/$id')({

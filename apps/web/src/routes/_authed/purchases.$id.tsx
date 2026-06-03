@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { createFileRoute, Link, useParams } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { purchasesApi, ApiClientError } from '../../lib/api';
-import { useAuthStore } from '../../lib/auth-store';
-import { ConfirmDialog } from '../../components/confirm-dialog';
-import { StatusBadge } from '../../components/status-badge';
+import { purchasesApi, ApiClientError } from '~/lib/api';
+import { useAuthStore } from '~/lib/auth-store';
+import { ConfirmDialog } from '~/components/confirm-dialog';
+import { StatusBadge } from '~/components/status-badge';
 
 export const Route = createFileRoute('/_authed/purchases/$id')({
   component: PurchaseDetailPage,

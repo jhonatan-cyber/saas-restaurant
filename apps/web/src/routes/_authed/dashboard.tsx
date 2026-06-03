@@ -2,8 +2,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
-import { authApi, categoriesApi, productsApi, tablesApi, customersApi } from '../../lib/api';
-import { useAuthStore, authStoreHelpers } from '../../lib/auth-store';
+import { authApi, categoriesApi, productsApi, tablesApi, customersApi } from '~/lib/api';
+import { useAuthStore, authStoreHelpers } from '~/lib/auth-store';
 import { ROLE_LABELS, TABLE_STATUS_LABELS, type AuthenticatedUserDTO } from '@saas/shared';
 
 export const Route = createFileRoute('/_authed/dashboard')({

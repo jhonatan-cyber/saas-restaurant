@@ -8,7 +8,11 @@ import { loginSchema as sharedLoginSchema } from '@saas/shared';
 
 // Login: usa el shared + un default "demo" para businessSlug
 export const loginFormSchema = sharedLoginSchema;
-export type LoginFormValues = z.infer<typeof loginFormSchema>;
+export type LoginFormValues = {
+  email: string;
+  password: string;
+  businessSlug: string;
+};
 
 export const loginFormDefaults: Partial<LoginFormValues> = {
   businessSlug: 'demo',
@@ -29,9 +33,9 @@ export const categoryFormSchema = z.object({
     .url('URL inválida')
     .optional()
     .or(z.literal('').transform(() => undefined as string | undefined)),
-  displayOrder: z.coerce.number().int().min(0).default(0),
+  displayOrder: z.number().int().min(0),
   branchId: z.string().optional().or(z.literal('').transform(() => undefined)),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean(),
 });
 export type CategoryFormValues = z.infer<typeof categoryFormSchema>;
 
@@ -48,7 +52,7 @@ export const branchFormSchema = z.object({
     .regex(/^[A-Z0-9_-]+$/, 'Solo mayúsculas, números, guion y guion bajo'),
   address: z.string().trim().max(255).optional().or(z.literal('').transform(() => undefined)),
   phone: z.string().trim().max(40).optional().or(z.literal('').transform(() => undefined)),
-  isMain: z.boolean().default(false),
+  isMain: z.boolean(),
 });
 export type BranchFormValues = z.infer<typeof branchFormSchema>;
 
@@ -67,7 +71,7 @@ export const supplierFormSchema = z.object({
   address: z.string().trim().max(255).optional().or(z.literal('').transform(() => undefined)),
   taxId: z.string().trim().max(40).optional().or(z.literal('').transform(() => undefined)),
   notes: z.string().trim().max(500).optional().or(z.literal('').transform(() => undefined)),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean(),
   branchId: z.string().optional().or(z.literal('').transform(() => undefined)),
 });
 export type SupplierFormValues = z.infer<typeof supplierFormSchema>;
@@ -96,15 +100,15 @@ export const productFormSchema = z.object({
   preparationAreaId: z.string().optional().or(z.literal('').transform(() => undefined)),
   branchId: z.string().optional().or(z.literal('').transform(() => undefined)),
   sku: z.string().trim().max(64).optional().or(z.literal('').transform(() => undefined)),
-  price: z.coerce.number().nonnegative('El precio no puede ser negativo'),
-  cost: z.coerce.number().nonnegative().optional(),
-  taxRate: z.coerce.number().min(0).max(100).optional(),
-  trackStock: z.boolean().default(false),
-  minStock: z.coerce.number().int().nonnegative().optional(),
-  productType: z.enum(['SALE', 'COMBO', 'ADDON', 'SERVICE', 'INGREDIENT']).default('SALE'),
-  preparationTimeMin: z.coerce.number().int().min(0).max(600).optional(),
-  isActive: z.boolean().default(true),
-  isAvailable: z.boolean().default(true),
+  price: z.number().nonnegative('El precio no puede ser negativo'),
+  cost: z.number().nonnegative().optional(),
+  taxRate: z.number().min(0).max(100).optional(),
+  trackStock: z.boolean(),
+  minStock: z.number().int().nonnegative().optional(),
+  productType: z.enum(['SALE', 'COMBO', 'ADDON', 'SERVICE', 'INGREDIENT']),
+  preparationTimeMin: z.number().int().min(0).max(600).optional(),
+  isActive: z.boolean(),
+  isAvailable: z.boolean(),
 });
 export type ProductFormValues = z.infer<typeof productFormSchema>;
 
@@ -126,8 +130,8 @@ export const preparationAreaFormSchema = z.object({
     .optional()
     .or(z.literal('').transform(() => undefined)),
   branchId: z.string().optional().or(z.literal('').transform(() => undefined)),
-  displayOrder: z.coerce.number().int().min(0).default(0),
-  isActive: z.boolean().default(true),
+  displayOrder: z.number().int().min(0),
+  isActive: z.boolean(),
 });
 export type PreparationAreaFormValues = z.infer<typeof preparationAreaFormSchema>;
 
@@ -136,12 +140,12 @@ export type PreparationAreaFormValues = z.infer<typeof preparationAreaFormSchema
 export const tableFormSchema = z.object({
   branchId: z.string().min(1, 'La sucursal es obligatoria'),
   number: z.string().trim().min(1, 'El número es obligatorio').max(16),
-  capacity: z.coerce.number().int().min(1, 'Mínimo 1').max(50),
-  location: z.enum(['INDOOR', 'OUTDOOR', 'BAR', 'PATIO', 'TERRACE', 'OTHER']).default('INDOOR'),
-  displayOrder: z.coerce.number().int().min(0).default(0),
+  capacity: z.number().int().min(1, 'Mínimo 1').max(50),
+  location: z.enum(['INDOOR', 'OUTDOOR', 'BAR', 'PATIO', 'TERRACE', 'OTHER']),
+  displayOrder: z.number().int().min(0),
   notes: z.string().trim().max(500).optional().or(z.literal('').transform(() => undefined)),
-  posX: z.coerce.number().int().min(0).optional(),
-  posY: z.coerce.number().int().min(0).optional(),
+  posX: z.number().int().min(0).optional(),
+  posY: z.number().int().min(0).optional(),
 });
 export type TableFormValues = z.infer<typeof tableFormSchema>;
 
@@ -164,9 +168,9 @@ export const customerFormSchema = z.object({
     .max(255)
     .optional()
     .or(z.literal('').transform(() => undefined)),
-  latitude: z.coerce.number().min(-90).max(90).optional(),
-  longitude: z.coerce.number().min(-180).max(180).optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
   notes: z.string().trim().max(1000).optional().or(z.literal('').transform(() => undefined)),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean(),
 });
 export type CustomerFormValues = z.infer<typeof customerFormSchema>;

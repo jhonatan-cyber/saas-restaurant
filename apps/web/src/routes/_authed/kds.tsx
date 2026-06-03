@@ -1,12 +1,11 @@
 import type { ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { KdsOrderCard } from '../../components/kds-order-card';
-import { ordersApi, type KdsOrder } from '../../lib/api';
-import { useAuthStore } from '../../lib/auth-store';
-import { useRealtimeStore } from '../../lib/realtime-store';
+import { KdsOrderCard } from '~/components/kds-order-card';
+import { ordersApi, type KdsOrder } from '~/lib/api';
+import { useAuthStore } from '~/lib/auth-store';
+import { useRealtimeStore } from '~/lib/realtime-store';
 import type { OrderStatus } from '@saas/shared';
-import { ordersApi, type KdsOrder } from '../../lib/api';
 
 /**
  * Pantalla de Cocina (KDS - Kitchen Display System).

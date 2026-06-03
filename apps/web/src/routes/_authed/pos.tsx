@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import { useCallback } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { ProductGrid, type AddableProduct } from '../../components/product-grid';
-import { OrderCartPanel } from '../../components/order-cart-panel';
-import { useAuthStore } from '../../lib/auth-store';
-import { useOrdersCartStore } from '../../lib/orders-store';
+import { ProductGrid, type AddableProduct } from '~/components/product-grid';
+import { OrderCartPanel } from '~/components/order-cart-panel';
+import { useAuthStore } from '~/lib/auth-store';
+import { useOrdersCartStore } from '~/lib/orders-store';
 
 /**
  * Página de POS (Point of Sale).

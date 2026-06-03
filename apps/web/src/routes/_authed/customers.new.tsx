@@ -4,11 +4,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { customersApi, ApiClientError } from '../../../lib/api';
-import { customerFormSchema, type CustomerFormValues } from '../../../lib/schemas';
-import { FormField } from '../../../components/form-field';
-import { TextareaField } from '../../../components/textarea-field';
-import { SubmitButton } from '../../../components/submit-button';
+import { customersApi, ApiClientError } from '~/lib/api';
+import { customerFormSchema, type CustomerFormValues } from '~/lib/schemas';
+import { FormField } from '~/components/form-field';
+import { TextareaField } from '~/components/textarea-field';
+import { SubmitButton } from '~/components/submit-button';
 
 export const Route = createFileRoute('/_authed/customers/new')({
   component: NewCustomerPage,

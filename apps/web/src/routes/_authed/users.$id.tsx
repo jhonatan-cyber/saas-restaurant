@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { createFileRoute, useNavigate, useParams } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { usersApi, ApiClientError, branchesApi, type Branch } from '../../lib/api';
+import { usersApi, ApiClientError, branchesApi, type Branch } from '~/lib/api';
 import { Role, ROLE_LABELS } from '@saas/shared';
 
 export const Route = createFileRoute('/_authed/users/$id')({

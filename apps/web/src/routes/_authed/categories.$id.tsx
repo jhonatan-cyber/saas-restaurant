@@ -5,12 +5,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate, Link, useParams } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { categoriesApi, ApiClientError } from '../../../lib/api';
-import { categoryFormSchema, type CategoryFormValues } from '../../../lib/schemas';
-import { slugify } from '../../../lib/slugify';
-import { FormField } from '../../../components/form-field';
-import { SubmitButton } from '../../../components/submit-button';
-import { useAuthStore } from '../../../lib/auth-store';
+import { categoriesApi, ApiClientError } from '~/lib/api';
+import { categoryFormSchema, type CategoryFormValues } from '~/lib/schemas';
+import { slugify } from '~/lib/slugify';
+import { FormField } from '~/components/form-field';
+import { SubmitButton } from '~/components/submit-button';
+import { useAuthStore } from '~/lib/auth-store';
 
 export const Route = createFileRoute('/_authed/categories/$id')({
   component: EditCategoryPage,

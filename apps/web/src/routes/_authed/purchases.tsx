@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { purchasesApi, ApiClientError, type PurchaseFilters } from '../../lib/api';
-import { useAuthStore } from '../../lib/auth-store';
-import { StatusBadge } from '../../components/status-badge';
+import { purchasesApi, ApiClientError, type PurchaseFilters } from '~/lib/api';
+import { useAuthStore } from '~/lib/auth-store';
+import { StatusBadge } from '~/components/status-badge';
 
 export const Route = createFileRoute('/_authed/purchases')({
   component: PurchasesListPage,

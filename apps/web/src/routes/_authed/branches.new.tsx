@@ -5,10 +5,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { branchesApi, ApiClientError } from '../../lib/api';
-import { branchFormSchema, type BranchFormValues } from '../../lib/schemas';
-import { FormField } from '../../components/form-field';
-import { SubmitButton } from '../../components/submit-button';
+import { branchesApi, ApiClientError } from '~/lib/api';
+import { branchFormSchema, type BranchFormValues } from '~/lib/schemas';
+import { FormField } from '~/components/form-field';
+import { SubmitButton } from '~/components/submit-button';
 
 export const Route = createFileRoute('/_authed/branches/new')({
   component: NewBranchPage,

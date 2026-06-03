@@ -2,9 +2,9 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { cashApi, ApiClientError, type ShiftListItem } from '../../lib/api';
-import { useAuthStore } from '../../lib/auth-store';
-import { SubmitButton } from '../../components/submit-button';
+import { cashApi, ApiClientError, type ShiftListItem } from '~/lib/api';
+import { useAuthStore } from '~/lib/auth-store';
+import { SubmitButton } from '~/components/submit-button';
 import { CASH_REGISTER_STATUS_LABELS } from '@saas/shared';
 
 export const Route = createFileRoute('/_authed/cash')({

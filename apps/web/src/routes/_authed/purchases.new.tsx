@@ -3,10 +3,10 @@ import { useFieldArray, useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { purchasesApi, productsApi, suppliersApi, ApiClientError } from '../../lib/api';
-import { useAuthStore } from '../../lib/auth-store';
-import { FormField } from '../../components/form-field';
-import { SubmitButton } from '../../components/submit-button';
+import { purchasesApi, productsApi, suppliersApi, ApiClientError } from '~/lib/api';
+import { useAuthStore } from '~/lib/auth-store';
+import { FormField } from '~/components/form-field';
+import { SubmitButton } from '~/components/submit-button';
 
 export const Route = createFileRoute('/_authed/purchases/new')({
   component: NewPurchasePage,

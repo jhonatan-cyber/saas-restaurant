@@ -9,8 +9,8 @@
     "outDir": "./dist",
     "ignoreDeprecations": "6.0",
     "paths": {
-      "@saas/shared": ["../../packages/shared/src/index.ts"],
-      "@saas/shared/*": ["../../packages/shared/src/*"],
+      "@saas/shared": ["../../packages/shared/dist/index.d.ts"],
+      "@saas/shared/*": ["../../packages/shared/dist/*"],
       "~/*": ["./src/*"]
     },
     "types": ["vite/client"],
