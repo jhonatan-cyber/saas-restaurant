@@ -24,7 +24,7 @@ type ModelMethods = {
 
 type ModelMethodKeys = 'findFirst' | 'findMany' | 'findUnique' | 'create' | 'update' | 'delete' | 'count';
 
-interface ModelMethods extends Record<ModelMethodKeys, jest.Mock> {}
+type ModelMethods = Record<ModelMethodKeys, jest.Mock>;
 
 function createModelMethods(): ModelMethods {
   return {
