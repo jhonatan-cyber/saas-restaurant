@@ -66,7 +66,16 @@ jobs:
         working-directory: apps/api
 
       - name: Create .env.test for E2E
-        run: echo "DATABASE_URL=$DATABASE_URL" > .env.test
+        run: |
+          cat > .env.test << EOF
+          DATABASE_URL=$DATABASE_URL
+          JWT_SECRET=test-jwt-secret-for-e2e-tests
+          JWT_REFRESH_SECRET=test-jwt-refresh-secret-for-e2e-tests
+          JWT_ACCESS_TTL=15m
+          JWT_REFRESH_TTL=7d
+          API_PORT=0
+          NODE_ENV=test
+          EOF
         working-directory: apps/api
         shell: bash
 
