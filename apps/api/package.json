@@ -50,7 +50,7 @@
     "helmet": "^8.0.0",
     "mariadb": "latest",
     "nestjs-pino": "^4.1.0",
-    "pino": "^9.6.0",
+    "pino": "^10.0.0",
     "pino-pretty": "latest",
     "passport": "latest",
     "passport-jwt": "latest",
