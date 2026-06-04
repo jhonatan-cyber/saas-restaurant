@@ -44,6 +44,12 @@ services:
       - "3000:3000"
     volumes:
       - ./apps/admin/src:/app/apps/admin/src
+    healthcheck:
+      test: ["CMD", "bun", "-e", "try{const r=await fetch('http://127.0.0.1:3000/');process.exit(r.status<500?0:1)}catch{process.exit(1)}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - saas_net
 
@@ -115,9 +121,12 @@ services:
     container_name: saas_restaurant_nginx
     restart: unless-stopped
     depends_on:
-      - api
-      - admin
-      - print-agent
+      api:
+        condition: service_started
+      admin:
+        condition: service_healthy
+      print-agent:
+        condition: service_started
     ports:
       - "8080:80"
     volumes:
