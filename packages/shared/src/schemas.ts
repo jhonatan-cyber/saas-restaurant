@@ -26,7 +26,7 @@ export const emailSchema = z
   .trim()
   .toLowerCase()
   .min(1, 'El email es obligatorio')
-  .pipe(z.string().email('Email inválido'));
+  .pipe(z.email('Email inválido'));
 
 export const passwordSchema = z
   .string()
@@ -86,7 +86,7 @@ export const createUserSchema = z.object({
   fullName: z.string().trim().min(1).max(120),
   phone: z.string().trim().max(40).optional(),
   role: z.nativeEnum(Role).default(Role.CAJERO),
-  defaultBranchId: z.string().cuid().optional(),
+  defaultBranchId: z.cuid().optional(),
 });
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
@@ -117,9 +117,9 @@ export const createCategorySchema = z.object({
     .max(80)
     .regex(/^[a-z0-9-]+$/, 'Slug inválido'),
   description: z.string().trim().max(500).optional(),
-  imageUrl: z.string().url().optional(),
+  imageUrl: z.url().optional(),
   displayOrder: z.number().int().min(0).default(0),
-  branchId: z.string().cuid().optional(),
+  branchId: z.cuid().optional(),
   isActive: z.boolean().default(true),
 });
 
@@ -132,7 +132,7 @@ export const reorderCategoriesSchema = z.object({
   items: z
     .array(
       z.object({
-        id: z.string().cuid(),
+        id: z.cuid(),
         displayOrder: z.number().int().min(0),
       }),
     )
@@ -145,7 +145,7 @@ export const categoryFiltersSchema = z.object({
     .union([z.literal('true'), z.literal('false')])
     .optional()
     .transform((v) => (v === undefined ? undefined : v === 'true')),
-  branchId: z.string().cuid().optional(),
+  branchId: z.cuid().optional(),
   search: z.string().trim().max(120).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
@@ -162,10 +162,10 @@ export const createProductSchema = z.object({
     .max(120)
     .regex(/^[a-z0-9-]+$/, 'Slug inválido'),
   description: z.string().trim().max(1000).optional(),
-  imageUrl: z.string().url().optional(),
-  categoryId: z.string().cuid().optional(),
-  preparationAreaId: z.string().cuid().optional(),
-  branchId: z.string().cuid().optional(),
+  imageUrl: z.url().optional(),
+  categoryId: z.cuid().optional(),
+  preparationAreaId: z.cuid().optional(),
+  branchId: z.cuid().optional(),
   sku: z.string().trim().max(64).optional(),
   price: z.number().nonnegative().multipleOf(0.01),
   cost: z.number().nonnegative().multipleOf(0.01).optional(),
@@ -184,7 +184,7 @@ export const updateProductSchema = createProductSchema.partial();
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 
 export const productFiltersSchema = z.object({
-  categoryId: z.string().cuid().optional(),
+  categoryId: z.cuid().optional(),
   isActive: z
     .union([z.literal('true'), z.literal('false')])
     .optional()
@@ -212,7 +212,7 @@ export const createPreparationAreaSchema = z.object({
     .max(16)
     .regex(/^[A-Z0-9_-]+$/, 'Código inválido'),
   description: z.string().trim().max(500).optional(),
-  branchId: z.string().cuid().optional(),
+  branchId: z.cuid().optional(),
   displayOrder: z.number().int().min(0).default(0),
   isActive: z.boolean().default(true),
 });
@@ -225,7 +225,7 @@ export const reorderPreparationAreasSchema = z.object({
   items: z
     .array(
       z.object({
-        id: z.string().cuid(),
+        id: z.cuid(),
         displayOrder: z.number().int().min(0),
       }),
     )
@@ -238,7 +238,7 @@ export const preparationAreaFiltersSchema = z.object({
     .union([z.literal('true'), z.literal('false')])
     .optional()
     .transform((v) => (v === undefined ? undefined : v === 'true')),
-  branchId: z.string().cuid().optional(),
+  branchId: z.cuid().optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -247,7 +247,7 @@ export type PreparationAreaFiltersInput = z.infer<typeof preparationAreaFiltersS
 // ============== Tables ==============
 
 export const createTableSchema = z.object({
-  branchId: z.string().cuid({ message: 'Sucursal obligatoria' }),
+  branchId: z.cuid({ message: 'Sucursal obligatoria' }),
   number: z.string().trim().min(1).max(16),
   capacity: z.number().int().min(1).max(50).default(4),
   location: z.nativeEnum(TableLocation).default(TableLocation.INDOOR),
@@ -268,7 +268,7 @@ export const changeTableStatusSchema = z.object({
 export type ChangeTableStatusInput = z.infer<typeof changeTableStatusSchema>;
 
 export const tableFiltersSchema = z.object({
-  branchId: z.string().cuid().optional(),
+  branchId: z.cuid().optional(),
   status: z.nativeEnum(TableStatus).optional(),
   location: z.nativeEnum(TableLocation).optional(),
   page: z.coerce.number().int().min(1).default(1),
@@ -284,7 +284,7 @@ export const createCustomerSchema = z.object({
   taxIdType: z.string().trim().max(16).optional(),
   email: z
     .union([
-      z.string().email('Email inválido').max(160),
+      z.email('Email inválido').max(160),
       z.literal('').transform(() => undefined as string | undefined),
     ])
     .optional(),
@@ -319,7 +319,7 @@ export type CustomerFiltersInput = z.infer<typeof customerFiltersSchema>;
  * en el service; acá solo tipamos la forma.
  */
 export const createOrderItemSchema = z.object({
-  productId: z.string().cuid({ message: 'Producto inválido' }),
+  productId: z.cuid({ message: 'Producto inválido' }),
   quantity: z.number().int().min(1).max(999),
   notes: z.string().trim().max(500).optional(),
   // Si el frontend calcula unitPrice y lo manda, el service lo IGNORA y
@@ -332,9 +332,9 @@ export type CreateOrderItemInput = z.infer<typeof createOrderItemSchema>;
 export const createOrderSchema = z.object({
   type: z.nativeEnum(OrderType).default(OrderType.DINE_IN),
   channel: z.nativeEnum(OrderChannel).default(OrderChannel.POS_WEB),
-  tableId: z.string().cuid().optional(),
-  customerId: z.string().cuid().optional(),
-  waiterId: z.string().cuid().optional(),
+  tableId: z.cuid().optional(),
+  customerId: z.cuid().optional(),
+  waiterId: z.cuid().optional(),
   globalNotes: z.string().trim().max(1000).optional(),
   items: z
     .array(createOrderItemSchema)
@@ -390,10 +390,10 @@ export const orderFiltersSchema = z.object({
     .transform((v) => (v === undefined ? undefined : Array.isArray(v) ? v : [v])),
   type: z.nativeEnum(OrderType).optional(),
   channel: z.nativeEnum(OrderChannel).optional(),
-  tableId: z.string().cuid().optional(),
-  customerId: z.string().cuid().optional(),
-  cashierId: z.string().cuid().optional(),
-  branchId: z.string().cuid().optional(),
+  tableId: z.cuid().optional(),
+  customerId: z.cuid().optional(),
+  cashierId: z.cuid().optional(),
+  branchId: z.cuid().optional(),
   dateFrom: z.coerce.date().optional(),
   dateTo: z.coerce.date().optional(),
   page: z.coerce.number().int().min(1).default(1),
@@ -405,8 +405,8 @@ export type OrderFiltersInput = z.infer<typeof orderFiltersSchema>;
  * Filtro del endpoint /orders/kds: solo lo necesario para la pantalla de cocina.
  */
 export const kdsFiltersSchema = z.object({
-  branchId: z.string().cuid(),
-  preparationAreaId: z.string().cuid().optional(),
+  branchId: z.cuid(),
+  preparationAreaId: z.cuid().optional(),
   // Por defecto el KDS ve SENT_TO_KITCHEN e IN_PREPARATION.
   states: z
     .array(z.nativeEnum(OrderStatus))
@@ -420,10 +420,10 @@ export type KdsFiltersInput = z.infer<typeof kdsFiltersSchema>;
 // ============== Suppliers (FASE 6) ==============
 
 export const createSupplierSchema = z.object({
-  branchId: z.string().cuid().optional(),
+  branchId: z.cuid().optional(),
   name: z.string().trim().min(1).max(160),
   contactName: z.string().trim().max(120).optional(),
-  email: z.union([z.string().email('Email inválido'), z.literal('').transform(() => undefined)]).optional(),
+  email: z.union([z.email('Email inválido'), z.literal('').transform(() => undefined)]).optional(),
   phone: z.string().trim().max(40).optional(),
   address: z.string().trim().max(255).optional(),
   taxId: z.string().trim().max(40).optional(),
@@ -439,7 +439,7 @@ export const supplierFiltersSchema = z.object({
     .union([z.literal('true'), z.literal('false')])
     .optional()
     .transform((v) => (v === undefined ? undefined : v === 'true')),
-  branchId: z.string().cuid().optional(),
+  branchId: z.cuid().optional(),
   search: z.string().trim().max(120).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
@@ -449,15 +449,15 @@ export type SupplierFiltersInput = z.infer<typeof supplierFiltersSchema>;
 // ============== Purchases (FASE 6) ==============
 
 export const createPurchaseItemSchema = z.object({
-  productId: z.string().cuid({ message: 'Producto inválido' }),
+  productId: z.cuid({ message: 'Producto inválido' }),
   quantity: z.number().positive('Cantidad debe ser mayor a 0'),
   unitCost: z.number().nonnegative('Costo unitario inválido'),
 });
 export type CreatePurchaseItemInput = z.infer<typeof createPurchaseItemSchema>;
 
 export const createPurchaseSchema = z.object({
-  branchId: z.string().cuid({ message: 'Sucursal obligatoria' }),
-  supplierId: z.string().cuid().optional(),
+  branchId: z.cuid({ message: 'Sucursal obligatoria' }),
+  supplierId: z.cuid().optional(),
   purchaseNumber: z.string().trim().min(1, 'N° de compra obligatorio').max(64),
   notes: z.string().trim().max(500).optional(),
   taxTotal: z.number().nonnegative().default(0),
@@ -466,7 +466,7 @@ export const createPurchaseSchema = z.object({
 export type CreatePurchaseInput = z.infer<typeof createPurchaseSchema>;
 
 export const updatePurchaseSchema = z.object({
-  supplierId: z.string().cuid().optional(),
+  supplierId: z.cuid().optional(),
   purchaseNumber: z.string().trim().min(1).max(64).optional(),
   notes: z.string().trim().max(500).nullable().optional(),
   status: z.nativeEnum(PurchaseStatus).optional(),
@@ -478,8 +478,8 @@ export const completePurchaseSchema = z.object({
 });
 
 export const purchaseFiltersSchema = z.object({
-  branchId: z.string().cuid().optional(),
-  supplierId: z.string().cuid().optional(),
+  branchId: z.cuid().optional(),
+  supplierId: z.cuid().optional(),
   status: z.nativeEnum(PurchaseStatus).optional(),
   dateFrom: z.coerce.date().optional(),
   dateTo: z.coerce.date().optional(),
@@ -498,7 +498,7 @@ export const requestReportSchema = z.object({
     .object({
       dateFrom: z.string().optional(),
       dateTo: z.string().optional(),
-      branchId: z.string().cuid().optional(),
+      branchId: z.cuid().optional(),
     })
     .optional()
     .default({}),

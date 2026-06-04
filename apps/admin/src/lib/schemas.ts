@@ -3,7 +3,7 @@
  * Re-exportamos los del paquete @saas/shared y añadimos defaults visuales
  * cuando sea necesario.
  */
-import { z } from 'zod';
+import { z } from '@saas/shared';
 import { loginSchema as sharedLoginSchema } from '@saas/shared';
 
 // Login: usa el shared + un default "demo" para businessSlug

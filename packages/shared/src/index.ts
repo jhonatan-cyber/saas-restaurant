@@ -1,8 +1,4 @@
-/**
- * Punto de entrada del paquete @saas/shared.
- * Re-exporta todo lo necesario para que los consumidores (api, web) lo usen
- * con un solo import.
- */
+export { z } from 'zod';
 
 export * from './enums';
 export * from './schemas';
