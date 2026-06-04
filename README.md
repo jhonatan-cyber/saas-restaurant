@@ -321,6 +321,89 @@ Todas usan `businessSlug = demo`. Login: `POST /api/auth/login`.
 
 ---
 
+## 🔒 SSL / HTTPS (Producción)
+
+Para habilitar HTTPS con Let's Encrypt en producción:
+
+```bash
+# 1. Configurar dominio en .env.prod
+DOMAIN=tu-dominio.com
+
+# 2. Iniciar nginx + certbot
+docker compose -f docker-compose.prod.yml up -d nginx certbot
+
+# 3. Generar certificado inicial (una vez)
+make prod-ssl-init
+
+# 4. Auto-renewal está configurado (cada 12h)
+# Para renovar manualmente:
+make prod-ssl-renew
+```
+
+Los certificados se almacenan en volúmenes Docker (`certbot_conf`, `certbot_www`) y se renuevan automáticamente cada 12 horas.
+
+---
+
+## 🚀 CI/CD (GitHub Actions)
+
+El proyecto incluye dos workflows:
+
+| Workflow | Trigger | Qué hace |
+| --- | --- | --- |
+| `ci.yml` | Push/PR a main | Typecheck, lint, build, test |
+| `deploy.yml` | Push a main | Build Docker images → GHCR → Deploy vía SSH |
+
+### Deploy a producción
+
+**Prerrequisitos** (configurar en GitHub Secrets):
+- `PROD_SERVER_HOST` — IP del servidor
+- `PROD_SERVER_USER` — Usuario SSH
+- `PROD_SERVER_SSH_KEY` — Clave SSH privada
+
+El deploy automático:
+1. Build de imágenes Docker (api, admin, print-agent) → GHCR
+2. SSH al servidor → `git pull` → `docker compose pull` → `docker compose up -d`
+
+### Imágenes Docker en GHCR
+
+```
+ghcr.io/{tu-org}/saas-restaurant/api:latest
+ghcr.io/{tu-org}/saas-restaurant/admin:latest
+ghcr.io/{tu-org}/saas-restaurant/print-agent:latest
+```
+
+---
+
+## 🌿 Dev Multi-Branch
+
+Trabaja con múltiples branches simultáneamente usando Docker Compose projects:
+
+```bash
+# En la rama main
+git checkout main
+make docker-branch-up    # Crea proyecto saas-main
+
+# En otra rama
+git checkout feature/pos
+docker-branch-up         # Crea proyecto saas-feature-pos
+
+# Cada rama tiene sus propios contenedores, puertos y volúmenes
+# Mismo mapeo de puertos pero namespaces separados
+
+# Ver estado de todos los branches
+docker ps --filter "label=com.docker.compose.project=saas-*"
+
+# Detener un branch
+docker-branch-down
+
+# Logs de un branch
+docker-branch-logs
+```
+
+Los comandos `docker-branch-up`, `docker-branch-down` y `docker-branch-logs` detectan automáticamente la branch actual y usan el prefijo `saas-{branch-name}` como project name de Docker Compose.
+
+---
+
 ## 📐 Decisiones arquitectónicas clave (Phase 1 + 2)
 
 - **Sin acoplamiento del frontend al cliente Prisma.** El paquete `@saas/shared` define
