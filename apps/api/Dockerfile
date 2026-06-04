@@ -1,7 +1,7 @@
 # Dockerfile — API (NestJS + Prisma + BullMQ)
 # Multi-stage build with security hardening
 
-FROM oven/bun:1 AS builder
+FROM oven/bun:1 AS base
 WORKDIR /app
 
 # Install dependencies
@@ -11,6 +11,35 @@ COPY packages/shared/package.json ./packages/shared/
 
 RUN bun install
 
+# ============================================================
+FROM base AS dev
+
+# Copy source code
+COPY tsconfig.base.json ./
+COPY packages ./packages
+COPY apps/api ./apps/api
+
+# Generate Prisma client for dev
+WORKDIR /app/apps/api
+ENV DATABASE_URL=mysql://root:rootpass@mysql:3306/saas_restaurant
+RUN bunx prisma generate --config prisma.config.js
+
+WORKDIR /app
+
+ENV NODE_ENV=development
+ENV DATABASE_URL=mysql://root:rootpass@mysql:3306/saas_restaurant
+ENV REDIS_URL=redis://redis:6379
+ENV CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
+ENV JWT_SECRET=dev-jwt-secret-key-change-in-production
+ENV JWT_REFRESH_SECRET=dev-jwt-refresh-secret-key-change-in-production
+ENV LOG_LEVEL=debug
+ENV DISABLE_WS=true
+
+CMD ["sh", "-c", "cd /app/apps/api && bunx prisma migrate deploy --config prisma.config.js && bun --watch src/main.ts"]
+
+# ============================================================
+FROM base AS builder
+
 # Copy source code
 COPY tsconfig.base.json ./
 COPY packages ./packages
@@ -18,6 +47,7 @@ COPY apps/api ./apps/api
 
 # Generate Prisma client and build
 WORKDIR /app/apps/api
+ENV DATABASE_URL=mysql://dummy:dummy@localhost:3306/dummy
 RUN bunx prisma generate && bun run build
 
 # ============================================================

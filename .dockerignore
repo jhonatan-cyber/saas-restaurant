@@ -3,11 +3,12 @@
 .gitignore
 .gitattributes
 
-# Node
+# Node / Bun
 node_modules/
-# bun.lock is needed for reproducible builds
 packages/*/node_modules/
 apps/*/node_modules/
+.bun/
+bunfig.toml
 
 # Build outputs
 dist/
@@ -16,6 +17,7 @@ build/
 .output/
 .vite/
 .turbo/
+*.tsbuildinfo
 
 # Environment
 .env
@@ -26,6 +28,7 @@ build/
 .idea/
 .vscode/
 *.swp
+*.swo
 
 # OS
 .DS_Store
@@ -34,16 +37,67 @@ Thumbs.db
 # Docker
 Dockerfile
 docker-compose*.yml
+.dockerignore
 
 # Logs
 *.log
+npm-debug.log*
 
 # Temp
 tmp-*
 *.tmp
+.tmp/
+
+# Tests (not needed in build context)
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+**/__tests__/
+**/vitest.config.*
+**/jest.config.*
+**/jest-e2e.config.*
+**/.vitest/
+
+# Storybook
+.storybook/
+
+# Scripts
+scripts/
+
+# Documentation
+README.md
+docs/
+*.md
+
+# Landing output (rebuilt in Docker)
+apps/landing/dist/
+apps/landing/.astro/
 
 # Desktop (needs Tauri, not for server)
 apps/desktop/
 
 # Mobile (needs Expo, not for server)
 apps/mobile/
+
+# Admin build artifacts
+apps/admin/dist/
+apps/admin/.output/
+apps/admin/.vite/
+
+# API build artifacts
+apps/api/dist/
+apps/api/.turbo/
+
+# Print agent
+apps/print-agent/prints/
+apps/print-agent/printers.json
+
+# Shared build
+packages/shared/dist/
+packages/ui/dist/
+
+# Config packages
+packages/config/
+.agents/
+.atl/

@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+      target: dev
     container_name: saas_restaurant_api
     restart: unless-stopped
     depends_on:
@@ -10,12 +11,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "bun", "-e", "try{const r=await fetch('http://localhost:3001/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});process.exit(r.status<500?0:1)}catch{process.exit(1)}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+    command: sh -c "cd /app && bun install && cd apps/api && bunx prisma generate --config prisma.config.js && bunx prisma migrate deploy --config prisma.config.js && bun --watch src/main.ts"
     environment:
       NODE_ENV: development
       DATABASE_URL: mysql://root:rootpass@mysql:3306/saas_restaurant
@@ -25,10 +21,21 @@ services:
       JWT_REFRESH_SECRET: dev-jwt-refresh-secret-key-change-in-production
       LOG_LEVEL: debug
       DISABLE_WS: "true"
+      CHOKIDAR_USEPOLLING: "true"
     ports:
       - "3001:3001"
     volumes:
-      - ./apps/api/src:/app/apps/api/src:ro
+      - api_node_modules:/app/node_modules
+      - ./package.json:/app/package.json
+      - ./tsconfig.base.json:/app/tsconfig.base.json
+      - ./apps/api:/app/apps/api
+      - ./packages/shared:/app/packages/shared
+    healthcheck:
+      test: ["CMD", "bun", "-e", "try{const r=await fetch('http://localhost:3001/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});process.exit(r.status<500?0:1)}catch{process.exit(1)}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
     networks:
       - saas_net
 
@@ -36,20 +43,29 @@ services:
     build:
       context: .
       dockerfile: apps/admin/Dockerfile
+      target: dev
     container_name: saas_restaurant_admin
     restart: unless-stopped
     depends_on:
       - api
+    command: sh -c "cd /app && bun install && cd apps/admin && bun run dev"
     environment:
       NODE_ENV: development
       VITE_API_URL: http://localhost:3001/api
       VITE_API_BASE_URL: http://localhost:3001
       API_INTERNAL_URL: http://api:3001/api
       API_INTERNAL_BASE_URL: http://api:3001
+      CHOKIDAR_USEPOLLING: "true"
+      WEB_PORT: "3000"
     ports:
       - "3000:3000"
     volumes:
-      - ./apps/admin/src:/app/apps/admin/src
+      - admin_node_modules:/app/node_modules
+      - ./package.json:/app/package.json
+      - ./tsconfig.base.json:/app/tsconfig.base.json
+      - ./apps/admin:/app/apps/admin
+      - ./packages/shared:/app/packages/shared
+      - ./packages/ui:/app/packages/ui
     healthcheck:
       test: ["CMD", "bun", "-e", "try{const r=await fetch('http://127.0.0.1:3000/');process.exit(r.status<500?0:1)}catch{process.exit(1)}"]
       interval: 10s
@@ -63,14 +79,26 @@ services:
     build:
       context: .
       dockerfile: apps/landing/Dockerfile
+      target: dev
     container_name: saas_restaurant_landing
     restart: unless-stopped
-    expose:
-      - "80"
+    command: sh -c "cd /app && bun install && cd apps/landing && bun run dev"
+    environment:
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "4321:4321"
+    volumes:
+      - landing_node_modules:/app/node_modules
+      - ./package.json:/app/package.json
+      - ./tsconfig.base.json:/app/tsconfig.base.json
+      - ./apps/landing:/app/apps/landing
+      - ./packages/shared:/app/packages/shared
+      - ./packages/ui:/app/packages/ui
     networks:
       - saas_net
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:80/"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:4321/"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -80,17 +108,13 @@ services:
     build:
       context: .
       dockerfile: apps/print-agent/Dockerfile
+      target: dev
     container_name: saas_restaurant_print_agent
     restart: unless-stopped
     depends_on:
       api:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "bun", "-e", "try{const r=await fetch('http://localhost:3002/health');process.exit(r.ok?0:1)}catch{process.exit(1)}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
+    command: sh -c "cd /app && bun install && cd apps/print-agent && bun run --hot src/index.ts"
     environment:
       NODE_ENV: development
       API_URL: http://api:3001
@@ -99,7 +123,16 @@ services:
     ports:
       - "3002:3002"
     volumes:
-      - ./apps/print-agent/src:/app/apps/print-agent/src
+      - print_agent_node_modules:/app/node_modules
+      - ./package.json:/app/package.json
+      - ./tsconfig.base.json:/app/tsconfig.base.json
+      - ./apps/print-agent:/app/apps/print-agent
+    healthcheck:
+      test: ["CMD", "bun", "-e", "try{const r=await fetch('http://localhost:3002/health');process.exit(r.ok?0:1)}catch{process.exit(1)}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks:
       - saas_net
 
@@ -125,6 +158,24 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
+    networks:
+      - saas_net
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: saas_restaurant_phpmyadmin
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: rootpass
+      UPLOAD_LIMIT: 100M
+    ports:
+      - "8081:80"
     networks:
       - saas_net
 
@@ -176,6 +227,14 @@ volumes:
   mysql_data:
     driver: local
   redis_data:
+    driver: local
+  api_node_modules:
+    driver: local
+  admin_node_modules:
+    driver: local
+  landing_node_modules:
+    driver: local
+  print_agent_node_modules:
     driver: local
 
 networks:

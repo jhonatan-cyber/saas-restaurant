@@ -1,7 +1,7 @@
 # Dockerfile — Print Agent (Bun Hono ESC/POS)
 # Multi-stage build optimized for minimal size
 
-FROM oven/bun:1 AS builder
+FROM oven/bun:1 AS base
 WORKDIR /app
 
 # Stage 1: Install dependencies
@@ -11,11 +11,28 @@ COPY packages/shared/package.json ./packages/shared/
 
 RUN bun install
 
-# Stage 2: Copy application source
+# ============================================================
+FROM base AS dev
+
+# Copy source code
 COPY tsconfig.base.json ./
 COPY apps/print-agent ./apps/print-agent
 
-# Stage 3: Production runtime
+WORKDIR /app/apps/print-agent
+
+ENV NODE_ENV=development
+
+CMD ["bun", "run", "--hot", "src/index.ts"]
+
+# ============================================================
+FROM base AS builder
+
+# Copy source code
+COPY tsconfig.base.json ./
+COPY apps/print-agent ./apps/print-agent
+
+# ============================================================
+# Production runtime
 FROM oven/bun:1-slim
 
 # Create non-root user
