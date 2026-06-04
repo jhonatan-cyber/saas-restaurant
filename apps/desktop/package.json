@@ -14,7 +14,6 @@
   "dependencies": {
     "@tauri-apps/api": "latest",
     "@tauri-apps/plugin-shell": "latest",
-    "@tauri-apps/plugin-window": "latest",
     "@tauri-apps/plugin-process": "latest",
     "react": "latest",
     "react-dom": "latest"
