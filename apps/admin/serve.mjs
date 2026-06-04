@@ -41,18 +41,24 @@ if (typeof fetchHandler !== 'function') {
   process.exit(1);
 }
 
+// Strip the /app URL prefix so requests like /app/assets/foo.js map to
+// dist/client/assets/foo.js. Paths without the prefix pass through unchanged.
+const stripAppBase = (pathname) =>
+  pathname.startsWith('/app/') ? pathname.slice(4) : pathname;
+
 const server = createServer(async (req, res) => {
   const url = req.url ?? '/';
+  const pathname = stripAppBase(url.split('?')[0]);
 
   // --- Serve static assets from dist/client ---
   // Assets are under /assets/, also handle root-level files like favicon.ico
-  const staticPath = join(CLIENT_DIR, url.split('?')[0]);
+  const staticPath = join(CLIENT_DIR, pathname);
   if (existsSync(staticPath) && statSync(staticPath).isFile()) {
     const ext = extname(staticPath).toLowerCase();
     const mime = MIME[ext] ?? 'application/octet-stream';
     res.setHeader('Content-Type', mime);
     // Hashed assets get long-lived cache, others get no-cache
-    if (url.startsWith('/assets/')) {
+    if (pathname.startsWith('/assets/')) {
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     } else {
       res.setHeader('Cache-Control', 'no-cache');
