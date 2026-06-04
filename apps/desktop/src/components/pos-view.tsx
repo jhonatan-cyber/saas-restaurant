@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { open } from '@tauri-apps/plugin-shell';
 
 interface PosViewProps {
   activation: {
@@ -24,8 +25,8 @@ function PosView({ activation, onDeactivate }: PosViewProps): ReactNode {
   const posUrl = `${WEB_APP_URL}/pos?station=${activation.stationId}&branch=${activation.branchId}&sig=${activation.businessSig}`;
 
   if (useBrowser) {
-    // Intentar abrir en navegador nativo
-    window.open(posUrl, '_blank');
+    // Abrir en el navegador nativo del sistema vía Tauri shell plugin
+    open(posUrl).catch(() => window.open(posUrl, '_blank'));
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
         <div className="card p-6 text-center">

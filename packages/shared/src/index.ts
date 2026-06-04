@@ -4,3 +4,4 @@ export * from './enums';
 export * from './schemas';
 export * from './types';
 export * from './constants';
+export { envSchema, parseEnv, type Env } from './env';

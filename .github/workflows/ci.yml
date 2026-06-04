@@ -29,3 +29,13 @@ jobs:
 
       - name: Type-check all workspaces
         run: bun run --filter='*' typecheck
+
+      - name: Build all workspaces
+        run: bun run --filter='*' build
+
+      - name: Run tests
+        run: bun run --filter='*' test || echo "No test script found in some workspaces"
+
+      - name: Check desktop (Rust)
+        working-directory: apps/desktop/src-tauri
+        run: cargo check

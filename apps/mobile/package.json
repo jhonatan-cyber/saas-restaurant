@@ -8,8 +8,10 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
+    "build": "expo export --platform web",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf .expo dist"
+    "clean": "rm -rf .expo dist",
+    "lint": "eslint src/"
   },
   "dependencies": {
     "@react-navigation/bottom-tabs": "^7.0.0",

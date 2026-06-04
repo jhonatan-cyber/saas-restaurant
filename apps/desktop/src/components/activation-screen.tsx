@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import type { FormEvent } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 
 interface ActivationScreenProps {
   onActivate: (data: {
@@ -14,12 +15,21 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 /**
  * Pantalla de activación de estación POS.
  * Sin Tailwind — usa inline styles (la desktop app es standalone sin Tailwind).
+ * Se conecta con Rust via Tauri invoke() para obtener info del dispositivo.
  */
 function ActivationScreen({ onActivate }: ActivationScreenProps): ReactNode {
   const [businessSlug, setBusinessSlug] = useState('');
   const [stationCode, setStationCode] = useState('');
+  const [deviceName, setDeviceName] = useState('Cargando…');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Obtener nombre del dispositivo desde Rust vía Tauri
+  useEffect(() => {
+    invoke<string>('get_device_info')
+      .then(setDeviceName)
+      .catch(() => setDeviceName(navigator.platform))
+  }, [])
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -38,7 +48,7 @@ function ActivationScreen({ onActivate }: ActivationScreenProps): ReactNode {
         body: JSON.stringify({
           businessSlug: businessSlug.trim(),
           stationCode: stationCode.trim(),
-          deviceName: navigator.platform,
+          deviceName,
         }),
       });
 
@@ -96,6 +106,16 @@ function ActivationScreen({ onActivate }: ActivationScreenProps): ReactNode {
               onChange={(e) => setStationCode(e.target.value.toUpperCase())}
             />
             <p style={s.hint}>Pedí el código al administrador del sistema.</p>
+          </div>
+
+          <div style={s.field}>
+            <label style={s.label}>Dispositivo</label>
+            <input
+              type="text"
+              style={{ ...s.input, ...s.inputMuted }}
+              value={deviceName}
+              disabled
+            />
           </div>
 
           {error && <div style={s.errorBox}>{error}</div>}

@@ -6,8 +6,11 @@
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "start": "bun run src/index.ts",
+    "build": "tsc --noEmit",
+    "test": "bun test",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "lint": "eslint src/"
   },
   "dependencies": {
     "hono": "^4.12.23"

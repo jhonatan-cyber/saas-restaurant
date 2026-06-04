@@ -16,6 +16,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "echo 'shared is consumed via TS source — no build step needed'",
+    "test": "echo 'no tests yet'",
+    "lint": "eslint src/",
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {

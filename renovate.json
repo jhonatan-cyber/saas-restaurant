@@ -1,0 +1,67 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":separateMajorMinor",
+    ":combinePatchMinorUpdates",
+    ":ignoreModulesAndTests",
+    "helpers:disableTypesNodeMajor"
+  ],
+  "rangeStrategy": "bump",
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "matchManagers": ["npm"],
+      "matchFileNames": ["package.json"],
+      "enabled": true
+    },
+    {
+      "matchDepTypes": ["peerDependencies"],
+      "rangeStrategy": "widen"
+    },
+    {
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "all non-major dependencies",
+      "groupSlug": "all-minor-patch",
+      "schedule": ["before 8am on monday"]
+    },
+    {
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<6.2.0"
+    },
+    {
+      "matchPackagePatterns": ["@typescript-eslint/*"],
+      "allowedVersions": "<8.61.0"
+    },
+    {
+      "matchPackageNames": ["zod"],
+      "allowedVersions": ">=4.0.0"
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchFileNames": ["apps/mobile/package.json"],
+      "groupName": "expo monorepo",
+      "schedule": ["before 8am on monday"]
+    },
+    {
+      "matchPackageNames": ["@tauri-apps/cli", "@tauri-apps/api"],
+      "groupName": "tauri monorepo"
+    },
+    {
+      "matchPackageNames": ["@prisma/client", "prisma"],
+      "groupName": "prisma monorepo"
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "labels": ["security"],
+    "automerge": true
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 8am on monday"]
+  },
+  "timezone": "America/Argentina/Buenos_Aires",
+  "rebaseWhen": "conflicted",
+  "prCreation": "not-pending",
+  "prConcurrentLimit": 4
+}

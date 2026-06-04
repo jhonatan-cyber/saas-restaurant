@@ -11,7 +11,11 @@ import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
-import { HEADERS } from '@saas/shared';
+import { HEADERS, parseEnv } from '@saas/shared';
+
+// ── Validar env ANTES de que arranque la app ──────────────────────────
+// Si falta una variable crítica, la app ni inicia con un error claro.
+parseEnv(process.env);
 
 /**
  * Bootstrap del API.
