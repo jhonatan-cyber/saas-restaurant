@@ -18,7 +18,7 @@
 - ✅ Optimized layer caching with package.json separation
 - ✅ Prisma client generation and migrations automated
 
-### 2. **Web Dockerfile** (`apps/web/Dockerfile`)
+### 2. **Admin Dockerfile** (`apps/admin/Dockerfile`)
 - ✅ Alpine-based Node.js runtime (smaller image)
 - ✅ Multi-stage build for SSR optimization
 - ✅ Non-root user (webapp:1100)

@@ -11,7 +11,7 @@ dev-api:
 	cd apps/api && bun run start:dev
 
 dev-web:
-	cd apps/web && bun run dev
+	cd apps/admin && bun run dev
 
 # ==================== Docker Producción ====================
 
@@ -48,8 +48,8 @@ db-seed:
 
 typecheck:
 	cd apps/api && bun run typecheck
-	cd apps/web && bun run typecheck
+	cd apps/admin && bun run typecheck
 
 clean:
-	rm -rf apps/api/dist apps/web/.output apps/web/.vite
+	rm -rf apps/api/dist apps/admin/.output apps/admin/.vite
 	find . -name node_modules -type d -prune -exec rm -rf {} +
