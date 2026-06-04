@@ -22,7 +22,7 @@ docker-dev-apps:
 	docker compose up -d --build api admin landing print-agent
 
 docker-dev-infra:
-	docker compose up -d mysql redis
+	docker compose up -d mysql redis phpmyadmin
 
 docker-down:
 	docker compose down
@@ -39,6 +39,10 @@ docker-restart:
 docker-clean:
 	docker compose down -v
 	docker image prune -f
+
+docker-reset:
+	docker compose down -v --rmi local
+	docker volume prune -f
 
 # ==================== Docker Producción ====================
 

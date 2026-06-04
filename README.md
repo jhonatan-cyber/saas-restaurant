@@ -180,6 +180,67 @@ phase2_catalog_tables_customers
 
 ---
 
+## 🐳 Docker Development (Hot-Reload)
+
+Todos los servicios tienen hot-reload: editás el código en tu máquina y se refleja automáticamente en el navegador sin reconstruir la imagen Docker.
+
+### Inicio rápido
+
+```bash
+# 1. Copiar variables de entorno
+cp .env.example .env
+
+# 2. Levantar infraestructura (MySQL + Redis + phpMyAdmin)
+make docker-dev-infra
+
+# 3. Aplicar migraciones y seed (esperar a que MySQL esté healthy)
+bun run db:migrate
+bun run db:seed
+
+# 4. Levantar servicios de aplicación (con build)
+make docker-dev-apps
+
+# 5. ¡Listo! Abrí el navegador en las URLs de abajo
+```
+
+### Comandos Docker (Makefile)
+
+| Comando | Qué hace |
+| --- | --- |
+| `make docker-dev` | Levanta todo (apps + infra) con build |
+| `make docker-dev-apps` | Solo servicios de app (api, admin, landing, print-agent) |
+| `make docker-dev-infra` | Solo infraestructura (mysql, redis, phpmyadmin) |
+| `make docker-down` | Detiene todos los contenedores |
+| `make docker-logs` | Sigue logs de todos los servicios en tiempo real |
+| `make docker-ps` | Muestra estado de todos los contenedores |
+| `make docker-restart` | Reinicia todos los contenedores |
+| `make docker-clean` | Detiene + elimina volúmenes y limpieza de imágenes |
+| `make docker-reset` | Reset completo: contenedores + volúmenes + imágenes locales |
+
+### Servicios y puertos (Docker)
+
+| Servicio | Puerto | Hot-reload | Descripción |
+| --- | --- | --- | --- |
+| API | `localhost:3001` | `bun --watch` | NestJS backend |
+| Admin | `localhost:3000` | Vite HMR | TanStack Start frontend |
+| Landing | `localhost:4321` | Astro HMR | One-pager estático |
+| Print Agent | `localhost:3002` | `bun --hot` | Microservicio de impresión |
+| phpMyAdmin | `localhost:8081` | — | Admin de MySQL |
+| Swagger | `localhost:3001/docs` | — | Documentación API |
+
+### Cómo funciona el hot-reload
+
+- **Volumes** montan el código fuente del host directamente en el contenedor
+- **`target: dev`** en cada Dockerfile ejecuta el dev server (Vite/Astro/Bun)
+- **Named volumes** para `node_modules` evitan reinstalar dependencias al reiniciar
+- **`CHOKIDAR_USEPOLLING=true`** fuerza polling para detectar cambios en Docker
+- Los archivos `bun.lock` y `bunfig.toml` NO se montan (evitan errores EBUSY en Windows)
+
+> **No es necesario ejecutar `docker compose build` para cambios en código fuente.**
+> Solo necesitás rebuild si cambiás dependencias en `package.json`.
+
+---
+
 ## 🌐 URLs por defecto
 
 | Servicio | URL |
