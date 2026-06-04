@@ -69,8 +69,21 @@ async function bootstrap(): Promise<void> {
 
   // ============================================================
   //  Phase 3: WebSocket adapter (auth aplicada en RealtimeGateway)
+  //  NOTE: engine.io has a Bun compat issue with server.listeners().
+  //  Set DISABLE_WS=true in env to skip (e.g. Docker/Bun production).
   // ============================================================
-  app.useWebSocketAdapter(new IoAdapter(app));
+  const disableWs = config.get<string>('DISABLE_WS', 'false') === 'true';
+  if (!disableWs) {
+    try {
+      app.useWebSocketAdapter(new IoAdapter(app));
+      logger.log('🔌 WebSocket adapter registrado');
+    } catch (err) {
+      logger.warn(`⚠️ WebSocket adapter no disponible: ${err instanceof Error ? err.message : String(err)}`);
+      logger.warn('   La API REST funciona normalmente. WebSocket se omitirá.');
+    }
+  } else {
+    logger.warn('⚠️ WebSocket deshabilitado (DISABLE_WS=true)');
+  }
 
   // Swagger
   const swaggerConfig = new DocumentBuilder()

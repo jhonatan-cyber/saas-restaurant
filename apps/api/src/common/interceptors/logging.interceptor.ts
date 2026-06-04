@@ -27,7 +27,7 @@ export class LoggingInterceptor implements NestInterceptor {
     const { method, originalUrl } = req;
 
     // Attach reqId to request for downstream use
-    req['reqId'] = reqId;
+    (req as any)['reqId'] = reqId;
 
     return next.handle().pipe(
       tap({
