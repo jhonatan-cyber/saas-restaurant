@@ -9,6 +9,9 @@ build/
 out/
 *.tsbuildinfo
 
+# TanStack Router auto-generated route tree
+**/routeTree.gen.ts
+
 # Bun / Turbo
 .turbo/
 .bun/
