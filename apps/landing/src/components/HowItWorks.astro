@@ -1,0 +1,47 @@
+---
+const steps = [
+  {
+    number: '1',
+    title: 'Cargá tu menú',
+    description:
+      'Importá tus productos, precios y modificadores. Categorías, combos y variantes en minutos.',
+  },
+  {
+    number: '2',
+    title: 'Configurá tus usuarios',
+    description:
+      'Mozo, cajero, cocina, administración. Cada rol con los permisos que le corresponden.',
+  },
+  {
+    number: '3',
+    title: 'Empezá a vender',
+    description:
+      'Toma pedidos desde el salón o delivery. Las comandas viajan a la cocina y los pagos se registran automáticamente.',
+  },
+];
+---
+<section id="como-funciona" class="bg-brand-50 py-20">
+  <div class="mx-auto max-w-6xl px-6">
+    <div class="text-center">
+      <h2 class="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+        Cómo funciona
+      </h2>
+      <p class="mx-auto mt-4 max-w-2xl text-lg text-gray-600">
+        Empezás a operar en el día, sin curva de aprendizaje.
+      </p>
+    </div>
+    <ol class="mt-16 grid grid-cols-1 gap-8 md:grid-cols-3">
+      {
+        steps.map((step) => (
+          <li class="rounded-lg bg-white p-6 shadow-sm">
+            <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand-600 text-lg font-bold text-white">
+              {step.number}
+            </span>
+            <h3 class="mt-4 text-lg font-semibold text-gray-900">{step.title}</h3>
+            <p class="mt-2 text-sm text-gray-600">{step.description}</p>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</section>

@@ -1,0 +1,46 @@
+---
+const features = [
+  {
+    title: 'Punto de Venta',
+    description:
+      'Toma pedidos, cobra y emite tickets desde cualquier dispositivo. Acepta múltiples medios de pago y propinas.',
+  },
+  {
+    title: 'KDS en tiempo real',
+    description:
+      'Comandas digitales directo a la cocina. Pantalla de preparación con temporizadores y prioridades.',
+  },
+  {
+    title: 'Inventario y compras',
+    description:
+      'Stock por insumo, mermas, proveedores y órdenes de compra sugeridas según el consumo real.',
+  },
+  {
+    title: 'Reportes accionables',
+    description:
+      'Ventas por hora, producto más vendido, márgenes y performance del equipo. Exportables a Excel.',
+  },
+];
+---
+<section id="caracteristicas" class="bg-white py-20">
+  <div class="mx-auto max-w-6xl px-6">
+    <div class="text-center">
+      <h2 class="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+        Todo lo que tu restaurante necesita
+      </h2>
+      <p class="mx-auto mt-4 max-w-2xl text-lg text-gray-600">
+        Una sola plataforma, cuatro pilares que cubren la operación completa.
+      </p>
+    </div>
+    <div class="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+      {
+        features.map((feature) => (
+          <div class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+            <h3 class="text-lg font-semibold text-gray-900">{feature.title}</h3>
+            <p class="mt-2 text-sm text-gray-600">{feature.description}</p>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>
