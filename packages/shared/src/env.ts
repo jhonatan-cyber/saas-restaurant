@@ -45,11 +45,11 @@ export function parseEnv(env: Record<string, string | undefined>): Env {
   const result = envSchema.safeParse(env)
   if (!result.success) {
     const missing = result.error.issues
-      .filter(i => i.code === 'invalid_type' && i.received === 'undefined')
+      .filter(i => i.code === 'invalid_type' && i.input === undefined)
       .map(i => i.path.join('.'))
 
     const invalid = result.error.issues
-      .filter(i => i.code !== 'invalid_type' || i.received !== 'undefined')
+      .filter(i => i.code !== 'invalid_type' || i.input !== undefined)
       .map(i => `${i.path.join('.')}: ${i.message}`)
 
     const messages: string[] = ['❌ Environment variable validation failed:']

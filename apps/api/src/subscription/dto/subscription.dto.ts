@@ -1,8 +1,3 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString } from 'class-validator';
+import { type AssignPlanInput } from '@saas/shared';
 
-export class AssignPlanDto {
-  @ApiProperty({ description: 'ID del plan a asignar' })
-  @IsString()
-  planId!: string;
-}
+export type AssignPlanDto = AssignPlanInput;

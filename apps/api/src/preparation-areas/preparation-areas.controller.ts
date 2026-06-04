@@ -14,11 +14,11 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Role } from '@saas/shared';
 import { PreparationAreasService } from './preparation-areas.service';
-import {
+import type {
   CreatePreparationAreaDto,
   UpdatePreparationAreaDto,
   ReorderPreparationAreasDto,
-  type PreparationAreaFiltersDto,
+  PreparationAreaFiltersDto,
 } from './dto/preparation-area.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { BusinessContext } from '../auth/decorators/business-context.decorator';

@@ -14,11 +14,11 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Role } from '@saas/shared';
 import { TablesService } from './tables.service';
-import {
+import type {
   CreateTableDto,
   UpdateTableDto,
   ChangeTableStatusDto,
-  type TableFiltersDto,
+  TableFiltersDto,
 } from './dto/table.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { BusinessContext } from '../auth/decorators/business-context.decorator';

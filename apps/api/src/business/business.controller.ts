@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { BusinessService } from './business.service';
-import { UpdateBusinessSettingsDto } from './dto/update-business.dto';
+import type { UpdateBusinessSettingsDto } from './dto/update-business.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ScopeGuard } from '../auth/guards/scope.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';

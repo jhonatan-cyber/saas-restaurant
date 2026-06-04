@@ -3,9 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
-import type { BillingPeriod, Role, SubscriptionStatus } from '@saas/shared';
+import type { BillingPeriod, Role, SubscriptionStatus, LoginInput } from '@saas/shared';
 import type { LoginResponseDTO, JwtPayload, AuthenticatedUserDTO } from '@saas/shared';
-import type { LoginDto } from './dto/login.dto';
 
 /**
  * AuthService: lógica de autenticación multi-tenant.
@@ -29,8 +28,8 @@ export class AuthService {
    * Login principal.
    * Devuelve { accessToken, refreshToken, user }.
    */
-  async login(dto: LoginDto): Promise<LoginResponseDTO> {
-    const user = await this.validateUser(dto.businessSlug, dto.email, dto.password);
+  async login(input: LoginInput): Promise<LoginResponseDTO> {
+    const user = await this.validateUser(input.businessSlug, input.email, input.password);
     if (!user) {
       // Mensaje genérico para no filtrar si el tenant o el email existen.
       throw new UnauthorizedException('Credenciales inválidas');

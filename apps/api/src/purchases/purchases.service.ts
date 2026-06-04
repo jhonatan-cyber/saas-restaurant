@@ -127,8 +127,8 @@ export class PurchasesService {
 
     // Prisma.Decimal for currency: native JS number math loses precision
     // (0.1 + 0.2 === 0.30000000000000004 in IEEE-754). DTO fields arrive as
-    // `number` because class-validator works with primitives; we wrap at the
-    // boundary and keep all arithmetic in Decimal land until the DTO output.
+    // `number` because the HTTP boundary already coerces primitives; we wrap
+    // at the edge and keep all arithmetic in Decimal land until the DTO output.
     const itemsData = dto.items.map((item) => {
       const product = productMap.get(item.productId)!;
       // DTO inputs are `number`; wrap into Decimal at the boundary.

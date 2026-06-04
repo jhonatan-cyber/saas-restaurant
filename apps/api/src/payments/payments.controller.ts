@@ -10,7 +10,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
-import { CreatePaymentsDto, PreviewChangeDto } from './dto/payment.dto';
+import type { CreatePaymentsDto, PreviewChangeDto } from './dto/payment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';

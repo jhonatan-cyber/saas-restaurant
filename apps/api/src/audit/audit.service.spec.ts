@@ -88,7 +88,7 @@ describe('AuditService', () => {
       await service.log({
         businessId: 'biz-1',
         userId: 'user-1',
-        action: AuditAction.LOGIN,
+        action: AuditAction.CREATE,
         entity: 'User',
         entityId: 'user-1',
       });

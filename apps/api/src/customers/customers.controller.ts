@@ -14,10 +14,10 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Role } from '@saas/shared';
 import { CustomersService } from './customers.service';
-import {
+import type {
   CreateCustomerDto,
   UpdateCustomerDto,
-  type CustomerFiltersDto,
+  CustomerFiltersDto,
 } from './dto/customer.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { BusinessContext } from '../auth/decorators/business-context.decorator';

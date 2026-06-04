@@ -6,7 +6,7 @@ import { BusinessContext } from '../auth/decorators/business-context.decorator';
 import { ScopeGuard } from '../auth/guards/scope.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser, BusinessContext as Context } from '../auth/types/jwt-payload.type';
-import { ReportFiltersDto, RequestReportDto } from './dto/report.dto';
+import type { ReportFiltersDto, RequestReportDto } from './dto/report.dto';
 
 @ApiTags('reports')
 @ApiBearerAuth('access-token')

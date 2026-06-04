@@ -20,11 +20,11 @@ import {
 } from '@nestjs/swagger';
 import { Role } from '@saas/shared';
 import { CategoriesService } from './categories.service';
-import {
+import type {
   CreateCategoryDto,
   UpdateCategoryDto,
   ReorderCategoriesDto,
-  type CategoryFiltersDto,
+  CategoryFiltersDto,
 } from './dto/category.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { BusinessContext } from '../auth/decorators/business-context.decorator';

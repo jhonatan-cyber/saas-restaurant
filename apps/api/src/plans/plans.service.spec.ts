@@ -55,7 +55,7 @@ describe('PlansService', () => {
       const result = await service.create({
         code: 'basic',
         name: 'Basic Plan',
-        price: decimal(29.99),
+        price: 29.99,
         currency: 'USD',
         billingPeriod: 'MONTHLY' as any,
         maxUsers: 5,
@@ -83,7 +83,7 @@ describe('PlansService', () => {
         service.create({
           code: 'BASIC',
           name: 'Duplicate',
-          price: decimal(10),
+          price: 10,
           currency: 'USD',
           billingPeriod: 'MONTHLY' as any,
           maxUsers: 1,
@@ -199,7 +199,7 @@ describe('PlansService', () => {
           data: { isActive: false },
         }),
       );
-      expect(result.isActive).toBe(false);
+      expect('isActive' in result ? result.isActive : undefined).toBe(false);
     });
 
     it('hard-deletes plan without subscriptions', async () => {
@@ -212,7 +212,7 @@ describe('PlansService', () => {
       expect(prisma.mockPrisma.plan.delete).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 'plan-1' } }),
       );
-      expect(result.deleted).toBe(true);
+      expect(result).toMatchObject({ deleted: true });
     });
 
     it('throws NotFoundException if plan not found', async () => {

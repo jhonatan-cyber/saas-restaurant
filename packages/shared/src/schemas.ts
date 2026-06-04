@@ -14,6 +14,10 @@ import {
   ReportType,
   ReportFormat,
   ReportStatus,
+  CashRegisterStatus,
+  CashMovementType,
+  CashMovementCategory,
+  PaymentMethod,
 } from './enums';
 
 /**
@@ -413,6 +417,138 @@ export const kdsFiltersSchema = z.object({
     .default([OrderStatus.SENT_TO_KITCHEN, OrderStatus.IN_PREPARATION]),
 });
 export type KdsFiltersInput = z.infer<typeof kdsFiltersSchema>;
+
+// ============== Cash / Shifts (FASE 4) ==============
+
+export const openShiftSchema = z.object({
+  cashRegisterId: z.string().trim().min(1, 'Caja requerida'),
+  openingAmount: z.coerce.number().nonnegative('Monto de apertura no puede ser negativo'),
+})
+
+export const closeShiftSchema = z.object({
+  closingAmount: z.coerce.number().nonnegative('Monto de cierre no puede ser negativo'),
+  closingNotes: z.string().trim().max(500).optional(),
+})
+
+export const createCashRegisterSchema = z.object({
+  branchId: z.cuid({ message: 'Sucursal inválida' }),
+  code: z.string().trim().min(1, 'Código obligatorio'),
+})
+
+export const cashFiltersSchema = z.object({
+  branchId: z.cuid().optional(),
+  status: z.nativeEnum(CashRegisterStatus).optional(),
+  userId: z.cuid().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).default(20),
+})
+export type CashFiltersInput = z.infer<typeof cashFiltersSchema>
+
+// ============== Cash Movements (FASE 4) ==============
+
+export const createCashMovementSchema = z.object({
+  branchId: z.cuid({ message: 'Sucursal obligatoria' }),
+  type: z.nativeEnum(CashMovementType),
+  category: z.nativeEnum(CashMovementCategory),
+  amount: z.coerce.number().min(0.01, 'El monto debe ser mayor a 0'),
+  reason: z.string().trim().max(500).optional(),
+})
+
+export const cashMovementFiltersSchema = z.object({
+  branchId: z.cuid().optional(),
+  shiftId: z.cuid().optional(),
+  type: z.nativeEnum(CashMovementType).optional(),
+  category: z.nativeEnum(CashMovementCategory).optional(),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).default(20),
+})
+export type CashMovementFiltersInput = z.infer<typeof cashMovementFiltersSchema>
+
+// ============== Payments (FASE 4) ==============
+
+export const paymentItemSchema = z.object({
+  method: z.nativeEnum(PaymentMethod),
+  amount: z.coerce.number().min(0.01, 'El monto debe ser mayor a 0'),
+  tendered: z.coerce.number().min(0).optional(),
+  change: z.coerce.number().min(0).optional(),
+  reference: z.string().trim().min(1).optional(),
+})
+
+export const createPaymentsSchema = z.object({
+  payments: z
+    .array(paymentItemSchema)
+    .min(1, 'Debe incluir al menos un pago')
+    .max(10, 'Máximo 10 pagos por orden'),
+})
+
+export const previewChangeSchema = z.object({
+  tendered: z.coerce.number().min(0.01),
+})
+export type PreviewChangeInput = z.infer<typeof previewChangeSchema>
+
+// ============== Plans / Subscription (FASE 6) ==============
+
+export const createPlanSchema = z.object({
+  code: z.string().trim().max(50),
+  name: z.string().trim().max(255),
+  description: z.string().trim().max(500).optional(),
+  price: z.coerce.number().min(0),
+  currency: z.string().max(3).default('USD'),
+  billingPeriod: z.string(),
+  maxUsers: z.coerce.number().int().min(1),
+  maxBranches: z.coerce.number().int().min(1),
+  maxProducts: z.coerce.number().int().min(1),
+  maxCategories: z.coerce.number().int().min(1),
+  maxMonthlyOrders: z.coerce.number().int().min(1),
+  maxStorageMb: z.coerce.number().int().min(1),
+  features: z.array(z.string()).optional(),
+  isActive: z.coerce.boolean().default(true),
+  sortOrder: z.coerce.number().int().min(0).default(0),
+  isPublic: z.coerce.boolean().default(true),
+})
+export type CreatePlanInput = z.infer<typeof createPlanSchema>
+
+export const planFiltersSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).default(20),
+  search: z.string().trim().max(120).optional(),
+  isActive: z.coerce.boolean().optional(),
+})
+export type PlanFiltersInput = z.infer<typeof planFiltersSchema>
+
+export const assignPlanSchema = z.object({
+  planId: z.cuid({ message: 'Plan inválido' }),
+})
+export type AssignPlanInput = z.infer<typeof assignPlanSchema>
+
+// ============== Business Settings (FASE 2) ==============
+
+export const updateBusinessSettingsSchema = z.object({
+  name: z.string().trim().max(255).optional(),
+  legalName: z.string().trim().max(255).optional(),
+  taxId: z.string().trim().max(50).optional(),
+  email: z.email('Email inválido').optional(),
+  phone: z.string().trim().max(40).optional(),
+  currency: z.string().max(3).optional(),
+  timezone: z.string().max(64).optional(),
+  moduleReports: z.coerce.boolean().optional(),
+  moduleInventory: z.coerce.boolean().optional(),
+  modulePosStations: z.coerce.boolean().optional(),
+  moduleDeliveryApp: z.coerce.boolean().optional(),
+})
+export type UpdateBusinessSettingsInput = z.infer<typeof updateBusinessSettingsSchema>
+
+// ============== Inventory (FASE 6) ==============
+
+export const inventoryFiltersSchema = z.object({
+  productId: z.cuid().optional(),
+  branchId: z.cuid().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).default(20),
+})
+export type InventoryFiltersInput = z.infer<typeof inventoryFiltersSchema>
 
 /**
  * Re-export de enums para conveniencia en formularios.

@@ -61,7 +61,7 @@ describe('PaymentsService', () => {
   };
 
   const dto = {
-    payments: [{ method: 'CASH' as const, amount: '100.00', tendered: '150.00' }],
+    payments: [{ method: 'CASH' as const, amount: 100, tendered: 150 }],
   };
 
   describe('payOrder', () => {
@@ -94,8 +94,8 @@ describe('PaymentsService', () => {
 
       expect(result.order.status).toBe('PAID');
       expect(result.order.payments).toHaveLength(1);
-      expect(result.order.payments[0].method).toBe('CASH');
-      expect(result.order.payments[0].change).toBe('50');
+      expect(result.order.payments[0]!.method).toBe('CASH');
+      expect(result.order.payments[0]!.change).toBe('50');
     });
 
     it('throws NotFoundException if order not found', async () => {
@@ -167,7 +167,7 @@ describe('PaymentsService', () => {
           businessId: 'biz-1',
           userId: 'user-1',
           orderId: 'order-1',
-          dto: { payments: [{ method: 'CASH' as const, amount: '50.00' }] },
+          dto: { payments: [{ method: 'CASH' as const, amount: 50 }] },
         }),
       ).rejects.toThrow(BadRequestException);
     });
@@ -180,7 +180,7 @@ describe('PaymentsService', () => {
           businessId: 'biz-1',
           userId: 'user-1',
           orderId: 'order-1',
-          dto: { payments: [{ method: 'CASH' as const, amount: '100.00', tendered: '80.00' }] },
+          dto: { payments: [{ method: 'CASH' as const, amount: 100, tendered: 80 }] },
         }),
       ).rejects.toThrow(BadRequestException);
     });
@@ -193,7 +193,7 @@ describe('PaymentsService', () => {
           businessId: 'biz-1',
           userId: 'user-1',
           orderId: 'order-1',
-          dto: { payments: [{ method: 'QR' as const, amount: '100.00' }] },
+          dto: { payments: [{ method: 'QR' as const, amount: 100 }] },
         }),
       ).rejects.toThrow(BadRequestException);
     });
@@ -206,7 +206,7 @@ describe('PaymentsService', () => {
           businessId: 'biz-1',
           userId: 'user-1',
           orderId: 'order-1',
-          dto: { payments: [{ method: 'TRANSFER' as const, amount: '100.00' }] },
+          dto: { payments: [{ method: 'TRANSFER' as const, amount: 100 }] },
         }),
       ).rejects.toThrow(BadRequestException);
     });
@@ -219,7 +219,7 @@ describe('PaymentsService', () => {
           businessId: 'biz-1',
           userId: 'user-1',
           orderId: 'order-1',
-          dto: { payments: [{ method: 'CARD' as const, amount: '100.00' }] },
+          dto: { payments: [{ method: 'CARD' as const, amount: 100 }] },
         }),
       ).rejects.toThrow(BadRequestException);
     });
@@ -248,8 +248,8 @@ describe('PaymentsService', () => {
         orderId: 'order-1',
         dto: {
           payments: [
-            { method: 'CASH' as const, amount: '50.00' },
-            { method: 'CARD' as const, amount: '50.00', reference: 'CARD-123' },
+            { method: 'CASH' as const, amount: 50 },
+            { method: 'CARD' as const, amount: 50, reference: 'CARD-123' },
           ],
         },
       });
@@ -300,7 +300,7 @@ describe('PaymentsService', () => {
       });
 
       expect(result).toHaveLength(1);
-      expect(result[0].amount).toBe('100');
+      expect(result[0]!.amount).toBe('100');
     });
 
     it('throws NotFoundException if order not found', async () => {

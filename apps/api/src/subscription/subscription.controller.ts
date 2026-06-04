@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SubscriptionService } from './subscription.service';
-import { AssignPlanDto } from './dto/subscription.dto';
+import type { AssignPlanDto } from './dto/subscription.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ScopeGuard } from '../auth/guards/scope.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';

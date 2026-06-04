@@ -16,7 +16,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
-import { CreateUserDto, UpdateUserDto, UserFiltersDto } from './dto/users.dto';
+import type { CreateUserDto, UpdateUserDto, UserFiltersDto } from './dto/users.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { BusinessContext } from '../auth/decorators/business-context.decorator';
 import { ScopeGuard } from '../auth/guards/scope.guard';

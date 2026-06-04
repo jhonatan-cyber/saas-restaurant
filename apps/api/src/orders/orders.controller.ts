@@ -18,10 +18,10 @@ import {
   HEADERS,
 } from '@saas/shared';
 import { OrdersService } from './orders.service';
-import { CreateOrderDto } from './dto/create-order.dto';
-import { AddOrderItemDto, UpdateOrderItemDto } from './dto/order-item.dto';
-import { CancelOrderDto, TransitionOrderDto } from './dto/transition-order.dto';
-import { KdsFiltersDto, OrderFiltersDto } from './dto/order-filters.dto';
+import type { CreateOrderDto } from './dto/create-order.dto';
+import type { AddOrderItemDto, UpdateOrderItemDto } from './dto/order-item.dto';
+import type { CancelOrderDto, TransitionOrderDto } from './dto/transition-order.dto';
+import type { KdsFiltersDto, OrderFiltersDto } from './dto/order-filters.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { BusinessContext } from '../auth/decorators/business-context.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';

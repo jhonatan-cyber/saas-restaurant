@@ -382,7 +382,7 @@ describe('OrdersService', () => {
       const result = await service.getLogs(user, context, 'order-1');
 
       expect(result).toHaveLength(1);
-      expect(result[0].id).toBe('log-1');
+      expect(result[0]!.id).toBe('log-1');
     });
 
     it('throws NotFoundException if order not found', async () => {
@@ -536,8 +536,8 @@ describe('OrdersService', () => {
       const result = await service.kdsView(user, context, {});
 
       expect(result.areas).toHaveLength(1);
-      expect(result.areas[0].orders).toHaveLength(1);
-      expect(result.areas[0].orders[0].tableNumber).toBe('5');
+      expect(result.areas[0]!.orders).toHaveLength(1);
+      expect(result.areas[0]!.orders[0]!.tableNumber).toBe('5');
     });
 
     it('throws ForbiddenException if no branchId', async () => {

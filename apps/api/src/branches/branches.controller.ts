@@ -20,7 +20,7 @@ import {
 } from '@nestjs/swagger';
 import { Role } from '@saas/shared';
 import { BranchesService } from './branches.service';
-import { CreateBranchDto, UpdateBranchDto, type BranchFiltersDto } from './dto/branch.dto';
+import type { CreateBranchDto, UpdateBranchDto, BranchFiltersDto } from './dto/branch.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { BusinessContext } from '../auth/decorators/business-context.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';

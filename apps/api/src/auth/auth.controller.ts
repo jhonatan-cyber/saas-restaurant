@@ -2,12 +2,13 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@n
 import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { LoginDto } from './dto/login.dto';
-import { RefreshDto } from './dto/refresh.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { Public } from './decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { loginSchema } from '@saas/shared';
 import type { AuthenticatedUser } from './types/jwt-payload.type';
+import type { LoginInput } from '@saas/shared';
 
 /**
  * Controlador de autenticación.
@@ -28,8 +29,8 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login multi-tenant (requiere businessSlug)' })
-  async login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  async login(@Body(new ZodValidationPipe(loginSchema)) input: LoginInput) {
+    return this.authService.login(input);
   }
 
   /**
@@ -42,11 +43,7 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresca el access token usando el refresh token' })
-  async refresh(
-    @CurrentUser() user: AuthenticatedUser,
-    @Body() _dto: RefreshDto,
-  ) {
-    // _dto validado por ValidationPipe aunque el refresh viene del header.
+  async refresh(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.refresh({
       sub: user.id,
       email: user.email,

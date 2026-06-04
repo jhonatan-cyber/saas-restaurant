@@ -10,7 +10,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { CashService } from './cash.service';
-import {
+import type {
   OpenShiftDto,
   CloseShiftDto,
   CreateCashRegisterDto,
