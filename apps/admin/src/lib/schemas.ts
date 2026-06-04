@@ -62,7 +62,6 @@ export const supplierFormSchema = z.object({
   name: z.string().trim().min(1, 'El nombre es obligatorio').max(160),
   contactName: z.string().trim().max(120).optional().or(z.literal('').transform(() => undefined)),
   email: z
-    .string()
     .email('Email inválido')
     .max(160)
     .optional()
