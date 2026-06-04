@@ -120,6 +120,7 @@ services:
       API_URL: http://api:3001
       PRINTER_NAME: POS-80
       PRINT_AGENT_PORT: "3002"
+      PRINTERS_JSON: /app/apps/print-agent/printers.json
     ports:
       - "3002:3002"
     volumes:

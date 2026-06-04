@@ -13,6 +13,33 @@ dev-api:
 dev-web:
 	cd apps/admin && bun run dev
 
+# ==================== Docker Desarrollo ====================
+
+docker-dev:
+	docker compose up -d --build api admin landing print-agent mysql redis
+
+docker-dev-apps:
+	docker compose up -d --build api admin landing print-agent
+
+docker-dev-infra:
+	docker compose up -d mysql redis
+
+docker-down:
+	docker compose down
+
+docker-logs:
+	docker compose logs -f
+
+docker-ps:
+	docker compose ps
+
+docker-restart:
+	docker compose restart
+
+docker-clean:
+	docker compose down -v
+	docker image prune -f
+
 # ==================== Docker Producción ====================
 
 prod-build:

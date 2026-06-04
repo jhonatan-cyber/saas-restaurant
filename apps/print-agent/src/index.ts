@@ -40,7 +40,10 @@ import { printRoutes } from './routes/print';
 import { setPrinters, type PrinterConfig } from './lib/printer';
 
 // Cargar configuración de impresoras
-const printersPath = resolve(import.meta.dir, '../printers.json');
+const printersEnv = process.env.PRINTERS_JSON;
+const printersPath = printersEnv
+  ? printersEnv
+  : resolve(import.meta.dir, '../printers.json');
 if (existsSync(printersPath)) {
   const raw = readFileSync(printersPath, 'utf-8');
   const config: PrinterConfig[] = JSON.parse(raw);
