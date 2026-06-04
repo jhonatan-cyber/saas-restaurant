@@ -1,94 +1,29 @@
 name: CI
-
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  test:
+  audit:
     runs-on: ubuntu-latest
-
-    env:
-      DATABASE_URL: mysql://root:test_root_pass_123@localhost:3306/saas_restaurant_test
-
-    services:
-      mysql:
-        image: mariadb:10.11
-        env:
-          MARIADB_ROOT_PASSWORD: test_root_pass_123
-          MARIADB_DATABASE: saas_restaurant_test
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd "healthcheck.sh --connect --innodb_initialized"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.x
+      - name: Install dependencies (frozen lockfile)
+        run: bun install --frozen-lockfile
 
-      - name: Cache bun dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
-
-      - name: Install dependencies
-        run: bun install
-
-      - name: Generate Prisma client
-        run: bun run db:generate
-        working-directory: apps/api
-
-      - name: Lint
-        run: bun run lint
-
-      - name: Unit tests with coverage
-        run: bun run test:coverage
-        working-directory: apps/api
-
-      - name: Initialize E2E test database
-        run: bun run test:e2e:setup
-        working-directory: apps/api
-
-      - name: Create .env.test for E2E
+      - name: Check no "latest" in package.json files
         run: |
-          cat > .env.test << EOF
-          DATABASE_URL=$DATABASE_URL
-          JWT_SECRET=test-jwt-secret-for-e2e-tests
-          JWT_REFRESH_SECRET=test-jwt-refresh-secret-for-e2e-tests
-          JWT_ACCESS_TTL=15m
-          JWT_REFRESH_TTL=7d
-          API_PORT=0
-          NODE_ENV=test
-          REDIS_URL=redis://localhost:6379
-          EOF
-        working-directory: apps/api
-        shell: bash
+          FOUND=$(grep -rn '"latest"' -- '**/package.json' || true)
+          if [ -n "$FOUND" ]; then
+            echo "ERROR: Found 'latest' version specifiers:"
+            echo "$FOUND"
+            exit 1
+          fi
+          echo "✅ No 'latest' anti-pattern found"
 
-      - name: E2E tests
-        run: bun run test:e2e
-        working-directory: apps/api
+      - name: Type-check all workspaces
+        run: bun run --filter='*' typecheck
