@@ -8,6 +8,7 @@ import tsConfigPaths from 'vite-tsconfig-paths';
  * Migrado de app.config.ts (TanStack Start ≤ 1.130) al Vite plugin nativo (≥ 1.131).
  */
 export default defineConfig({
+  base: '/app/',
   server: {
     port: Number(process.env.WEB_PORT ?? 3000),
     host: '0.0.0.0',

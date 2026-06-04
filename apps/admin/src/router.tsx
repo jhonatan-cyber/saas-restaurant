@@ -16,6 +16,7 @@ export const queryClient = new QueryClient({
 export function createRouter() {
   return createTanStackRouter({
     routeTree,
+    basepath: '/app',
     context: {
       queryClient,
     },

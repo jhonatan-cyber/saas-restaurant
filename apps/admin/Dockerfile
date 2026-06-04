@@ -27,7 +27,7 @@ WORKDIR /app/apps/web
 RUN bun run build
 
 # ============================================================
-FROM node:22-alpine
+FROM oven/bun:1-alpine
 
 # Create non-root user
 RUN addgroup -g 1100 webapp && \
@@ -35,12 +35,21 @@ RUN addgroup -g 1100 webapp && \
 
 WORKDIR /app/apps/web
 
-# Copy built output and dependencies
+# Copy package manifests for dependency installation
+COPY --from=builder /app/package.json /app/
+COPY --from=builder /app/bun.lock /app/
+COPY --from=builder /app/apps/web/package.json /app/apps/web/
+COPY --from=builder /app/packages/shared/package.json /app/packages/shared/
+
+# Install production dependencies fresh (avoids Bun node_modules symlink issues across stages)
+RUN cd /app && bun install --production
+
+# Copy built output
 COPY --from=builder --chown=webapp:webapp /app/apps/web/dist ./dist
-COPY --from=builder --chown=webapp:webapp /app/apps/web/package.json ./
 COPY --chown=webapp:webapp apps/web/serve.mjs ./serve.mjs
-COPY --from=builder /app/node_modules /app/node_modules
-COPY --from=builder /app/apps/web/node_modules ./node_modules
+
+# Copy shared packages (needed at runtime for SSR imports)
+COPY --from=builder --chown=webapp:webapp /app/packages/shared ./packages/shared
 
 USER webapp
 
@@ -51,6 +60,6 @@ ENV API_INTERNAL_URL=http://api:3001/api
 ENV API_INTERNAL_BASE_URL=http://api:3001
 
 HEALTHCHECK --interval=15s --timeout=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/ || exit 1
+    CMD bun -e "try{const r=await fetch('http://127.0.0.1:3000/');process.exit(r.status<500?0:1)}catch{process.exit(1)}"
 
-CMD ["node", "serve.mjs"]
+CMD ["bun", "run", "serve.mjs"]

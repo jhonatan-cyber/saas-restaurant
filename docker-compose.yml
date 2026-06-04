@@ -26,11 +26,11 @@ services:
     networks:
       - saas_net
 
-  web:
+  admin:
     build:
       context: .
-      dockerfile: apps/web/Dockerfile
-    container_name: saas_restaurant_web
+      dockerfile: apps/admin/Dockerfile
+    container_name: saas_restaurant_admin
     restart: unless-stopped
     depends_on:
       - api
@@ -43,7 +43,7 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./apps/web/src:/app/apps/web/src
+      - ./apps/admin/src:/app/apps/admin/src
     networks:
       - saas_net
 
@@ -116,7 +116,7 @@ services:
     restart: unless-stopped
     depends_on:
       - api
-      - web
+      - admin
       - print-agent
     ports:
       - "8080:80"
