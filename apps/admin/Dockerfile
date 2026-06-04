@@ -6,7 +6,7 @@ WORKDIR /app
 
 # Install dependencies
 COPY package.json bun.lock ./
-COPY apps/web/package.json ./apps/web/
+COPY apps/admin/package.json ./apps/admin/
 COPY packages/shared/package.json ./packages/shared/
 
 RUN bun install
@@ -14,7 +14,7 @@ RUN bun install
 # Copy source code
 COPY tsconfig.base.json ./
 COPY packages ./packages
-COPY apps/web ./apps/web
+COPY apps/admin ./apps/admin
 
 # Build-time env vars for Vite
 ARG VITE_API_URL
@@ -23,7 +23,7 @@ ENV VITE_API_URL=${VITE_API_URL}
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 
 # Build application
-WORKDIR /app/apps/web
+WORKDIR /app/apps/admin
 RUN bun run build
 
 # ============================================================
@@ -33,20 +33,20 @@ FROM oven/bun:1-alpine
 RUN addgroup -g 1100 webapp && \
     adduser -D -u 1100 -G webapp webapp
 
-WORKDIR /app/apps/web
+WORKDIR /app/apps/admin
 
 # Copy package manifests for dependency installation
 COPY --from=builder /app/package.json /app/
 COPY --from=builder /app/bun.lock /app/
-COPY --from=builder /app/apps/web/package.json /app/apps/web/
+COPY --from=builder /app/apps/admin/package.json /app/apps/admin/
 COPY --from=builder /app/packages/shared/package.json /app/packages/shared/
 
 # Install production dependencies fresh (avoids Bun node_modules symlink issues across stages)
 RUN cd /app && bun install --production
 
 # Copy built output
-COPY --from=builder --chown=webapp:webapp /app/apps/web/dist ./dist
-COPY --chown=webapp:webapp apps/web/serve.mjs ./serve.mjs
+COPY --from=builder --chown=webapp:webapp /app/apps/admin/dist ./dist
+COPY --chown=webapp:webapp apps/admin/serve.mjs ./serve.mjs
 
 # Copy shared packages (needed at runtime for SSR imports)
 COPY --from=builder --chown=webapp:webapp /app/packages/shared ./packages/shared
