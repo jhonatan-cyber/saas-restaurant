@@ -9,5 +9,5 @@ RUN cd apps/landing && bunx astro build
 
 # Stage 2: serve
 FROM nginx:alpine
-COPY --from=builder /app/apps/landing/dist /usr/share/nginx/landing
+COPY --from=builder /app/apps/landing/dist /usr/share/nginx/html
 EXPOSE 80
