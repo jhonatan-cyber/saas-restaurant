@@ -54,7 +54,6 @@ jobs:
         with:
           context: .
           file: apps/landing/Dockerfile
-          target: builder
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/landing:${{ github.sha }},${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/landing:latest
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/landing:buildcache
