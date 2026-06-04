@@ -11,7 +11,7 @@
 | Monorepo | Bun Workspaces (>= 1.1) |
 | Backend | NestJS 10, Prisma 5, MySQL 8, JWT, Passport, Swagger, class-validator, bcrypt |
 | Frontend | TanStack Start, React 18, TanStack Router, TanStack Query, Tailwind CSS, Zustand, React Hook Form, Zod |
-| Shared | TypeScript estricto, Zod, tipos compartidos entre `api` y `web` |
+| Shared | TypeScript estricto, Zod, tipos compartidos entre `api` y `admin` |
 | Infra local | Docker Compose (MySQL 8 + Redis 7) |
 | Lenguaje | TypeScript con `strict: true` en todo el monorepo |
 
@@ -33,24 +33,32 @@ saas-restaurant/
 │   │       ├── common/         # Filtros e interceptores globales
 │   │       ├── app.module.ts
 │   │       └── main.ts
-│   └── web/                    # TanStack Start (puerto 3000)
-│       └── src/
-│           ├── routes/         # File-based routing
-│           │   ├── __root.tsx
-│           │   ├── index.tsx
-│           │   ├── login.tsx
-│           │   ├── _authed.tsx
-│           │   └── _authed/
-│           │       ├── dashboard.tsx
-│           │       ├── categories.tsx, categories.new.tsx, categories.$id.tsx
-│           │       ├── products.tsx, products.new.tsx, products.$id.tsx
-│           │       ├── preparation-areas.tsx, preparation-areas.new.tsx, preparation-areas.$id.tsx
-│           │       ├── tables.tsx, tables.new.tsx, tables.$id.tsx
-│           │       └── customers.tsx, customers.new.tsx, customers.$id.tsx
-│           ├── components/     # admin-layout, form-field, select-field,
-│           │                   # textarea-field, submit-button, confirm-dialog, status-badge
-│           ├── lib/            # api, auth-store, schemas, slugify, query-client
-│           └── styles/app.css
+│   ├── admin/                  # TanStack Start (puerto 3000, montado en /app/* por nginx)
+│   │   └── src/
+│   │       ├── routes/         # File-based routing
+│   │       │   ├── __root.tsx
+│   │       │   ├── index.tsx
+│   │       │   ├── login.tsx
+│   │       │   ├── _authed.tsx
+│   │       │   └── _authed/
+│   │       │       ├── dashboard.tsx
+│   │       │       ├── categories.tsx, categories.new.tsx, categories.$id.tsx
+│   │       │       ├── products.tsx, products.new.tsx, products.$id.tsx
+│   │       │       ├── preparation-areas.tsx, preparation-areas.new.tsx, preparation-areas.$id.tsx
+│   │       │       ├── tables.tsx, tables.new.tsx, tables.$id.tsx
+│   │       │       └── customers.tsx, customers.new.tsx, customers.$id.tsx
+│   │       ├── components/     # admin-layout, form-field, select-field,
+│   │       │                   # textarea-field, submit-button, confirm-dialog, status-badge
+│   │       ├── lib/            # api, auth-store, schemas, slugify, query-client
+│   │       └── styles/app.css
+│   └── landing/                # Astro 5 (one-pager estático, servido en / por nginx)
+│       ├── src/
+│       │   ├── components/     # Hero, Features, HowItWorks, CTA, Footer
+│       │   ├── layouts/Base.astro
+│       │   ├── pages/index.astro
+│       │   └── styles/global.css
+│       ├── astro.config.mjs
+│       └── Dockerfile
 ├── packages/
 │   ├── shared/                 # Enums, Zod, tipos, constantes
 │   ├── ui/                     # Placeholder para componentes compartidos
@@ -100,11 +108,11 @@ bun run db:migrate
 #    3 áreas de preparación, 12 productos expandidos, 8 mesas, 6 clientes)
 bun run db:seed
 
-# 7. Arrancar API + Web en paralelo
+# 7. Arrancar API + Admin en paralelo
 bun run dev
 ```
 
-> **Nota:** la primera vez que ejecutes `bun run dev:web`, TanStack Start auto-generará
+> **Nota:** la primera vez que ejecutes `bun run dev:admin`, TanStack Start auto-generará
 > `src/routeTree.gen.ts` (necesario para el tipado del router). No commitees ese archivo.
 
 ---
@@ -176,9 +184,11 @@ phase2_catalog_tables_customers
 
 | Servicio | URL |
 | --- | --- |
+| Landing (nginx) | http://localhost:8080/ |
+| Admin (nginx) | http://localhost:8080/app/ |
+| Admin (directo, dev) | http://localhost:3000 |
 | API REST | http://localhost:3001/api |
 | Swagger | http://localhost:3001/docs |
-| Web | http://localhost:3000 |
 | MySQL | `localhost:3306` (root/rootpass) |
 | Redis | `localhost:6379` |
 
@@ -238,9 +248,10 @@ Todas usan `businessSlug = demo`. Login: `POST /api/auth/login`.
 
 | Script | Qué hace |
 | --- | --- |
-| `bun run dev` | API + Web en paralelo (concurrently) |
+| `bun run dev` | API + Admin en paralelo (concurrently) |
 | `bun run dev:api` | Solo NestJS con hot-reload |
-| `bun run dev:web` | Solo TanStack Start con HMR |
+| `bun run dev:admin` | Solo TanStack Start con HMR |
+| `bun run dev:landing` | Solo Astro 5 (one-pager) |
 | `bun run build` | Build de todos los workspaces |
 | `bun run typecheck` | `tsc --noEmit` en todos los workspaces |
 | `bun run lint` | ESLint en `apps/*/src` y `packages/*/src` |
@@ -252,7 +263,7 @@ Todas usan `businessSlug = demo`. Login: `POST /api/auth/login`.
 ## 📐 Decisiones arquitectónicas clave (Phase 1 + 2)
 
 - **Sin acoplamiento del frontend al cliente Prisma.** El paquete `@saas/shared` define
-  DTOs "planos" que tanto la API como la web consumen. Migraciones o cambios internos de
+  DTOs "planos" que tanto la API como el admin consumen. Migraciones o cambios internos de
   Prisma no rompen al frontend.
 - **Zod + class-validator conviven.** Zod vive en `@saas/shared` (formularios, validación
   compartida) y class-validator en los DTOs de NestJS (validación HTTP). El target es
