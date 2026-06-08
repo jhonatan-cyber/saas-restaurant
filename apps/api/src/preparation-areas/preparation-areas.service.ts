@@ -7,6 +7,7 @@ import type {
   PreparationAreaDTO,
   PreparationAreaListItemDTO,
 } from '@saas/shared';
+import { toPreparationAreaDto } from './mappers';
 import {
   CreatePreparationAreaDto,
   UpdatePreparationAreaDto,
@@ -49,7 +50,7 @@ export class PreparationAreasService {
     ]);
 
     return {
-      data: rows.map((p) => this.toDto(p)),
+      data: rows.map((p) => toPreparationAreaDto(p)),
       meta: {
         total,
         page,
@@ -62,25 +63,46 @@ export class PreparationAreasService {
   async listAll(
     user: AuthenticatedUser,
     context: BusinessContext | undefined,
-    filters?: { isActive?: boolean; branchId?: string },
-  ): Promise<PreparationAreaListItemDTO[]> {
+    filters?: { isActive?: boolean; branchId?: string; page?: number; pageSize?: number },
+  ): Promise<PaginatedResult<PreparationAreaListItemDTO>> {
+    const page = filters?.page ?? 1;
+    const pageSize = filters?.pageSize ?? 200;
+    const skip = (page - 1) * pageSize;
     const tenant = this.prisma.tenantFilter(user, context);
-    return this.prisma.preparationArea.findMany({
-      where: {
-        ...tenant,
-        ...(filters?.isActive !== undefined ? { isActive: filters.isActive } : {}),
-        ...(filters?.branchId ? { branchId: filters.branchId } : {}),
+
+    const where = {
+      ...tenant,
+      ...(filters?.isActive !== undefined ? { isActive: filters.isActive } : {}),
+      ...(filters?.branchId ? { branchId: filters.branchId } : {}),
+    };
+
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.preparationArea.count({ where }),
+      this.prisma.preparationArea.findMany({
+        where,
+        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+        skip,
+        take: pageSize,
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          branchId: true,
+          isActive: true,
+          displayOrder: true,
+        },
+      }),
+    ]);
+
+    return {
+      data: rows,
+      meta: {
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
       },
-      orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
-      select: {
-        id: true,
-        name: true,
-        code: true,
-        branchId: true,
-        isActive: true,
-        displayOrder: true,
-      },
-    });
+    };
   }
 
   async getById(
@@ -93,7 +115,7 @@ export class PreparationAreasService {
       where: { ...tenant, id },
     });
     if (!area) throw new NotFoundException('Área de preparación no encontrada');
-    return this.toDto(area);
+    return toPreparationAreaDto(area);
   }
 
   async create(
@@ -122,7 +144,7 @@ export class PreparationAreasService {
         isActive: dto.isActive ?? true,
       },
     });
-    return this.toDto(created);
+    return toPreparationAreaDto(created);
   }
 
   async update(
@@ -163,7 +185,7 @@ export class PreparationAreasService {
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
       },
     });
-    return this.toDto(updated);
+    return toPreparationAreaDto(updated);
   }
 
   async reorder(
@@ -208,18 +230,6 @@ export class PreparationAreasService {
     await this.prisma.preparationArea.delete({ where: { id } });
   }
 
-  private toDto(p: PreparationArea): PreparationAreaDTO {
-    return {
-      id: p.id,
-      businessId: p.businessId,
-      branchId: p.branchId,
-      name: p.name,
-      code: p.code,
-      description: p.description,
-      isActive: p.isActive,
-      displayOrder: p.displayOrder,
-      createdAt: p.createdAt.toISOString(),
-      updatedAt: p.updatedAt.toISOString(),
-    };
-  }
+  // toDto moved to ./mappers.ts — imported as toPreparationAreaDto
+
 }

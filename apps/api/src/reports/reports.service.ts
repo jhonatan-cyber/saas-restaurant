@@ -5,6 +5,7 @@ import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AuthenticatedUser, BusinessContext } from '../auth/types/jwt-payload.type';
 import type { ReportDTO } from '@saas/shared';
+import { toReportDto, type ReportRow } from './mappers';
 import { RequestReportDto, type ReportFiltersDto } from './dto/report.dto';
 
 @Injectable()
@@ -43,7 +44,7 @@ export class ReportsService {
     ]);
 
     return {
-      data: rows.map((r) => this.toDto(r)),
+      data: rows.map((r) => toReportDto(r)),
       meta: {
         total,
         page,
@@ -63,7 +64,7 @@ export class ReportsService {
       where: { businessId, id },
     });
     if (!report) throw new NotFoundException('Reporte no encontrado');
-    return this.toDto(report);
+    return toReportDto(report);
   }
 
   /**
@@ -109,40 +110,9 @@ export class ReportsService {
       // No relanzamos: el reporte queda PENDING y puede reintentarse
     }
 
-    return this.toDto(created);
+    return toReportDto(created);
   }
 
-  private toDto(r: {
-    id: string;
-    businessId: string;
-    type: string;
-    format: string;
-    status: string;
-    params: Prisma.JsonValue;
-    resultUrl: string | null;
-    resultSize: number | null;
-    errorMessage: string | null;
-    completedAt: Date | null;
-    expiresAt: Date | null;
-    requestedBy: string;
-    createdAt: Date;
-    updatedAt: Date;
-  }): ReportDTO {
-    return {
-      id: r.id,
-      businessId: r.businessId,
-      type: r.type as ReportDTO['type'],
-      format: r.format as ReportDTO['format'],
-      status: r.status as ReportDTO['status'],
-      params: r.params as Record<string, unknown>,
-      resultUrl: r.resultUrl,
-      resultSize: r.resultSize,
-      errorMessage: r.errorMessage,
-      completedAt: r.completedAt?.toISOString() ?? null,
-      expiresAt: r.expiresAt?.toISOString() ?? null,
-      requestedBy: r.requestedBy,
-      createdAt: r.createdAt.toISOString(),
-      updatedAt: r.updatedAt.toISOString(),
-    };
-  }
+  // toDto moved to ./mappers.ts — imported as toReportDto
+
 }

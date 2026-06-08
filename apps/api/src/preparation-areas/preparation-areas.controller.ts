@@ -46,14 +46,18 @@ export class PreparationAreasController {
   }
 
   @Get('all')
-  @ApiOperation({ summary: 'Listado plano de áreas activas' })
+  @ApiOperation({ summary: 'Listado paginado de áreas activas' })
   @ApiQuery({ name: 'isActive', required: false, type: Boolean })
   @ApiQuery({ name: 'branchId', required: false, type: String })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'pageSize', required: false, type: Number })
   listAll(
     @CurrentUser() user: AuthenticatedUser,
     @BusinessContext() context: Context | undefined,
     @Query('isActive') isActive?: string,
     @Query('branchId') branchId?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
     const parsedActive =
       isActive === undefined
@@ -66,6 +70,8 @@ export class PreparationAreasController {
     return this.areas.listAll(user, context, {
       ...(parsedActive !== undefined ? { isActive: parsedActive } : {}),
       ...(branchId ? { branchId } : {}),
+      ...(page ? { page: Number(page) } : {}),
+      ...(pageSize ? { pageSize: Number(pageSize) } : {}),
     });
   }
 

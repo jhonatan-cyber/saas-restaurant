@@ -1,7 +1,8 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, ProductType, AuditAction, type Product } from '@prisma/client';
+import { Prisma, AuditAction } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { CacheService } from '../cache/cache.service';
 import type { AuthenticatedUser, BusinessContext } from '../auth/types/jwt-payload.type';
 import type { PaginatedResult } from '../common/dto/pagination.dto';
 import type {
@@ -13,19 +14,14 @@ import {
   UpdateProductDto,
   type ProductFiltersDto,
 } from './dto/product.dto';
+import { toProductDto, toProductListItemDto, type ProductWithRelations } from './mappers';
 
 /**
  * Tipo del producto con las relaciones que este servicio siempre carga.
  * Centralizado para mantener simple el `toDto`.
  */
-type ProductWithRelations = Prisma.ProductGetPayload<{
-  include: {
-    category: {
-      include: { _count: { select: { products: { where: { deletedAt: null } } } } };
-    };
-    preparationArea: true;
-  };
-}>;
+// ProductWithRelations moved to ./mappers.ts
+
 
 /**
  * Productos.
@@ -38,6 +34,7 @@ export class ProductsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly cache: CacheService,
   ) {}
 
   /**
@@ -71,6 +68,10 @@ export class ProductsService {
         : {}),
     };
 
+    const cacheKey = CacheService.key('products:list', { ...filters, businessId: tenant.businessId, branchId: tenant.branchId, page, pageSize });
+    const cached = await this.cache.get<PaginatedResult<ProductDTO>>(cacheKey);
+    if (cached) return cached;
+
     const [total, rows] = await this.prisma.$transaction([
       this.prisma.product.count({ where }),
       this.prisma.product.findMany({
@@ -85,8 +86,8 @@ export class ProductsService {
       }),
     ]);
 
-    return {
-      data: rows.map((p) => this.toDto(p)),
+    const result: PaginatedResult<ProductDTO> = {
+      data: rows.map((p) => toProductDto(p)),
       meta: {
         total,
         page,
@@ -94,6 +95,11 @@ export class ProductsService {
         totalPages: Math.max(1, Math.ceil(total / pageSize)),
       },
     };
+
+    // Cachear por 30s
+    await this.cache.set(cacheKey, result, 30);
+
+    return result;
   }
 
   /**
@@ -103,31 +109,55 @@ export class ProductsService {
   async listAll(
     user: AuthenticatedUser,
     context: BusinessContext | undefined,
-    filters?: { categoryId?: string; isAvailable?: boolean },
-  ): Promise<ProductListItemDTO[]> {
+    filters?: { categoryId?: string; isAvailable?: boolean; page?: number; pageSize?: number },
+  ): Promise<PaginatedResult<ProductListItemDTO>> {
+    const page = filters?.page ?? 1;
+    const pageSize = filters?.pageSize ?? 200;
+    const skip = (page - 1) * pageSize;
     const tenant = this.prisma.tenantFilter(user, context);
-    const rows = await this.prisma.product.findMany({
-      where: {
-        ...tenant,
-        deletedAt: null,
-        isActive: true,
-        ...(filters?.isAvailable !== undefined ? { isAvailable: filters.isAvailable } : { isAvailable: true }),
-        ...(filters?.categoryId ? { categoryId: filters.categoryId } : {}),
+
+    const where = {
+      ...tenant,
+      deletedAt: null,
+      isActive: true,
+      ...(filters?.isAvailable !== undefined ? { isAvailable: filters.isAvailable } : { isAvailable: true }),
+      ...(filters?.categoryId ? { categoryId: filters.categoryId } : {}),
+    };
+
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.product.count({ where }),
+      this.prisma.product.findMany({
+        where,
+        orderBy: [{ name: 'asc' }],
+        skip,
+        take: pageSize,
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          categoryId: true,
+          imageUrl: true,
+          price: true,
+          cost: true,
+          productType: true,
+          isAvailable: true,
+        },
+      }),
+    ]);
+
+    const result: PaginatedResult<ProductListItemDTO> = {
+      data: rows.map((p) => toProductListItemDto(p)),
+      meta: {
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
       },
-      orderBy: [{ name: 'asc' }],
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        categoryId: true,
-        imageUrl: true,
-        price: true,
-        cost: true,
-        productType: true,
-        isAvailable: true,
-      },
-    });
-    return rows.map((p) => this.toListItemDto(p));
+    };
+
+    // Cachear por 15s (usado constantemente en el POS para el grid de productos)
+    await this.cache.set(CacheService.key('products:all', { ...filters, businessId: tenant.businessId, branchId: tenant.branchId }), result, 15);
+    return result;
   }
 
   /**
@@ -144,6 +174,10 @@ export class ProductsService {
     context: BusinessContext | undefined,
   ): Promise<ProductListItemDTO[]> {
     const tenant = this.prisma.tenantFilter(user, context);
+    const cacheKey = CacheService.key('products:low-stock', { businessId: user.businessId });
+    const cached = await this.cache.get<ProductListItemDTO[]>(cacheKey);
+    if (cached) return cached;
+
     const rows = await this.prisma.product.findMany({
       where: {
         ...tenant,
@@ -165,7 +199,9 @@ export class ProductsService {
         isAvailable: true,
       },
     });
-    return rows.map((p) => this.toListItemDto(p));
+    const result = rows.map((p) => toProductListItemDto(p));
+    await this.cache.set(cacheKey, result, 30);
+    return result;
   }
 
   async getById(
@@ -184,7 +220,7 @@ export class ProductsService {
       },
     });
     if (!product) throw new NotFoundException('Producto no encontrado');
-    return this.toDto(product);
+    return toProductDto(product);
   }
 
   async create(
@@ -234,7 +270,11 @@ export class ProductsService {
         preparationArea: true,
       },
     });
-    return this.toDto(created);
+
+    // Invalidar caché de productos
+    await this.cache.delByPattern('products:*');
+
+    return toProductDto(created);
   }
 
   async update(
@@ -310,7 +350,10 @@ export class ProductsService {
       });
     }
 
-    return this.toDto(updated);
+    // Invalidar caché de productos (precio/stock/etc. cambió)
+    await this.cache.delByPattern('products:*');
+
+    return toProductDto(updated);
   }
 
   async softDelete(
@@ -337,6 +380,9 @@ export class ProductsService {
       entity: 'Product',
       entityId: id,
     });
+
+    // Invalidar caché de productos
+    await this.cache.delByPattern('products:*');
   }
 
   // ==================== HELPERS ====================
@@ -371,84 +417,6 @@ export class ProductsService {
     }
   }
 
-  private toListItemDto(p: {
-    id: string;
-    name: string;
-    slug: string;
-    categoryId: string | null;
-    imageUrl: string | null;
-    price: Prisma.Decimal;
-    cost: Prisma.Decimal | null;
-    productType: ProductType;
-    isAvailable: boolean;
-  }): ProductListItemDTO {
-    return {
-      id: p.id,
-      name: p.name,
-      slug: p.slug,
-      categoryId: p.categoryId,
-      imageUrl: p.imageUrl,
-      price: p.price.toString(),
-      cost: p.cost?.toString() ?? null,
-      productType: p.productType,
-      isAvailable: p.isAvailable,
-    };
-  }
+  // toDto and toListItemDto moved to ./mappers.ts — imported as toProductDto and toProductListItemDto
 
-  private toDto(p: ProductWithRelations): ProductDTO {
-    return {
-      id: p.id,
-      businessId: p.businessId,
-      branchId: p.branchId,
-      categoryId: p.categoryId,
-      preparationAreaId: p.preparationAreaId,
-      name: p.name,
-      slug: p.slug,
-      description: p.description,
-      imageUrl: p.imageUrl,
-      sku: p.sku,
-      price: p.price.toString(),
-      cost: p.cost ? p.cost.toString() : null,
-      taxRate: p.taxRate ? p.taxRate.toString() : null,
-      isActive: p.isActive,
-      isAvailable: p.isAvailable,
-      minStock: p.minStock,
-      trackStock: p.trackStock,
-      currentStock: p.currentStock.toString(),
-      productType: p.productType,
-      preparationTimeMin: p.preparationTimeMin,
-      category: p.category
-        ? {
-            id: p.category.id,
-            businessId: p.category.businessId,
-            branchId: p.category.branchId,
-            name: p.category.name,
-            slug: p.category.slug,
-            description: p.category.description,
-            imageUrl: p.category.imageUrl,
-            displayOrder: p.category.displayOrder,
-            isActive: p.category.isActive,
-            productCount: p.category._count.products,
-            createdAt: p.category.createdAt.toISOString(),
-            updatedAt: p.category.updatedAt.toISOString(),
-          }
-        : null,
-      preparationArea: p.preparationArea
-        ? {
-            id: p.preparationArea.id,
-            businessId: p.preparationArea.businessId,
-            branchId: p.preparationArea.branchId,
-            name: p.preparationArea.name,
-            code: p.preparationArea.code,
-            description: p.preparationArea.description,
-            isActive: p.preparationArea.isActive,
-            displayOrder: p.preparationArea.displayOrder,
-            createdAt: p.preparationArea.createdAt.toISOString(),
-            updatedAt: p.preparationArea.updatedAt.toISOString(),
-          }
-        : null,
-      createdAt: p.createdAt.toISOString(),
-      updatedAt: p.updatedAt.toISOString(),
-    };
-  }
 }

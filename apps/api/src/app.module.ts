@@ -25,6 +25,7 @@ import { ReportsModule } from './reports/reports.module';
 import { PosStationsModule } from './pos-stations/pos-stations.module';
 import { OrdersModule } from './orders/orders.module';
 import { RealtimeModule } from './realtime/realtime.module';
+import { CacheModule } from './cache/cache.module';
 import { BusinessModule } from './business/business.module';
 import { PlansModule } from './plans/plans.module';
 import { SubscriptionModule } from './subscription/subscription.module';
@@ -97,6 +98,7 @@ import { SubscriptionModule } from './subscription/subscription.module';
       }),
       inject: [ConfigService],
     }),
+    CacheModule,
     PrismaModule,
     AuditModule,
     RealtimeModule,

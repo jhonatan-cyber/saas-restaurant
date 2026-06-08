@@ -12,6 +12,10 @@ export default defineConfig({
   server: {
     port: Number(process.env.WEB_PORT ?? 3000),
     host: '0.0.0.0',
+    watch: {
+      usePolling: process.env.CHOKIDAR_USEPOLLING === 'true',
+      interval: 300,
+    },
   },
   plugins: [
     tsConfigPaths(),

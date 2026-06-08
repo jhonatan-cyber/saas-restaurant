@@ -12,14 +12,88 @@ const {
 } = Astro.props;
 ---
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+    <script is:inline>
+      (() => {
+        const stored = localStorage.getItem('sr-theme');
+        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const theme = stored ?? (systemDark ? 'dark' : 'light');
+        document.documentElement.dataset.theme = theme;
+      })();
+    </script>
   </head>
-  <body class="font-sans bg-white text-gray-900">
+  <body class="min-h-screen font-body antialiased">
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-brand-500 focus:px-4 focus:py-2 focus:text-white">
+      Saltar al contenido
+    </a>
     <slot />
+    <script is:inline>
+      // Theme toggle
+      (() => {
+        const root = document.documentElement;
+        document.querySelectorAll('[data-theme-toggle]').forEach((button) => {
+          button.addEventListener('click', () => {
+            const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+            root.dataset.theme = next;
+            localStorage.setItem('sr-theme', next);
+          });
+        });
+      })();
+
+      // Scroll reveal via Intersection Observer
+      (() => {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+              }
+            });
+          },
+          { threshold: 0.1, rootMargin: '0px 0px -60px 0px' }
+        );
+        document.querySelectorAll('.reveal, .reveal-left, .reveal-right, .reveal-scale').forEach((el) => observer.observe(el));
+      })();
+
+      // Counter animation for stat numbers
+      (() => {
+        const animated = new Set();
+        const obs = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting && !animated.has(entry.target)) {
+                animated.add(entry.target);
+                const el = entry.target;
+                const target = parseFloat(el.dataset.count || '0');
+                const suffix = el.dataset.suffix || '';
+                const prefix = el.dataset.prefix || '';
+                const decimals = el.dataset.decimals ? parseInt(el.dataset.decimals) : 0;
+                const duration = 2000;
+                const start = performance.now();
+                const animate = (now) => {
+                  const progress = Math.min((now - start) / duration, 1);
+                  const eased = 1 - Math.pow(1 - progress, 4);
+                  const current = eased * target;
+                  el.textContent = prefix + (decimals > 0 ? current.toFixed(decimals) : Math.round(current).toLocaleString('es-AR')) + suffix;
+                  if (progress < 1) requestAnimationFrame(animate);
+                };
+                requestAnimationFrame(animate);
+              }
+            });
+          },
+          { threshold: 0.5 }
+        );
+        document.querySelectorAll('[data-count]').forEach((el) => obs.observe(el));
+      })();
+    </script>
   </body>
 </html>

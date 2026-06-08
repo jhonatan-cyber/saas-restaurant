@@ -45,6 +45,7 @@ function ProductsListPage(): ReactNode {
   const { data: categoriesData } = useQuery({
     queryKey: ['categories', { all: true }],
     queryFn: () => categoriesApi.all({ isActive: true }),
+    select: (res) => res.data,
   });
 
   const deleteMutation = useMutation({

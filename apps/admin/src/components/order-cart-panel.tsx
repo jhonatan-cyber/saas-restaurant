@@ -61,6 +61,7 @@ export function OrderCartPanel({ branchId }: OrderCartPanelProps): ReactNode {
   const tablesQuery = useQuery({
     queryKey: ['tables', 'all', { branchId }],
     queryFn: () => tablesApi.all(branchId),
+    select: (res) => res.data,
     enabled: !!branchId,
   });
 

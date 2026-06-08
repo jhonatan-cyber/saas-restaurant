@@ -1,10 +1,12 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { Prisma, BranchStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheService } from '../cache/cache.service';
 import type { AuthenticatedUser, BusinessContext } from '../auth/types/jwt-payload.type';
 import type { PaginatedResult } from '../common/dto/pagination.dto';
 import type { BranchDTO } from '@saas/shared';
 import { CreateBranchDto, UpdateBranchDto, type BranchFiltersDto } from './dto/branch.dto';
+import { toBranchDto } from './mappers';
 
 /**
  * BranchesService: CRUD + activación/desactivación.
@@ -17,7 +19,10 @@ import { CreateBranchDto, UpdateBranchDto, type BranchFiltersDto } from './dto/b
  */
 @Injectable()
 export class BranchesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: CacheService,
+  ) {}
 
   /**
    * Lista paginada con filtros.
@@ -43,6 +48,10 @@ export class BranchesService {
         : {}),
     };
 
+    const cacheKey = CacheService.key('branches:list', { ...filters, businessId: tenant.businessId, page, pageSize });
+    const cached = await this.cache.get<PaginatedResult<BranchDTO>>(cacheKey);
+    if (cached) return cached;
+
     const [total, rows] = await this.prisma.$transaction([
       this.prisma.branch.count({ where }),
       this.prisma.branch.findMany({
@@ -66,8 +75,8 @@ export class BranchesService {
       }),
     ]);
 
-    return {
-      data: rows.map((b) => this.toDto(b, b._count)),
+    const result: PaginatedResult<BranchDTO> = {
+      data: rows.map((b) => toBranchDto(b, b._count)),
       meta: {
         total,
         page,
@@ -75,6 +84,11 @@ export class BranchesService {
         totalPages: Math.max(1, Math.ceil(total / pageSize)),
       },
     };
+
+    // Cachear por 30s
+    await this.cache.set(cacheKey, result, 30);
+
+    return result;
   }
 
   /**
@@ -83,26 +97,51 @@ export class BranchesService {
   async listAll(
     user: AuthenticatedUser,
     context: BusinessContext | undefined,
-    filters?: { isActive?: boolean },
-  ): Promise<{ id: string; name: string; code: string; isMain: boolean; status: string }[]> {
+    filters?: { isActive?: boolean; page?: number; pageSize?: number },
+  ): Promise<PaginatedResult<{ id: string; name: string; code: string; isMain: boolean; status: string }>> {
+    const page = filters?.page ?? 1;
+    const pageSize = filters?.pageSize ?? 200;
+    const skip = (page - 1) * pageSize;
     const tenant = this.prisma.tenantFilter(user, context);
-    const rows = await this.prisma.branch.findMany({
-      where: {
-        businessId: tenant.businessId,
-        ...(filters?.isActive !== undefined
-          ? { status: filters.isActive ? ('ACTIVE' as BranchStatus) : ('INACTIVE' as BranchStatus) }
-          : {}),
+
+    const where = {
+      businessId: tenant.businessId,
+      ...(filters?.isActive !== undefined
+        ? { status: filters.isActive ? ('ACTIVE' as BranchStatus) : ('INACTIVE' as BranchStatus) }
+        : {}),
+    };
+
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.branch.count({ where }),
+      this.prisma.branch.findMany({
+        where,
+        orderBy: [{ isMain: 'desc' }, { name: 'asc' }],
+        skip,
+        take: pageSize,
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          isMain: true,
+          status: true,
+        },
+      }),
+    ]);
+
+    const result: PaginatedResult<{ id: string; name: string; code: string; isMain: boolean; status: string }> = {
+      data: rows,
+      meta: {
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
       },
-      orderBy: [{ isMain: 'desc' }, { name: 'asc' }],
-      select: {
-        id: true,
-        name: true,
-        code: true,
-        isMain: true,
-        status: true,
-      },
-    });
-    return rows;
+    };
+
+    // Cachear por 15s (usado en dropdowns)
+    await this.cache.set(CacheService.key('branches:all', { ...filters, businessId: tenant.businessId }), result, 15);
+
+    return result;
   }
 
   /**
@@ -133,7 +172,7 @@ export class BranchesService {
     if (!branch) {
       throw new NotFoundException('Sucursal no encontrada');
     }
-    return this.toDto(branch, branch._count);
+    return toBranchDto(branch, branch._count);
   }
 
   /**
@@ -178,7 +217,10 @@ export class BranchesService {
       },
     });
 
-    return this.toDto(created, {
+    // Invalidar caché de sucursales
+    await this.cache.delByPattern('branches:*');
+
+    return toBranchDto(created, {
       categories: 0,
       products: 0,
       tables: 0,
@@ -257,7 +299,10 @@ export class BranchesService {
       },
     });
 
-    return this.toDto(updated, updated._count);
+    // Invalidar caché de sucursales
+    await this.cache.delByPattern('branches:*');
+
+    return toBranchDto(updated, updated._count);
   }
 
   /**
@@ -287,6 +332,9 @@ export class BranchesService {
       where: { id },
       data: { status: 'INACTIVE' },
     });
+
+    // Invalidar caché de sucursales
+    await this.cache.delByPattern('branches:*');
   }
 
   /**
@@ -310,6 +358,9 @@ export class BranchesService {
       where: { id },
       data: { status: 'ACTIVE' },
     });
+
+    // Invalidar caché de sucursales
+    await this.cache.delByPattern('branches:*');
   }
 
   // ==================== HELPERS ====================
@@ -353,47 +404,6 @@ export class BranchesService {
     }
   }
 
-  private toDto(
-    b: {
-      id: string;
-      businessId: string;
-      name: string;
-      code: string;
-      address: string | null;
-      phone: string | null;
-      isMain: boolean;
-      status: string;
-      createdAt: Date;
-      updatedAt: Date;
-    },
-    counts: {
-      categories: number;
-      products: number;
-      tables: number;
-      orders: number;
-      cashRegisters: number;
-      shifts: number;
-      posStations: number;
-    },
-  ): BranchDTO {
-    return {
-      id: b.id,
-      businessId: b.businessId,
-      name: b.name,
-      code: b.code,
-      address: b.address,
-      phone: b.phone,
-      isMain: b.isMain,
-      status: b.status as BranchDTO['status'],
-      categoriesCount: counts.categories,
-      productsCount: counts.products,
-      tablesCount: counts.tables,
-      activeOrdersCount: counts.orders,
-      openCashRegistersCount: counts.cashRegisters,
-      openShiftsCount: counts.shifts,
-      activePosStationsCount: counts.posStations,
-      createdAt: b.createdAt.toISOString(),
-      updatedAt: b.updatedAt.toISOString(),
-    };
-  }
+  // toDto moved to ./mappers.ts — imported as toBranchDto
+
 }

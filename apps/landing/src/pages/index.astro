@@ -1,15 +1,22 @@
 ---
 import Base from '../layouts/Base.astro';
 import Hero from '../components/Hero.astro';
+import TrustBar from '../components/TrustBar.astro';
 import Features from '../components/Features.astro';
 import HowItWorks from '../components/HowItWorks.astro';
+import Roles from '../components/Roles.astro';
 import CTA from '../components/CTA.astro';
 import Footer from '../components/Footer.astro';
 ---
-<Base>
+<Base
+  title="SaaS Restaurant | POS moderno para restaurantes"
+  description="Gestioná salón, cocina, inventario y reportes desde una sola plataforma moderna para restaurantes."
+>
   <Hero />
+  <TrustBar />
   <Features />
   <HowItWorks />
+  <Roles />
   <CTA />
   <Footer />
 </Base>

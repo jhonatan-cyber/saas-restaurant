@@ -10,6 +10,7 @@ import {
   Post,
   Query,
   UseGuards,
+  UsePipes,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -24,8 +25,10 @@ import type {
   CreateCategoryDto,
   UpdateCategoryDto,
   ReorderCategoriesDto,
-  CategoryFiltersDto,
 } from './dto/category.dto';
+import { categoryFiltersSchema } from '@saas/shared';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import type { CategoryFiltersInput } from '@saas/shared';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { BusinessContext } from '../auth/decorators/business-context.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -51,26 +54,32 @@ export class CategoriesController {
   list(
     @CurrentUser() user: AuthenticatedUser,
     @BusinessContext() context: Context | undefined,
-    @Query() filters: CategoryFiltersDto,
+    @Query(new ZodValidationPipe(categoryFiltersSchema)) filters: CategoryFiltersInput,
   ) {
     return this.categories.list(user, context, filters);
   }
 
   @Get('all')
-  @ApiOperation({ summary: 'Listado plano de categorías (para dropdowns)' })
+  @ApiOperation({ summary: 'Listado paginado de categorías (para dropdowns)' })
   @ApiQuery({ name: 'isActive', required: false, type: Boolean })
   @ApiQuery({ name: 'branchId', required: false, type: String })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'pageSize', required: false, type: Number })
   listAll(
     @CurrentUser() user: AuthenticatedUser,
     @BusinessContext() context: Context | undefined,
     @Query('isActive') isActive?: string,
     @Query('branchId') branchId?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
     const parsedActive =
       isActive === undefined ? undefined : isActive === 'true' ? true : isActive === 'false' ? false : undefined;
     return this.categories.listAll(user, context, {
       ...(parsedActive !== undefined ? { isActive: parsedActive } : {}),
       ...(branchId ? { branchId } : {}),
+      ...(page ? { page: Number(page) } : {}),
+      ...(pageSize ? { pageSize: Number(pageSize) } : {}),
     });
   }
 

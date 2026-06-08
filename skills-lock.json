@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "skills": {
+    "a11y-testing": {
+      "source": "pedronauck/skills",
+      "sourceType": "github",
+      "skillPath": "skills/community/a11y-testing/SKILL.md",
+      "computedHash": "79bb57e51467c4954b3c2ba6d286350b7772ab970b48a42afbb064fe22dba3e3"
+    },
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/find-skills/SKILL.md",
+      "computedHash": "9e1c8b3103f92fa8092568a44fe64858de7c5c9dc65ce4bea8f168080e889cfd"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "516bd2154eb843a8240e43d5b285229129853114ad7075a5e141e1c08e408c84"
+    },
+    "jest": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "skillPath": "jest/SKILL.md",
+      "computedHash": "88fc118b16bd61fe13cfdda11d75e8bac0a75ace9a3c4ca832cdad3a1086ed7a"
+    },
+    "jest-react-testing": {
+      "source": "manutej/luxor-claude-marketplace",
+      "sourceType": "github",
+      "skillPath": "plugins/luxor-frontend-essentials/skills/jest-react-testing/SKILL.md",
+      "computedHash": "d38163c02ac51cdc499b654be345b660009e359bddd76a9e9f931e1e34898b39"
+    },
+    "monorepo-architect": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/monorepo-architect/SKILL.md",
+      "computedHash": "aced0b28cad9637a48a35b5db305e0bc8a51f5c54becc75674c2aec1eb209f52"
+    },
+    "nestjs-best-practices": {
+      "source": "xirothedev/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/nestjs-best-practices/SKILL.md",
+      "computedHash": "d3b304104f3b402889040e13cd46e017ffff7ea95c90d19910d31bdbbebf7bec"
+    },
+    "prisma": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "skillPath": "prisma/SKILL.md",
+      "computedHash": "c97742e3f828b35c4cfd137dc47e749b1737f99de6a2534b58ce583e598044af"
+    },
+    "react-dev": {
+      "source": "softaworks/agent-toolkit",
+      "sourceType": "github",
+      "skillPath": "skills/react-dev/SKILL.md",
+      "computedHash": "da3caa5f2bfd7274fad3f08524ff3ad4f427978773c3e77e7b14e44aaac31d78"
+    },
+    "web-design-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/web-design-guidelines/SKILL.md",
+      "computedHash": "f3bc47f890f42a44db1007ab390709ec368e4b8c089baee6b0007182236ac474"
+    }
+  }
+}

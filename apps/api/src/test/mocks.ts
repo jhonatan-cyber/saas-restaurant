@@ -12,7 +12,7 @@ import type { AuthenticatedUser, BusinessContext } from '../auth/types/jwt-paylo
 // ============================================================
 //  Tipos de los modelos Prisma que usamos (para el mockTx)
 // ============================================================
-type ModelMethodKeys = 'findFirst' | 'findMany' | 'findUnique' | 'create' | 'update' | 'delete' | 'count';
+type ModelMethodKeys = 'findFirst' | 'findMany' | 'findUnique' | 'create' | 'update' | 'delete' | 'count' | 'updateMany' | 'aggregate';
 
 type ModelMethods = Record<ModelMethodKeys, jest.Mock>;
 
@@ -25,6 +25,8 @@ function createModelMethods(): ModelMethods {
     update: jest.fn(),
     delete: jest.fn(),
     count: jest.fn(),
+    updateMany: jest.fn(),
+    aggregate: jest.fn(),
   };
 }
 
@@ -34,8 +36,10 @@ function createModelMethods(): ModelMethods {
 export function createMockPrisma() {
   const modelNames = [
     'order', 'orderItem', 'orderStateLog', 'product',
-    'restaurantTable', 'customer', 'cashRegister', 'shift',
+    'restaurantTable', 'tableStateLog', 'customer', 'cashRegister', 'shift',
     'payment', 'auditLog', 'plan', 'subscription', 'preparationArea',
+    'business', 'posStation', 'branch', 'user', 'category',
+    'supplier', 'purchase', 'inventoryMovement', 'cashMovement', 'report',
   ] as const;
 
   // Create model methods eagerly (no Proxy — spread-compatible)
@@ -137,6 +141,31 @@ export function createMockConfigService(overrides: Record<string, unknown> = {})
   };
   return {
     get: jest.fn((key: string) => config[key]),
+  };
+}
+
+// ============================================================
+//  BullMQ Queue Mock
+// ============================================================
+export function createMockQueue() {
+  return {
+    add: jest.fn().mockResolvedValue({ id: 'job-1' }),
+    getJob: jest.fn().mockResolvedValue(null),
+    getJobs: jest.fn().mockResolvedValue([]),
+    count: jest.fn().mockResolvedValue(0),
+    drain: jest.fn().mockResolvedValue(undefined),
+    obliterate: jest.fn().mockResolvedValue(undefined),
+  };
+}
+
+// ============================================================
+//  CacheService Mock
+// ============================================================
+export function createMockCache() {
+  return {
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue(undefined),
+    delByPattern: jest.fn().mockResolvedValue(undefined),
   };
 }
 

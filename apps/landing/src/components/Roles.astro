@@ -1,0 +1,67 @@
+---
+const modules = [
+  { name: 'POS', icon: '💳' },
+  { name: 'Cocina', icon: '🔥' },
+  { name: 'Caja', icon: '💰' },
+  { name: 'Delivery', icon: '🚗' },
+  { name: 'Stock', icon: '📦' },
+  { name: 'Clientes', icon: '👥' },
+  { name: 'Reportes', icon: '📊' },
+  { name: 'Compras', icon: '🛒' },
+];
+---
+<section id="ecosistema" class="section-gap">
+  <div class="section-shell">
+    <div class="text-center max-w-3xl mx-auto reveal">
+      <span class="eyebrow">Ecosistema operativo</span>
+      <h2 class="section-title mt-6">Una plataforma para cada parte del negocio.</h2>
+      <p class="section-subtitle mt-5 mx-auto">
+        No se trata solo del punto de venta. Pedidos, stock, compras, clientes y crecimiento comparten la misma lógica.
+      </p>
+    </div>
+
+    <!-- Orbital visualization -->
+    <div class="mt-16 flex justify-center reveal-scale">
+      <div class="relative" style="width: 380px; height: 380px;">
+        <!-- Central hub -->
+        <div class="ecosystem-hub absolute" style="left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2;">
+          <span class="text-white text-sm font-bold text-center leading-tight">SaaS<br/>Restaurant</span>
+        </div>
+
+        <!-- Orbital ring -->
+        <div class="absolute rounded-full" style="left: 50%; top: 50%; transform: translate(-50%, -50%); width: 300px; height: 300px; border: 1px dashed; border-color: var(--accent-glow); opacity: 0.4;"></div>
+
+        <!-- Module nodes arranged in circle -->
+        {modules.map((mod, i) => {
+          const angle = (i / modules.length) * 2 * Math.PI - Math.PI / 2;
+          const radius = 150;
+          const x = Math.cos(angle) * radius;
+          const y = Math.sin(angle) * radius;
+          return (
+            <div
+              class="ecosystem-node absolute"
+              style={`left: calc(50% + ${x}px - 36px); top: calc(50% + ${y}px - 36px); z-index: 3;`}
+            >
+              <span class="text-center leading-tight">{mod.icon}<br/><span class="text-[0.6rem]">{mod.name}</span></span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+
+    <!-- Result callout -->
+    <div class="mt-16 glass-card rounded-3xl p-8 lg:p-10 reveal" style="border-color: var(--surface-border);">
+      <div class="grid gap-8 lg:grid-cols-[1.2fr_1fr] items-center">
+        <div>
+          <span class="eyebrow">Resultado</span>
+          <h3 class="mt-5 text-2xl lg:text-3xl font-display font-normal" style="color: var(--text-primary);">
+            Más velocidad en el servicio, más control en la caja y más visibilidad para crecer.
+          </h3>
+        </div>
+        <blockquote class="rounded-2xl p-6 text-base leading-8" style="background: var(--surface-muted); border: 1px solid var(--surface-border); color: var(--text-secondary);">
+          "Cuando la operación se entiende de un vistazo, el equipo deja de apagar incendios y empieza a trabajar con orden."
+        </blockquote>
+      </div>
+    </div>
+  </div>
+</section>

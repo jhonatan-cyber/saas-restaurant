@@ -10,10 +10,11 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../src/lib/auth';
-import { api } from '../src/lib/api';
+import { apiRequest, ApiClientError } from '../src/lib/api-client';
 
 interface LoginResponse {
   accessToken: string;
+  refreshToken: string;
   user: {
     id: string;
     email: string;
@@ -39,16 +40,26 @@ export default function LoginScreen(): ReactNode {
 
     setLoading(true);
     try {
-      const data = await api<LoginResponse>('/auth/login', {
+      const data = await apiRequest<LoginResponse>('/auth/login', {
         method: 'POST',
-        body: { email: email.trim(), password, businessSlug: businessSlug.trim() },
+        body: {
+          email: email.trim(),
+          password,
+          businessSlug: businessSlug.trim(),
+        },
         skipAuth: true,
       });
-      await signIn(data.accessToken, data.user);
+      // Guardar accessToken + refreshToken para auto-refresh
+      await signIn(data.accessToken, data.refreshToken, data.user);
       router.replace('/(tabs)/mesero');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error de conexión';
-      Alert.alert('Error de login', msg);
+      if (err instanceof ApiClientError) {
+        Alert.alert('Error de login', err.message);
+      } else if (err instanceof Error) {
+        Alert.alert('Error de login', err.message);
+      } else {
+        Alert.alert('Error de login', 'Error de conexión');
+      }
     } finally {
       setLoading(false);
     }

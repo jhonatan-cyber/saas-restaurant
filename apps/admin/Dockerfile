@@ -1,15 +1,33 @@
 # Dockerfile — Web (TanStack Start SSR)
 # Multi-stage build with security hardening
 
-FROM oven/bun:1 AS builder
+FROM oven/bun:1 AS base
 WORKDIR /app
 
 # Install dependencies
 COPY package.json bun.lock ./
 COPY apps/admin/package.json ./apps/admin/
 COPY packages/shared/package.json ./packages/shared/
+COPY packages/ui/package.json ./packages/ui/
 
 RUN bun install
+
+# ============================================================
+FROM base AS dev
+
+# Copy source code for dev runtime
+COPY tsconfig.base.json ./
+COPY packages ./packages
+COPY apps/admin ./apps/admin
+
+WORKDIR /app/apps/admin
+
+ENV NODE_ENV=development
+
+CMD ["bun", "run", "dev"]
+
+# ============================================================
+FROM base AS builder
 
 # Copy source code
 COPY tsconfig.base.json ./
@@ -40,6 +58,7 @@ COPY --from=builder /app/package.json /app/
 COPY --from=builder /app/bun.lock /app/
 COPY --from=builder /app/apps/admin/package.json /app/apps/admin/
 COPY --from=builder /app/packages/shared/package.json /app/packages/shared/
+COPY --from=builder /app/packages/ui/package.json /app/packages/ui/
 
 # Install production dependencies fresh (avoids Bun node_modules symlink issues across stages)
 RUN cd /app && bun install --production
@@ -50,6 +69,7 @@ COPY --chown=webapp:webapp apps/admin/serve.mjs ./serve.mjs
 
 # Copy shared packages (needed at runtime for SSR imports)
 COPY --from=builder --chown=webapp:webapp /app/packages/shared ./packages/shared
+COPY --from=builder --chown=webapp:webapp /app/packages/ui ./packages/ui
 
 USER webapp
 

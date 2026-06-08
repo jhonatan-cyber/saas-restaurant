@@ -1,11 +1,5 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Post,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Public } from '../auth/decorators/public.decorator';
 import { Role } from '@saas/shared';
 import { PosStationsService } from './pos-stations.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -28,6 +22,7 @@ export class PosStationsController {
   constructor(private readonly service: PosStationsService) {}
 
   /* ───────── Activar estación desde el desktop ───────── */
+  @Public()
   @Post('activate')
   async activate(@Body() dto: {
     businessSlug: string;
@@ -35,6 +30,19 @@ export class PosStationsController {
     deviceName?: string;
   }) {
     return this.service.activate(dto);
+  }
+
+  /**
+   * POST /pos-stations/station-login
+   *
+   * Intercambia un JWT de estación POS (businessSig) por una sesión
+   * de usuario completa (accessToken + refreshToken + user DTO).
+   * Permite que la app desktop abra el POS web sin login manual.
+   */
+  @Public()
+  @Post('station-login')
+  async stationLogin(@Body() dto: { businessSig: string }) {
+    return this.service.stationLogin(dto.businessSig);
   }
 
   /* ───────── Generar código de estación (OWNER/ADMIN) ───────── */

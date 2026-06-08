@@ -29,11 +29,13 @@ function NewPurchasePage(): ReactNode {
   const { data: suppliers = [] } = useQuery({
     queryKey: ['suppliers', 'all'],
     queryFn: () => suppliersApi.all({ isActive: true }),
+    select: (res) => res.data,
   });
 
   const { data: products = [] } = useQuery({
     queryKey: ['products', 'list-all'],
     queryFn: () => productsApi.all(),
+    select: (res) => res.data,
   });
 
   const {

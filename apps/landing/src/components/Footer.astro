@@ -1,17 +1,29 @@
 ---
 const year = new Date().getFullYear();
 ---
-<footer class="border-t border-gray-200 bg-white py-10">
-  <div class="mx-auto max-w-6xl px-6">
-    <div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
-      <p class="text-sm text-gray-500">
-        &copy; {year} SaaS Restaurant. Todos los derechos reservados.
-      </p>
-      <nav class="flex gap-6 text-sm text-gray-500">
-        <a href="#caracteristicas" class="hover:text-gray-900">Características</a>
-        <a href="#como-funciona" class="hover:text-gray-900">Cómo funciona</a>
-        <a href="/app/login" class="hover:text-gray-900">Iniciar sesión</a>
+<footer class="py-10">
+  <div class="section-shell">
+    <div class="flex flex-col gap-8 border-t pt-8 lg:flex-row lg:items-center lg:justify-between" style="border-color: var(--surface-border);">
+      <div class="flex items-center gap-4">
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" class="h-5 w-5">
+            <path d="M3 11h18M5 11V8a2 2 0 012-2h10a2 2 0 012 2v3M6 11v6a2 2 0 002 2h8a2 2 0 002-2v-6M9 16h6" />
+          </svg>
+        </div>
+        <div>
+          <p class="text-sm font-bold tracking-[0.2em] uppercase" style="color: var(--accent);">SaaS Restaurant</p>
+          <p class="text-sm" style="color: var(--text-tertiary);">POS y operación moderna para restaurantes</p>
+        </div>
+      </div>
+
+      <nav class="flex flex-wrap gap-5 text-sm" style="color: var(--text-secondary);">
+        <a href="#producto" class="transition hover:opacity-80">Producto</a>
+        <a href="#funciones" class="transition hover:opacity-80">Funciones</a>
+        <a href="#ecosistema" class="transition hover:opacity-80">Ecosistema</a>
+        <a href="/app/login" class="transition hover:opacity-80">Ingresar</a>
       </nav>
+
+      <p class="text-sm" style="color: var(--text-tertiary);">&copy; {year} SaaS Restaurant. Todos los derechos reservados.</p>
     </div>
   </div>
 </footer>

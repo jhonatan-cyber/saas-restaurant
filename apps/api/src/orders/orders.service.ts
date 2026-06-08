@@ -27,6 +27,12 @@ import type {
   TransitionOrderDto,
   UpdateOrderItemDto,
 } from './dto';
+import {
+  toOrderDto,
+  toOrderListItemDto,
+  toOrderItemDto,
+  toKdsOrderDto,
+} from './mappers';
 
 /**
  * OrdersService: corazón del motor de venta.
@@ -238,7 +244,7 @@ export class OrdersService {
       after: { status: order.status, total: order.total.toString(), items: order.items.length },
     });
     this.realtime.emitOrderCreated(user.businessId, branchId, {
-      order: this.toDto(order, order.items, []),
+      order: toOrderDto(order, order.items, []),
     });
 
     return order;
@@ -295,7 +301,7 @@ export class OrdersService {
 
     this.realtime.emitOrderItemAdded(user.businessId, order.branchId, {
       orderId: result.order.id,
-      item: this.toItemDto(result.item),
+      item: toOrderItemDto(result.item),
     });
 
     return result;
@@ -349,7 +355,7 @@ export class OrdersService {
 
     this.realtime.emitOrderItemUpdated(user.businessId, order.branchId, {
       orderId: result.order.id,
-      item: this.toItemDto(result.item),
+      item: toOrderItemDto(result.item),
     });
 
     return result;
@@ -649,7 +655,7 @@ export class OrdersService {
     ]);
 
     return {
-      data: rows.map((o) => this.toListItemDto(o, o._count.items)),
+      data: rows.map((o) => toOrderListItemDto(o, o._count.items)),
       meta: {
         total,
         page,
@@ -752,7 +758,7 @@ export class OrdersService {
         .filter((o) =>
           o.items.some((i) => i.preparationAreaId === area.id),
         )
-        .map((o) => this.toKdsOrderDto(o));
+        .map((o) => toKdsOrderDto(o));
       return {
         preparationAreaId: area.id,
         preparationAreaName: area.name,
@@ -901,107 +907,6 @@ export class OrdersService {
     }
   }
 
-  // --- DTO mappers ---
+  // DTO mappers moved to ./mappers.ts — imported as toOrderDto, toOrderListItemDto, toOrderItemDto, toKdsOrderDto
 
-  private toItemDto(item: OrderItem) {
-    return {
-      id: item.id,
-      businessId: item.businessId,
-      orderId: item.orderId,
-      productId: item.productId,
-      productName: item.productName,
-      unitPrice: item.unitPrice.toString(),
-      taxRate: item.taxRate?.toString() ?? null,
-      preparationAreaId: item.preparationAreaId,
-      preparationAreaName: item.preparationAreaName,
-      quantity: item.quantity,
-      notes: item.notes,
-      lineTotal: item.lineTotal.toString(),
-      createdAt: item.createdAt.toISOString(),
-    };
-  }
-
-  private toDto(order: Order, items: OrderItem[], logs: OrderStateLog[]) {
-    return {
-      id: order.id,
-      businessId: order.businessId,
-      branchId: order.branchId,
-      tableId: order.tableId,
-      customerId: order.customerId,
-      cashierId: order.cashierId,
-      waiterId: order.waiterId,
-      type: order.type,
-      channel: order.channel,
-      status: order.status,
-      subtotal: order.subtotal.toString(),
-      taxTotal: order.taxTotal.toString(),
-      total: order.total.toString(),
-      globalNotes: order.globalNotes,
-      cashRegisterId: order.cashRegisterId,
-      shiftId: order.shiftId,
-      version: order.version,
-      cancelledAt: order.cancelledAt?.toISOString() ?? null,
-      cancelledByUserId: order.cancelledByUserId,
-      cancellationReason: order.cancellationReason,
-      items: items.map((i) => this.toItemDto(i)),
-      stateLogs: logs.map((l) => ({
-        id: l.id,
-        businessId: l.businessId,
-        orderId: l.orderId,
-        fromStatus: l.fromStatus,
-        toStatus: l.toStatus,
-        changedByUserId: l.changedByUserId,
-        reason: l.reason,
-        metadata: l.metadata as Record<string, unknown> | null,
-        createdAt: l.createdAt.toISOString(),
-      })),
-      createdAt: order.createdAt.toISOString(),
-      updatedAt: order.updatedAt.toISOString(),
-    };
-  }
-
-  private toListItemDto(
-    order: Order,
-    itemCount: number,
-  ) {
-    return {
-      id: order.id,
-      businessId: order.businessId,
-      branchId: order.branchId,
-      tableId: order.tableId,
-      type: order.type,
-      status: order.status,
-      total: order.total.toString(),
-      itemCount,
-      cashierId: order.cashierId,
-      createdAt: order.createdAt.toISOString(),
-      updatedAt: order.updatedAt.toISOString(),
-    };
-  }
-
-  private toKdsOrderDto(order: Order & { table?: { number: string } | null; items: OrderItem[] }) {
-    const elapsedSeconds = Math.floor(
-      (Date.now() - new Date(order.createdAt).getTime()) / 1000,
-    );
-    return {
-      id: order.id,
-      tableId: order.tableId,
-      tableNumber: order.table?.number ?? null,
-      status: order.status,
-      type: order.type,
-      globalNotes: order.globalNotes,
-      total: order.total.toString(),
-      itemCount: order.items.length,
-      createdAt: order.createdAt.toISOString(),
-      elapsedSeconds,
-      items: order.items.map((i) => ({
-        id: i.id,
-        productName: i.productName,
-        quantity: i.quantity,
-        notes: i.notes,
-        preparationAreaId: i.preparationAreaId,
-        preparationAreaName: i.preparationAreaName,
-      })),
-    };
-  }
 }

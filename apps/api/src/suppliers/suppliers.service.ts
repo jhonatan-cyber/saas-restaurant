@@ -1,9 +1,11 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, type Supplier } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheService } from '../cache/cache.service';
 import type { AuthenticatedUser, BusinessContext } from '../auth/types/jwt-payload.type';
 import type { PaginatedResult } from '../common/dto/pagination.dto';
 import type { SupplierDTO, SupplierListItemDTO } from '@saas/shared';
+import { toSupplierDto } from './mappers';
 import { CreateSupplierDto, UpdateSupplierDto, type SupplierFiltersDto } from './dto/supplier.dto';
 
 /**
@@ -12,7 +14,10 @@ import { CreateSupplierDto, UpdateSupplierDto, type SupplierFiltersDto } from '.
  */
 @Injectable()
 export class SuppliersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: CacheService,
+  ) {}
 
   async list(
     user: AuthenticatedUser,
@@ -32,6 +37,10 @@ export class SuppliersService {
       ...(filters.search ? { name: { contains: filters.search } } : {}),
     };
 
+    const cacheKey = CacheService.key('suppliers:list', { ...filters, businessId: tenant.businessId, branchId: filters.branchId ?? tenant.branchId, page, pageSize });
+    const cached = await this.cache.get<PaginatedResult<SupplierDTO>>(cacheKey);
+    if (cached) return cached;
+
     const [total, rows] = await this.prisma.$transaction([
       this.prisma.supplier.count({ where }),
       this.prisma.supplier.findMany({
@@ -45,8 +54,8 @@ export class SuppliersService {
       }),
     ]);
 
-    return {
-      data: rows.map((s) => this.toDto(s, s._count.purchases)),
+    const result: PaginatedResult<SupplierDTO> = {
+      data: rows.map((s) => toSupplierDto(s, s._count.purchases)),
       meta: {
         total,
         page,
@@ -54,30 +63,60 @@ export class SuppliersService {
         totalPages: Math.max(1, Math.ceil(total / pageSize)),
       },
     };
+
+    // Cachear por 30s
+    await this.cache.set(cacheKey, result, 30);
+
+    return result;
   }
 
   async listAll(
     user: AuthenticatedUser,
     context: BusinessContext | undefined,
-    filters?: { isActive?: boolean },
-  ): Promise<SupplierListItemDTO[]> {
+    filters?: { isActive?: boolean; page?: number; pageSize?: number },
+  ): Promise<PaginatedResult<SupplierListItemDTO>> {
+    const page = filters?.page ?? 1;
+    const pageSize = filters?.pageSize ?? 200;
+    const skip = (page - 1) * pageSize;
     const tenant = this.prisma.tenantFilter(user, context);
-    const rows = await this.prisma.supplier.findMany({
-      where: {
-        businessId: tenant.businessId,
-        deletedAt: null,
-        ...(filters?.isActive !== undefined ? { isActive: filters.isActive } : {}),
+
+    const where = {
+      businessId: tenant.businessId,
+      deletedAt: null,
+      ...(filters?.isActive !== undefined ? { isActive: filters.isActive } : {}),
+    };
+
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.supplier.count({ where }),
+      this.prisma.supplier.findMany({
+        where,
+        orderBy: [{ name: 'asc' }],
+        skip,
+        take: pageSize,
+        select: {
+          id: true,
+          name: true,
+          contactName: true,
+          phone: true,
+          isActive: true,
+        },
+      }),
+    ]);
+
+    const result: PaginatedResult<SupplierListItemDTO> = {
+      data: rows,
+      meta: {
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
       },
-      orderBy: [{ name: 'asc' }],
-      select: {
-        id: true,
-        name: true,
-        contactName: true,
-        phone: true,
-        isActive: true,
-      },
-    });
-    return rows;
+    };
+
+    // Cachear por 15s (usado en dropdowns/autocomplete)
+    await this.cache.set(CacheService.key('suppliers:all', { ...filters, businessId: tenant.businessId }), result, 15);
+
+    return result;
   }
 
   async getById(
@@ -91,7 +130,7 @@ export class SuppliersService {
       include: { _count: { select: { purchases: true } } },
     });
     if (!supplier) throw new NotFoundException('Proveedor no encontrado');
-    return this.toDto(supplier, supplier._count.purchases);
+    return toSupplierDto(supplier, supplier._count.purchases);
   }
 
   async create(
@@ -129,7 +168,10 @@ export class SuppliersService {
         isActive: dto.isActive ?? true,
       },
     });
-    return this.toDto(created, 0);
+    // Invalidar caché de proveedores
+    await this.cache.delByPattern('suppliers:*');
+
+    return toSupplierDto(created, 0);
   }
 
   async update(
@@ -177,7 +219,10 @@ export class SuppliersService {
         ...(dto.branchId !== undefined ? { branchId: dto.branchId } : {}),
       },
     });
-    return this.toDto(updated, existing._count.purchases);
+    // Invalidar caché de proveedores
+    await this.cache.delByPattern('suppliers:*');
+
+    return toSupplierDto(updated, existing._count.purchases);
   }
 
   async softDelete(
@@ -196,24 +241,11 @@ export class SuppliersService {
       where: { id },
       data: { deletedAt: new Date(), isActive: false },
     });
+
+    // Invalidar caché de proveedores
+    await this.cache.delByPattern('suppliers:*');
   }
 
-  private toDto(s: Supplier, purchaseCount: number): SupplierDTO {
-    return {
-      id: s.id,
-      businessId: s.businessId,
-      branchId: s.branchId,
-      name: s.name,
-      contactName: s.contactName,
-      email: s.email,
-      phone: s.phone,
-      address: s.address,
-      taxId: s.taxId,
-      notes: s.notes,
-      isActive: s.isActive,
-      purchaseCount,
-      createdAt: s.createdAt.toISOString(),
-      updatedAt: s.updatedAt.toISOString(),
-    };
-  }
+  // toDto moved to ./mappers.ts — imported as toSupplierDto
+
 }

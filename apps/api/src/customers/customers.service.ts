@@ -1,9 +1,11 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, type Customer } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheService } from '../cache/cache.service';
 import type { AuthenticatedUser, BusinessContext } from '../auth/types/jwt-payload.type';
 import type { PaginatedResult } from '../common/dto/pagination.dto';
 import type { CustomerDTO } from '@saas/shared';
+import { toCustomerDto } from './mappers';
 import {
   CreateCustomerDto,
   UpdateCustomerDto,
@@ -17,7 +19,10 @@ import {
  */
 @Injectable()
 export class CustomersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: CacheService,
+  ) {}
 
   async list(
     user: AuthenticatedUser,
@@ -45,6 +50,10 @@ export class CustomersService {
         : {}),
     };
 
+    const cacheKey = CacheService.key('customers:list', { ...filters, businessId: tenant.businessId, page, pageSize });
+    const cached = await this.cache.get<PaginatedResult<CustomerDTO>>(cacheKey);
+    if (cached) return cached;
+
     const [total, rows] = await this.prisma.$transaction([
       this.prisma.customer.count({ where }),
       this.prisma.customer.findMany({
@@ -55,8 +64,8 @@ export class CustomersService {
       }),
     ]);
 
-    return {
-      data: rows.map((c) => this.toDto(c)),
+    const result: PaginatedResult<CustomerDTO> = {
+      data: rows.map((c) => toCustomerDto(c)),
       meta: {
         total,
         page,
@@ -64,6 +73,11 @@ export class CustomersService {
         totalPages: Math.max(1, Math.ceil(total / pageSize)),
       },
     };
+
+    // Cachear por 30s
+    await this.cache.set(cacheKey, result, 30);
+
+    return result;
   }
 
   /**
@@ -77,31 +91,42 @@ export class CustomersService {
   ): Promise<CustomerDTO[]> {
     const tenant = this.prisma.tenantFilter(user, context);
     const trimmed = query?.trim() ?? '';
+    const searchLimit = Math.min(limit, 50);
+
+    const cacheKey = CacheService.key('customers:search', { query: trimmed, limit: searchLimit, businessId: tenant.businessId });
+    const cached = await this.cache.get<CustomerDTO[]>(cacheKey);
+    if (cached) return cached;
+
+    let rows: Customer[];
     if (trimmed.length === 0) {
-      // Si no hay query, devuelve los últimos 20 clientes activos
-      const rows = await this.prisma.customer.findMany({
+      // Si no hay query, devuelve los últimos clientes activos
+      rows = await this.prisma.customer.findMany({
         where: { ...tenant, deletedAt: null, isActive: true },
         orderBy: { createdAt: 'desc' },
-        take: Math.min(limit, 50),
+        take: searchLimit,
       });
-      return rows.map((c) => this.toDto(c));
+    } else {
+      rows = await this.prisma.customer.findMany({
+        where: {
+          ...tenant,
+          deletedAt: null,
+          isActive: true,
+          OR: [
+            { name: { contains: trimmed } },
+            { taxId: { contains: trimmed } },
+            { email: { contains: trimmed } },
+            { phone: { contains: trimmed } },
+          ],
+        },
+        orderBy: [{ name: 'asc' }],
+        take: searchLimit,
+      });
     }
-    const rows = await this.prisma.customer.findMany({
-      where: {
-        ...tenant,
-        deletedAt: null,
-        isActive: true,
-        OR: [
-          { name: { contains: trimmed } },
-          { taxId: { contains: trimmed } },
-          { email: { contains: trimmed } },
-          { phone: { contains: trimmed } },
-        ],
-      },
-      orderBy: [{ name: 'asc' }],
-      take: Math.min(limit, 50),
-    });
-    return rows.map((c) => this.toDto(c));
+
+    const result = rows.map((c) => toCustomerDto(c));
+    // Cachear búsqueda por 15s (usado en autocomplete del POS)
+    await this.cache.set(cacheKey, result, 15);
+    return result;
   }
 
   async getById(
@@ -114,7 +139,7 @@ export class CustomersService {
       where: { ...tenant, id, deletedAt: null },
     });
     if (!customer) throw new NotFoundException('Cliente no encontrado');
-    return this.toDto(customer);
+    return toCustomerDto(customer);
   }
 
   async create(
@@ -140,7 +165,10 @@ export class CustomersService {
         isActive: dto.isActive ?? true,
       },
     });
-    return this.toDto(created);
+    // Invalidar caché de clientes
+    await this.cache.delByPattern('customers:*');
+
+    return toCustomerDto(created);
   }
 
   async update(
@@ -178,7 +206,10 @@ export class CustomersService {
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
       },
     });
-    return this.toDto(updated);
+    // Invalidar caché de clientes
+    await this.cache.delByPattern('customers:*');
+
+    return toCustomerDto(updated);
   }
 
   async softDelete(
@@ -197,28 +228,11 @@ export class CustomersService {
       where: { id },
       data: { deletedAt: new Date(), isActive: false },
     });
+
+    // Invalidar caché de clientes
+    await this.cache.delByPattern('customers:*');
   }
 
-  private toDto(c: Customer): CustomerDTO {
-    return {
-      id: c.id,
-      businessId: c.businessId,
-      name: c.name,
-      taxId: c.taxId,
-      taxIdType: c.taxIdType,
-      email: c.email,
-      phone: c.phone,
-      address: c.address,
-      addressReference: c.addressReference,
-      latitude: c.latitude ? c.latitude.toString() : null,
-      longitude: c.longitude ? c.longitude.toString() : null,
-      notes: c.notes,
-      isActive: c.isActive,
-      totalOrders: c.totalOrders,
-      totalSpent: c.totalSpent.toString(),
-      lastOrderAt: c.lastOrderAt ? c.lastOrderAt.toISOString() : null,
-      createdAt: c.createdAt.toISOString(),
-      updatedAt: c.updatedAt.toISOString(),
-    };
-  }
+  // toDto moved to ./mappers.ts — imported as toCustomerDto
+
 }

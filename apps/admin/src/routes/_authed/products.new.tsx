@@ -40,11 +40,13 @@ function NewProductPage(): ReactNode {
   const { data: categories = [] } = useQuery({
     queryKey: ['categories', { all: true }],
     queryFn: () => categoriesApi.all({ isActive: true }),
+    select: (res) => res.data,
   });
 
   const { data: prepAreas = [] } = useQuery({
     queryKey: ['preparation-areas', { all: true }],
     queryFn: () => preparationAreasApi.all({ isActive: true }),
+    select: (res) => res.data,
   });
 
   const {

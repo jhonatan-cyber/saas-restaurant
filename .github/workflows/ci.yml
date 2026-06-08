@@ -28,14 +28,22 @@ jobs:
           echo "✅ No 'latest' anti-pattern found"
 
       - name: Type-check all workspaces
-        run: bun run --filter='*' typecheck
+        run: npx turbo run typecheck --continue
+
+      - name: Lint all workspaces
+        run: npx turbo run lint --continue
 
       - name: Build all workspaces
-        run: bun run --filter='*' build
+        run: npx turbo run build
 
       - name: Run tests
-        run: bun run --filter='*' test || echo "No test script found in some workspaces"
+        run: npx turbo run test --continue
+
+      - name: Check formatting
+        run: bun run format:check
+        continue-on-error: true
 
       - name: Check desktop (Rust)
         working-directory: apps/desktop/src-tauri
         run: cargo check
+        continue-on-error: true

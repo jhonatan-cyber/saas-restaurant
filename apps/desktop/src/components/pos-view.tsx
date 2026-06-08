@@ -10,23 +10,75 @@ interface PosViewProps {
   onDeactivate: () => void;
 }
 
+/**
+ * URLs permitidas para el iframe del POS.
+ * En desarrollo: localhost.
+ * En producción: el dominio de la web app.
+ * Cualquier URL fuera de esta lista será rechazada.
+ */
+const ALLOWED_ORIGINS_PATTERNS: readonly RegExp[] = [
+  /^https?:\/\/localhost(:\d+)?$/,
+  /^https:\/\/[a-z0-9-]+\.saasrestaurant\.app$/,
+  /^https:\/\/[a-z0-9-]+\.saasrestaurant\.com$/,
+];
+
+function isOriginAllowed(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    const origin = parsed.origin;
+    return ALLOWED_ORIGINS_PATTERNS.some((pattern) => pattern.test(origin));
+  } catch {
+    return false;
+  }
+}
+
+function buildPosUrl(
+  webAppUrl: string,
+  businessSig: string,
+  stationId: string,
+  branchId: string,
+): string | null {
+  // Normalizar: remover trailing slash
+  const base = webAppUrl.replace(/\/+$/, '');
+  if (!isOriginAllowed(base)) {
+    console.error(
+      `[PosView] URL bloqueada por seguridad: "${base}". ` +
+      'Usá VITE_WEB_APP_URL con un origen permitido (localhost o *.saasrestaurant.app).',
+    );
+    return null;
+  }
+  return `${base}/station-login?sig=${encodeURIComponent(businessSig)}&station=${encodeURIComponent(stationId)}&branch=${encodeURIComponent(branchId)}`;
+}
+
 const WEB_APP_URL = import.meta.env.VITE_WEB_APP_URL || 'http://localhost:3000';
 
 /**
  * Vista principal del POS desktop.
- * Carga la web app en un iframe con headers de autenticación de estación.
- * También puede abrir en navegador nativo si el Tauri webview no carga
- * correctamente la app.
+ * Carga la web app en un iframe con autenticación de estación vía URL param.
+ *
+ * Seguridad:
+ *  - CSP definido en tauri.conf.json (frame-src, connect-src, etc.)
+ *  - Sandbox restrictivo sin allow-popups
+ *  - Validación de origen contra allowlist
+ *  - encodeURIComponent en los parámetros de URL
  */
 function PosView({ activation, onDeactivate }: PosViewProps): ReactNode {
   const [useBrowser, setUseBrowser] = useState(false);
 
-  // Construimos la URL con el código de estación como query param
-  const posUrl = `${WEB_APP_URL}/pos?station=${activation.stationId}&branch=${activation.branchId}&sig=${activation.businessSig}`;
+  // Validar origen y construir URL segura
+  const posUrl = buildPosUrl(
+    WEB_APP_URL,
+    activation.businessSig,
+    activation.stationId,
+    activation.branchId,
+  );
 
   if (useBrowser) {
+    if (!posUrl) {
+      return <UnsafeUrlWarning onDeactivate={onDeactivate} />;
+    }
     // Abrir en el navegador nativo del sistema vía Tauri shell plugin
-    open(posUrl).catch(() => window.open(posUrl, '_blank'));
+    open(posUrl).catch(() => window.open(posUrl, '_blank', 'noopener,noreferrer'));
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
         <div className="card p-6 text-center">
@@ -80,13 +132,43 @@ function PosView({ activation, onDeactivate }: PosViewProps): ReactNode {
         </div>
       </header>
 
-      {/* Iframe al web app */}
-      <iframe
-        src={posUrl}
-        className="flex-1 border-0"
-        title="SaaS Restaurant POS"
-        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-      />
+      {/* Iframe al web app — sandbox restrictivo sin allow-popups */}
+      {posUrl ? (
+        <iframe
+          src={posUrl}
+          className="flex-1 border-0"
+          title="SaaS Restaurant POS"
+          sandbox="allow-scripts allow-same-origin allow-forms"
+        />
+      ) : (
+        <UnsafeUrlWarning onDeactivate={onDeactivate} />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Pantalla de error cuando la URL configurada no está en la allowlist.
+ */
+function UnsafeUrlWarning({ onDeactivate }: { onDeactivate: () => void }): ReactNode {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-red-50">
+      <div className="max-w-md rounded-lg bg-white p-8 text-center shadow-lg">
+        <div className="mb-4 text-4xl">🔒</div>
+        <h2 className="mb-2 text-lg font-bold text-red-800">
+          URL no permitida
+        </h2>
+        <p className="mb-6 text-sm text-red-600">
+          La URL configurada en <code className="rounded bg-red-100 px-1">VITE_WEB_APP_URL</code> no está en la lista de
+          orígenes permitidos. Verificá la configuración o contactá al administrador.
+        </p>
+        <button
+          className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+          onClick={onDeactivate}
+        >
+          Volver a activación
+        </button>
+      </div>
     </div>
   );
 }

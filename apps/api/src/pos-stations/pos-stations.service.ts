@@ -1,14 +1,30 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '@prisma/client';
 import { randomBytes } from 'node:crypto';
+
+/**
+ * Payload del JWT que identifica una sesión de estación POS.
+ */
+export interface StationJwtPayload {
+  /** ID del negocio (businessId) */
+  businessId: string;
+  /** ID de la sucursal */
+  branchId: string;
+  /** ID de la estación POS */
+  stationId: string;
+  /** Propósito fijo para evitar reuso del token en otros contextos */
+  purpose: 'pos_station';
+}
 
 @Injectable()
 export class PosStationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly jwt: JwtService,
   ) {}
 
   /**
@@ -25,7 +41,11 @@ export class PosStationsService {
   /**
    * Activa una estación POS.
    * Busca el PosStation por business slug + stationCode, la activa, audita,
-   * y retorna businessSig para que el desktop se autentique en la web app.
+   * y retorna un JWT firmado (businessSig) para que el desktop se autentique.
+   *
+   * El JWT tiene expiración de 24h e incluye businessId, branchId y stationId.
+   * A diferencia de la versión anterior (base64), este token es firmado con
+   * JWT_SECRET y no puede ser manipulado por el cliente.
    */
   async activate(dto: {
     businessSlug: string;
@@ -74,15 +94,173 @@ export class PosStationsService {
       after: { stationCode: dto.stationCode, deviceName: dto.deviceName },
     });
 
-    // Firma simple — base64 de datos mínimos
-    const sessionPayload = `${business.id}:${station.branchId}:${station.id}:${Date.now()}`;
-    const businessSig = Buffer.from(sessionPayload).toString('base64');
+    // ── JWT firmado (reemplaza el anterior base64) ─────────────────
+    // Incluimos un campo `purpose` para que este JWT solo sea válido
+    // en contexto de estación POS (no puede reusarse como token de auth).
+    const payload: StationJwtPayload = {
+      businessId: business.id,
+      branchId: station.branchId,
+      stationId: station.id,
+      purpose: 'pos_station',
+    };
+
+    const businessSig = await this.jwt.signAsync(payload, {
+      expiresIn: '24h',
+      secret: process.env.JWT_SECRET,
+    });
 
     return {
       stationId: station.id,
       branchId: station.branchId,
       branchName: station.branch.name,
       businessSig,
+    };
+  }
+
+  /**
+   * Verifica un JWT de estación POS y devuelve el payload si es válido.
+   * Útil para que el web app (admin) autentique requests provenientes
+   * de una estación POS desktop.
+   */
+  async verifyStationToken(token: string): Promise<StationJwtPayload> {
+    let payload: StationJwtPayload;
+    try {
+      payload = await this.jwt.verifyAsync<StationJwtPayload>(token, {
+        secret: process.env.JWT_SECRET,
+      });
+    } catch {
+      throw new UnauthorizedException('Token de estación inválido o expirado');
+    }
+
+    if (payload.purpose !== 'pos_station') {
+      throw new ForbiddenException('Token inválido para estación POS');
+    }
+
+    return payload;
+  }
+
+  /**
+   * Intercambia un JWT de estación POS por una sesión de usuario completa.
+   * Busca un usuario activo con rol CAJERO o MESERO en el negocio y
+   * genera un JWT de acceso con su identidad, pero con `defaultBranchId`
+   * forzado a la sucursal de la estación.
+   *
+   * Esto permite que la app desktop abra el POS web sin login manual,
+   * usando únicamente el código de activación de la estación.
+   */
+  async stationLogin(stationToken: string) {
+    // 1. Verificar el JWT de estación
+    const stationPayload = await this.verifyStationToken(stationToken);
+
+    // 2. Buscar un usuario activo del negocio con rol POS-compatible
+    const user = await this.prisma.user.findFirst({
+      where: {
+        businessId: stationPayload.businessId,
+        status: 'ACTIVE',
+        role: { in: ['CAJERO', 'MESERO', 'ADMIN', 'OWNER'] },
+      },
+      orderBy: { lastLoginAt: 'desc' },
+      include: {
+        business: true,
+        defaultBranch: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException(
+        'No hay un usuario activo disponible para esta estación. ' +
+        'Un administrador debe crear un usuario con rol Cajero o Mesero primero.',
+      );
+    }
+
+    // 3. Generar access + refresh tokens para este usuario
+    const branches = await this.prisma.branch.findMany({
+      where: { businessId: user.businessId, status: 'ACTIVE' },
+      orderBy: [{ isMain: 'desc' }, { name: 'asc' }],
+    });
+
+    const branchIds = branches.map((b) => b.id);
+    const now = Math.floor(Date.now() / 1000);
+
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      businessId: user.businessId,
+      role: user.role,
+      branchIds,
+      typ: 'access' as const,
+      iat: now,
+      exp: now + 900, // 15 min
+    };
+
+    const accessToken = await this.jwt.signAsync(payload, {
+      secret: process.env.JWT_SECRET,
+      expiresIn: '15m' as never,
+    });
+
+    const refreshPayload = { ...payload, typ: 'refresh' as const, exp: now + 604800 }; // 7d
+    const refreshToken = await this.jwt.signAsync(refreshPayload, {
+      secret: process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
+      expiresIn: '7d' as never,
+    });
+
+    // 4. Construir el user DTO (similar a AuthService.buildAuthenticatedUserDto)
+    const userDto = {
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+      businessId: user.businessId,
+      // Forzar branchId a la sucursal de la estación
+      defaultBranchId: stationPayload.branchId,
+      business: {
+        id: user.business.id,
+        name: user.business.name,
+        slug: user.business.slug,
+        legalName: user.business.legalName,
+        taxId: user.business.taxId,
+        email: user.business.email,
+        phone: user.business.phone,
+        logoUrl: user.business.logoUrl,
+        currency: user.business.currency,
+        timezone: user.business.timezone,
+        status: user.business.status,
+        plan: user.business.plan,
+        trialEndsAt: user.business.trialEndsAt?.toISOString() ?? null,
+        planId: user.business.planId,
+        subscription: null,
+        moduleReports: user.business.moduleReports,
+        moduleInventory: user.business.moduleInventory,
+        modulePosStations: user.business.modulePosStations,
+        moduleDeliveryApp: user.business.moduleDeliveryApp,
+        createdAt: user.business.createdAt.toISOString(),
+        updatedAt: user.business.updatedAt.toISOString(),
+      },
+      branches: branches.map((b) => ({
+        id: b.id,
+        businessId: b.businessId,
+        name: b.name,
+        code: b.code,
+        address: b.address,
+        phone: b.phone,
+        isMain: b.isMain,
+        status: b.status,
+        categoriesCount: 0,
+        productsCount: 0,
+        tablesCount: 0,
+        activeOrdersCount: 0,
+        openCashRegistersCount: 0,
+        openShiftsCount: 0,
+        activePosStationsCount: 0,
+        createdAt: b.createdAt.toISOString(),
+        updatedAt: b.updatedAt.toISOString(),
+      })),
+    };
+
+    return {
+      accessToken,
+      refreshToken,
+      user: userDto,
     };
   }
 

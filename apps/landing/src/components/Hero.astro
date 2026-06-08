@@ -1,27 +1,266 @@
 ---
 ---
-<section class="bg-gradient-to-b from-brand-50 to-white">
-  <div class="mx-auto max-w-6xl px-6 py-24 text-center">
-    <h1 class="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl md:text-6xl">
-      Gestiona tu restaurante desde un solo panel
-    </h1>
-    <p class="mx-auto mt-6 max-w-2xl text-lg leading-8 text-gray-600">
-      POS, comandas, inventario y reportes en una plataforma pensada para que
-      cocineros, mozos y administradores trabajen en sincronía.
-    </p>
-    <div class="mt-10 flex items-center justify-center gap-4">
-      <a
-        href="/app/login"
-        class="rounded-md bg-brand-600 px-6 py-3 text-base font-semibold text-white shadow-sm hover:bg-brand-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
-      >
-        Iniciar sesión
+<section class="hero-section relative min-h-screen flex flex-col overflow-hidden">
+  <!-- The animated POS background -->
+  <div class="hero-pos-backdrop" aria-hidden="true">
+    <div class="pos-frame">
+      <div class="pos-chrome">
+        <span class="pos-chrome-dot" style="background:#ef4444"></span>
+        <span class="pos-chrome-dot" style="background:#f59e0b"></span>
+        <span class="pos-chrome-dot" style="background:#22c55e"></span>
+        <span class="pos-chrome-title">SaaS Restaurant &mdash; Turno Noche</span>
+        <span class="pos-clock" id="pos-clock">18:42</span>
+      </div>
+      <div class="pos-body">
+        <!-- Left: Category grid -->
+        <div class="pos-categories">
+          <div class="pos-cat active">
+            <span class="pos-cat-icon">🍹</span>
+            <span>Bebidas</span>
+          </div>
+          <div class="pos-cat">
+            <span class="pos-cat-icon">🥗</span>
+            <span>Entradas</span>
+          </div>
+          <div class="pos-cat">
+            <span class="pos-cat-icon">🥩</span>
+            <span>Platos</span>
+          </div>
+          <div class="pos-cat">
+            <span class="pos-cat-icon">🍰</span>
+            <span>Postres</span>
+          </div>
+          <div class="pos-cat">
+            <span class="pos-cat-icon">🍺</span>
+            <span>Barra</span>
+          </div>
+          <div class="pos-cat">
+            <span class="pos-cat-icon">🍕</span>
+            <span>Especiales</span>
+          </div>
+        </div>
+
+        <!-- Right: Order panel -->
+        <div class="pos-order">
+          <div class="pos-order-header">
+            <span class="pos-order-mesa">Mesa 12</span>
+            <span class="pos-order-status">Activa</span>
+          </div>
+          <div class="pos-order-list" id="pos-order-list">
+            <div class="pos-flash" id="pos-flash"></div>
+            <!-- Items get injected by JS -->
+          </div>
+          <div class="pos-order-footer">
+            <div class="pos-order-total">
+              <span>Total</span>
+              <span id="pos-total">$0</span>
+            </div>
+            <button class="pos-order-btn">Cobrar</button>
+          </div>
+        </div>
+      </div>
+    <div class="pos-kitchen-toast" id="pos-kitchen-toast"></div>
+    </div>
+  </div>
+
+  <!-- Dark gradient overlay for text readability -->
+  <div class="hero-overlay"></div>
+
+  <!-- Grain texture -->
+  <div class="hero-grain"></div>
+
+  <!-- Navigation -->
+  <nav class="relative z-20 w-full">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4 px-5 sm:px-8 py-6">
+    <a href="#inicio" class="flex items-center gap-3">
+      <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-lg">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" class="h-5 w-5">
+          <path d="M3 11h18M5 11V8a2 2 0 012-2h10a2 2 0 012 2v3M6 11v6a2 2 0 002 2h8a2 2 0 002-2v-6M9 16h6" />
+        </svg>
+      </div>
+      <span class="text-sm font-bold tracking-[0.2em] uppercase" style="color: var(--accent);">SaaS Restaurant</span>
+    </a>
+
+    <div class="hidden items-center gap-8 md:flex">
+      <a href="#producto" class="text-sm font-medium transition hover:text-white" style="color: rgba(255,255,255,0.7);">Producto</a>
+      <a href="#funciones" class="text-sm font-medium transition hover:text-white" style="color: rgba(255,255,255,0.7);">Funciones</a>
+      <a href="#ecosistema" class="text-sm font-medium transition hover:text-white" style="color: rgba(255,255,255,0.7);">Ecosistema</a>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button type="button" class="rounded-full px-4 py-2 text-sm font-semibold transition hover:bg-white/20" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.8);" data-theme-toggle aria-label="Cambiar tema">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4 inline">
+          <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+        </svg>
+      </button>
+      <a href="/app/login" class="hidden rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90 sm:inline-flex" style="background: var(--accent); color: white;">
+        Probar ahora
       </a>
-      <a
-        href="#caracteristicas"
-        class="rounded-md border border-gray-300 bg-white px-6 py-3 text-base font-semibold text-gray-700 hover:bg-gray-50"
-      >
-        Conocer más
-      </a>
+    </div>
+    </div>
+  </nav>
+
+  <!-- Hero text — on top of the animated POS -->
+  <main id="main-content" class="relative z-10 flex-1 flex flex-col justify-center w-full px-5 sm:px-8 pb-24">
+    <div id="inicio" class="hero-text-block">
+      <span class="hero-eyebrow">POS &amp; operación para restaurantes</span>
+
+      <h1 class="hero-headline">
+        Pedidos, cocina<br/>
+        y caja <em>conectados</em><br/>
+        en tiempo real.
+      </h1>
+
+      <p class="hero-sub">
+        Un sistema que se siente rápido, sólido y profesional desde el primer turno.
+      </p>
+
+      <div class="hero-actions">
+        <a href="/app/login" class="hero-btn-primary">
+          Probar gratis
+          <svg viewBox="0 0 20 20" fill="currentColor" class="ml-2 h-4 w-4">
+            <path fill-rule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clip-rule="evenodd" />
+          </svg>
+        </a>
+        <a href="#producto" class="hero-btn-ghost">Ver demo</a>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom ticker -->
+  <div class="hero-ticker">
+    <div class="ticker-track">
+      <span class="ticker-item"><span class="ticker-dot"></span>847 restaurantes activos</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>2.4M órdenes procesadas</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>99.8% uptime</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>+34% más velocidad</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>Cocina sincronizada</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>Caja sin fricción</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>Delivery integrado</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>Tiempo promedio: 8:42</span>
+      <!-- Duplicate for seamless scroll -->
+      <span class="ticker-item"><span class="ticker-dot"></span>847 restaurantes activos</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>2.4M órdenes procesadas</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>99.8% uptime</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>+34% más velocidad</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>Cocina sincronizada</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>Caja sin fricción</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>Delivery integrado</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>Tiempo promedio: 8:42</span>
     </div>
   </div>
 </section>
+
+<script is:inline>
+(() => {
+  const menuItems = [
+    { name: 'Coca-Cola', price: 2500 },
+    { name: 'Milanesa Napolitana', price: 12800 },
+    { name: 'Empanadas x6', price: 7200 },
+    { name: 'Lomo al paso', price: 15500 },
+    { name: 'Hamburguesa Clásica', price: 9800 },
+    { name: 'Ensalada Caesar', price: 6500 },
+    { name: 'Pizza Margarita', price: 8900 },
+    { name: 'Papas Fritas', price: 4200 },
+  ];
+
+  const kitchenMessages = [
+    { text: '✔ Mesa 5 — Lomo listo', type: 'success' },
+    { text: '⏳ Mesa 12 — Cocinando...', type: 'pending' },
+    { text: '⚠️ Mesa 8 — Tiempo excedido', type: 'alert' },
+    { text: '✔ Mesa 3 — Ensalada servida', type: 'success' },
+    { text: '⏳ Mesa 15 — Pizza en horno', type: 'pending' },
+    { text: '✔ Mesa 1 — Pedidos completados', type: 'success' },
+    { text: '⚠️ Barra — Stock bajo cerveza', type: 'alert' },
+  ];
+
+  const list = document.getElementById('pos-order-list');
+  const totalEl = document.getElementById('pos-total');
+  const flash = document.getElementById('pos-flash');
+  const clock = document.getElementById('pos-clock');
+  const toast = document.getElementById('pos-kitchen-toast');
+  if (!list || !totalEl) return;
+
+  let currentTotal = 0;
+  let itemIndex = 0;
+  let msgIndex = 0;
+
+  // Clock ticking
+  if (clock) {
+    let h = 18, m = 42;
+    setInterval(() => {
+      m++;
+      if (m >= 60) { m = 0; h = (h + 1) % 24; }
+      clock.textContent = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+    }, 800);
+  }
+
+  function triggerFlash() {
+    if (!flash) return;
+    flash.classList.add('active');
+    setTimeout(() => flash.classList.remove('active'), 200);
+  }
+
+  function showToast(msg) {
+    if (!toast) return;
+    toast.textContent = msg.text;
+    toast.className = 'pos-kitchen-toast visible ' + msg.type;
+    setTimeout(() => { toast.classList.remove('visible'); }, 2800);
+  }
+
+  function addItem() {
+    const item = menuItems[itemIndex % menuItems.length];
+    itemIndex++;
+
+    const el = document.createElement('div');
+    el.className = 'pos-order-item pos-order-item-enter';
+    el.innerHTML = '<span class="pos-order-item-name">' + item.name + '</span><span class="pos-order-item-price">$' + item.price.toLocaleString('es-AR') + '</span>';
+    list.appendChild(el);
+
+    currentTotal += item.price;
+    totalEl.textContent = '$' + currentTotal.toLocaleString('es-AR');
+
+    // Flash effect on new item
+    triggerFlash();
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        el.classList.remove('pos-order-item-enter');
+      });
+    });
+
+    const items = list.querySelectorAll(".pos-order-item");
+    if (items.length > 5) {
+      const children = list.querySelectorAll('.pos-order-item:not(.pos-order-item-enter)');
+      const first = children[0];
+      if (first) {
+        first.classList.add('pos-order-item-exit');
+        setTimeout(() => first.remove(), 400);
+      }
+    }
+
+    const delay = 1800 + Math.random() * 1200;
+    setTimeout(addItem, delay);
+  }
+
+  function showKitchenToast() {
+    const msg = kitchenMessages[msgIndex % kitchenMessages.length];
+    msgIndex++;
+    showToast(msg);
+    setTimeout(showKitchenToast, 3000 + Math.random() * 2000);
+  }
+
+  // Start everything
+  setTimeout(addItem, 400);
+  setTimeout(showKitchenToast, 1500);
+
+  // Cycle active category
+  const cats = document.querySelectorAll('.pos-cat');
+  let catIdx = 0;
+  setInterval(() => {
+    cats.forEach(c => c.classList.remove('active'));
+    cats[catIdx % cats.length].classList.add('active');
+    catIdx++;
+  }, 3000);
+})();
+</script>

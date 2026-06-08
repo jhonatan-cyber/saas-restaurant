@@ -72,4 +72,19 @@ export const authStoreHelpers = {
   isAuthenticated: () => Boolean(useAuthStore.getState().accessToken),
   setAuth: useAuthStore.getState().setAuth,
   clear: useAuthStore.getState().clear,
+
+  /**
+   * Actualiza los tokens en el store (usado por el interceptor de refresh).
+   * No toca el user ni otros campos.
+   * Si no hay usuario en el store, no actualiza (sesión inválida).
+   */
+  setAuthTokens: (accessToken: string, refreshToken: string) => {
+    const currentUser = useAuthStore.getState().user;
+    if (!currentUser) return; // Sin usuario, no se puede refrescar
+    useAuthStore.getState().setAuth({
+      accessToken,
+      refreshToken,
+      user: currentUser,
+    });
+  },
 };

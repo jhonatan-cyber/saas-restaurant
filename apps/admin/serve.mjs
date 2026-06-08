@@ -41,6 +41,18 @@ if (typeof fetchHandler !== 'function') {
   process.exit(1);
 }
 
+// Redirect / to /app/ so direct access to the root works
+const redirectToApp = (res, url) => {
+  const pathname = url.split('?')[0];
+  if (pathname === '/' || pathname === '') {
+    res.statusCode = 307;
+    res.setHeader('Location', '/app/');
+    res.end();
+    return true;
+  }
+  return false;
+};
+
 // Strip the /app URL prefix so requests like /app/assets/foo.js map to
 // dist/client/assets/foo.js. Paths without the prefix pass through unchanged.
 const stripAppBase = (pathname) =>
@@ -48,6 +60,10 @@ const stripAppBase = (pathname) =>
 
 const server = createServer(async (req, res) => {
   const url = req.url ?? '/';
+
+  // Redirect root / to /app/ to match TanStack Router's basepath
+  if (redirectToApp(res, url)) return;
+
   const pathname = stripAppBase(url.split('?')[0]);
 
   // --- Serve static assets from dist/client ---

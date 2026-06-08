@@ -47,7 +47,8 @@ async function bootstrap(): Promise<void> {
     origin: origins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', HEADERS.BRANCH_ID],
+    allowedHeaders: ['Content-Type', 'Authorization', HEADERS.BRANCH_ID, HEADERS.BUSINESS_ID],
+    exposedHeaders: [HEADERS.REQUEST_ID],
   });
 
   // Prefix global opcional

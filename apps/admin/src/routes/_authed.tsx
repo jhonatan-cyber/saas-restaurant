@@ -5,6 +5,8 @@ import { authStoreHelpers, useAuthStore } from '../lib/auth-store';
 import { connectRealtime, disconnectRealtime } from '../lib/realtime';
 import { useRealtimeInvalidation } from '../lib/use-realtime-invalidation';
 import { AdminLayout } from '../components/admin-layout';
+import { RouteErrorBoundary } from '../components/route-error-boundary';
+import { NotFound } from '../components/not-found';
 
 /**
  * Layout pathless (`_authed`) para rutas protegidas.
@@ -14,6 +16,9 @@ import { AdminLayout } from '../components/admin-layout';
  *
  * También es el lugar donde se conecta el WebSocket: una sola conexión
  * por sesión autenticada, y el hook de invalidación mapea eventos → React Query.
+ *
+ * `errorComponent`: captura errores de renderizado en cualquier ruta anidada
+ * manteniendo visible la sidebar y topbar.
  */
 export const Route = createFileRoute('/_authed')({
   beforeLoad: ({ location }) => {
@@ -24,6 +29,8 @@ export const Route = createFileRoute('/_authed')({
       });
     }
   },
+  errorComponent: RouteErrorBoundary,
+  notFoundComponent: () => <NotFound />,
   component: AuthedLayout,
 });
 

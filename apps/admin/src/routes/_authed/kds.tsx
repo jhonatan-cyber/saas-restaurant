@@ -39,8 +39,12 @@ function KdsPage(): ReactNode {
   });
 
   const transitionMutation = useMutation({
-    mutationFn: ({ orderId, to }: { orderId: string; to: OrderStatus }) =>
-      ordersApi.transition(orderId, { to, expectedVersion: 0 }),
+    mutationFn: async ({ orderId, to }: { orderId: string; to: OrderStatus }) => {
+      // Obtener la versión actual de la orden para optimistic lock
+      // (el KDS view no incluye el campo version, hacemos un fetch puntual)
+      const order = await ordersApi.get(orderId);
+      return ordersApi.transition(orderId, { to, expectedVersion: order.version });
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['orders', 'kds', branchId] });
     },

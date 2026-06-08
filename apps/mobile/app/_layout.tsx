@@ -1,8 +1,22 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '../src/lib/auth';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      staleTime: 15_000,
+      refetchOnWindowFocus: false,
+    },
+    mutations: {
+      retry: 0,
+    },
+  },
+});
 
 function RootLayoutNav(): ReactNode {
   const { user, isLoading } = useAuth();
@@ -28,9 +42,11 @@ function RootLayoutNav(): ReactNode {
 
 export default function RootLayout(): ReactNode {
   return (
-    <AuthProvider>
-      <RootLayoutNav />
-      <StatusBar style="dark" />
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <RootLayoutNav />
+        <StatusBar style="dark" />
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }

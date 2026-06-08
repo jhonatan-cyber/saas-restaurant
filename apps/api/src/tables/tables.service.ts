@@ -2,9 +2,11 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { Prisma, AuditAction, type RestaurantTable } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { CacheService } from '../cache/cache.service';
 import type { AuthenticatedUser, BusinessContext } from '../auth/types/jwt-payload.type';
 import type { PaginatedResult } from '../common/dto/pagination.dto';
 import type { TableDTO, TableStatus } from '@saas/shared';
+import { toTableDto } from './mappers';
 import {
   CreateTableDto,
   UpdateTableDto,
@@ -24,6 +26,7 @@ export class TablesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly cache: CacheService,
   ) {}
 
   /**
@@ -71,6 +74,10 @@ export class TablesService {
       ...(filters.location ? { location: filters.location } : {}),
     };
 
+    const cacheKey = CacheService.key('tables:list', { ...filters, businessId: tenant.businessId, page, pageSize, resolvedBranchId });
+    const cached = await this.cache.get<PaginatedResult<TableDTO>>(cacheKey);
+    if (cached) return cached;
+
     const [total, rows] = await this.prisma.$transaction([
       this.prisma.restaurantTable.count({ where }),
       this.prisma.restaurantTable.findMany({
@@ -81,8 +88,8 @@ export class TablesService {
       }),
     ]);
 
-    return {
-      data: rows.map((t) => this.toDto(t)),
+    const result: PaginatedResult<TableDTO> = {
+      data: rows.map((t) => toTableDto(t)),
       meta: {
         total,
         page,
@@ -90,6 +97,11 @@ export class TablesService {
         totalPages: Math.max(1, Math.ceil(total / pageSize)),
       },
     };
+
+    // Cachear por 30s
+    await this.cache.set(cacheKey, result, 30);
+
+    return result;
   }
 
   /**
@@ -98,20 +110,43 @@ export class TablesService {
   async listAll(
     user: AuthenticatedUser,
     context: BusinessContext | undefined,
-    filters?: { branchId?: string },
-  ): Promise<TableDTO[]> {
+    filters?: { branchId?: string; page?: number; pageSize?: number },
+  ): Promise<PaginatedResult<TableDTO>> {
+    const page = filters?.page ?? 1;
+    const pageSize = filters?.pageSize ?? 200;
+    const skip = (page - 1) * pageSize;
     const tenant = this.prisma.tenantFilter(user, context);
     const resolvedBranchId = await this.resolveBranchId(user, context, filters?.branchId);
 
-    const rows = await this.prisma.restaurantTable.findMany({
-      where: {
-        ...tenant,
-        deletedAt: null,
-        branchId: resolvedBranchId,
+    const where = {
+      ...tenant,
+      deletedAt: null,
+      branchId: resolvedBranchId,
+    };
+
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.restaurantTable.count({ where }),
+      this.prisma.restaurantTable.findMany({
+        where,
+        orderBy: [{ displayOrder: 'asc' }, { number: 'asc' }],
+        skip,
+        take: pageSize,
+      }),
+    ]);
+
+    const result: PaginatedResult<TableDTO> = {
+      data: rows.map((t) => toTableDto(t)),
+      meta: {
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
       },
-      orderBy: [{ displayOrder: 'asc' }, { number: 'asc' }],
-    });
-    return rows.map((t) => this.toDto(t));
+    };
+
+    // Cachear por 15s (usado constantemente en floor plan del POS)
+    await this.cache.set(CacheService.key('tables:all', { businessId: tenant.businessId, resolvedBranchId }), result, 15);
+    return result;
   }
 
   async getById(
@@ -124,7 +159,7 @@ export class TablesService {
       where: { ...tenant, id, deletedAt: null },
     });
     if (!table) throw new NotFoundException('Mesa no encontrada');
-    return this.toDto(table);
+    return toTableDto(table);
   }
 
   async create(
@@ -162,7 +197,11 @@ export class TablesService {
         status: 'FREE',
       },
     });
-    return this.toDto(created);
+
+    // Invalidar caché de mesas
+    await this.cache.delByPattern('tables:*');
+
+    return toTableDto(created);
   }
 
   async update(
@@ -198,7 +237,11 @@ export class TablesService {
         ...(dto.posY !== undefined ? { posY: dto.posY } : {}),
       },
     });
-    return this.toDto(updated);
+
+    // Invalidar caché de mesas
+    await this.cache.delByPattern('tables:*');
+
+    return toTableDto(updated);
   }
 
   /**
@@ -219,7 +262,7 @@ export class TablesService {
     if (!existing) throw new NotFoundException('Mesa no encontrada');
 
     if (existing.status === dto.status) {
-      return this.toDto(existing);
+      return toTableDto(existing);
     }
 
     const previous = existing.status as TableStatus;
@@ -252,7 +295,10 @@ export class TablesService {
       after: { status: dto.status, reason: dto.reason ?? null },
     });
 
-    return this.toDto(updated);
+    // Invalidar caché de mesas (el estado cambió)
+    await this.cache.delByPattern('tables:*');
+
+    return toTableDto(updated);
   }
 
   async softDelete(
@@ -279,23 +325,11 @@ export class TablesService {
       entity: 'RestaurantTable',
       entityId: id,
     });
+
+    // Invalidar caché de mesas
+    await this.cache.delByPattern('tables:*');
   }
 
-  private toDto(t: RestaurantTable): TableDTO {
-    return {
-      id: t.id,
-      businessId: t.businessId,
-      branchId: t.branchId,
-      number: t.number,
-      capacity: t.capacity,
-      location: t.location,
-      status: t.status,
-      displayOrder: t.displayOrder,
-      notes: t.notes,
-      posX: t.posX,
-      posY: t.posY,
-      createdAt: t.createdAt.toISOString(),
-      updatedAt: t.updatedAt.toISOString(),
-    };
-  }
+  // toDto moved to ./mappers.ts — imported as toTableDto
+
 }

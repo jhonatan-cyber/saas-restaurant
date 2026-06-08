@@ -11,14 +11,16 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Role } from '@saas/shared';
 import { ProductsService } from './products.service';
+import { productFiltersSchema } from '@saas/shared';
 import type {
   CreateProductDto,
   UpdateProductDto,
-  ProductFiltersDto,
 } from './dto/product.dto';
+import type { ProductFiltersInput } from '@saas/shared';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { BusinessContext } from '../auth/decorators/business-context.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -39,20 +41,24 @@ export class ProductsController {
   list(
     @CurrentUser() user: AuthenticatedUser,
     @BusinessContext() context: Context | undefined,
-    @Query() filters: ProductFiltersDto,
+    @Query(new ZodValidationPipe(productFiltersSchema)) filters: ProductFiltersInput,
   ) {
     return this.products.list(user, context, filters);
   }
 
   @Get('all')
-  @ApiOperation({ summary: 'Listado plano de productos disponibles (para POS)' })
+  @ApiOperation({ summary: 'Listado paginado de productos disponibles (para POS)' })
   @ApiQuery({ name: 'categoryId', required: false, type: String })
   @ApiQuery({ name: 'isAvailable', required: false, type: Boolean })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'pageSize', required: false, type: Number })
   listAll(
     @CurrentUser() user: AuthenticatedUser,
     @BusinessContext() context: Context | undefined,
     @Query('categoryId') categoryId?: string,
     @Query('isAvailable') isAvailable?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
     const parsedAvail =
       isAvailable === undefined
@@ -65,6 +71,8 @@ export class ProductsController {
     return this.products.listAll(user, context, {
       ...(categoryId ? { categoryId } : {}),
       ...(parsedAvail !== undefined ? { isAvailable: parsedAvail } : {}),
+      ...(page ? { page: Number(page) } : {}),
+      ...(pageSize ? { pageSize: Number(pageSize) } : {}),
     });
   }
 

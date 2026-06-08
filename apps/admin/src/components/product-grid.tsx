@@ -37,6 +37,7 @@ export function ProductGrid({ onAdd, branchId }: ProductGridProps): ReactNode {
   const categoriesQuery = useQuery({
     queryKey: ['categories', 'all', { isActive: true, branchId }],
     queryFn: () => categoriesApi.all({ isActive: true, branchId }),
+    select: (res) => res.data,
     enabled: !!branchId,
   });
 

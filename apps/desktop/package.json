@@ -9,6 +9,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "typecheck": "tsc --noEmit",
+    "lint": "echo 'no linter configured'",
+    "test": "echo 'no tests yet'",
     "clean": "rm -rf dist src-tauri/target"
   },
   "dependencies": {

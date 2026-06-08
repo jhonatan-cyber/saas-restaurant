@@ -24,6 +24,7 @@ import {
 } from '@saas/shared';
 import { Server, Socket } from 'socket.io';
 import { WsAuthenticatedUser, WsAuthMiddleware } from './ws-auth.middleware';
+import { WsThrottleMiddleware } from './ws-throttle.middleware';
 
 /**
  * RealtimeGateway: servidor de WebSockets con namespace `/ws`.
@@ -63,6 +64,7 @@ export class RealtimeGateway
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     private readonly wsAuth: WsAuthMiddleware,
+    private readonly wsThrottle: WsThrottleMiddleware,
   ) {}
 
   /**
@@ -71,8 +73,11 @@ export class RealtimeGateway
    * TODA conexión pase por validación de JWT.
    */
   afterInit(server: Server): void {
+    // Auth middleware (valida JWT en handshake)
     server.use((socket, next) => this.wsAuth.handle(socket, next));
-    this.logger.log('🔌 WS auth middleware aplicado al namespace /ws');
+    // Rate limiter middleware (limita conexiones por IP)
+    server.use((socket, next) => this.wsThrottle.handle(socket, next));
+    this.logger.log('🔌 WS auth + rate-limit middleware aplicados al namespace /ws');
   }
 
   onModuleInit(): void {
@@ -92,6 +97,14 @@ export class RealtimeGateway
         socket.disconnect(true);
         return;
       }
+
+      // Registrar catch-all para limitar eventos entrantes por socket
+      socket.onAny((event: string) => {
+        const allowed = this.wsThrottle.checkEvent(socket, event);
+        if (!allowed) {
+          socket.disconnect(true);
+        }
+      });
 
       // Auto-join a rooms de tenant y branch.
       const joinedRooms: string[] = [];
@@ -124,6 +137,7 @@ export class RealtimeGateway
 
   handleDisconnect(socket: Socket): void {
     this.socketPrepAreas.delete(socket.id);
+    this.wsThrottle.removeSocket(socket.id);
     this.logger.debug(`Socket ${socket.id} disconnected`);
   }
 

@@ -11,15 +11,17 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Role } from '@saas/shared';
 import { TablesService } from './tables.service';
+import { tableFiltersSchema } from '@saas/shared';
 import type {
   CreateTableDto,
   UpdateTableDto,
   ChangeTableStatusDto,
-  TableFiltersDto,
 } from './dto/table.dto';
+import type { TableFiltersInput } from '@saas/shared';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { BusinessContext } from '../auth/decorators/business-context.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -40,20 +42,28 @@ export class TablesController {
   list(
     @CurrentUser() user: AuthenticatedUser,
     @BusinessContext() context: Context | undefined,
-    @Query() filters: TableFiltersDto,
+    @Query(new ZodValidationPipe(tableFiltersSchema)) filters: TableFiltersInput,
   ) {
     return this.tables.list(user, context, filters);
   }
 
   @Get('all')
-  @ApiOperation({ summary: 'Listado plano para floor plan (incluye posX/posY)' })
+  @ApiOperation({ summary: 'Listado paginado para floor plan (incluye posX/posY)' })
   @ApiQuery({ name: 'branchId', required: false, type: String })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'pageSize', required: false, type: Number })
   listAll(
     @CurrentUser() user: AuthenticatedUser,
     @BusinessContext() context: Context | undefined,
     @Query('branchId') branchId?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
-    return this.tables.listAll(user, context, branchId ? { branchId } : undefined);
+    return this.tables.listAll(user, context, {
+      ...(branchId ? { branchId } : {}),
+      ...(page ? { page: Number(page) } : {}),
+      ...(pageSize ? { pageSize: Number(pageSize) } : {}),
+    });
   }
 
   @Get(':id')

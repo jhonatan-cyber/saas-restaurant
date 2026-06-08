@@ -53,17 +53,23 @@ export class BranchesController {
   }
 
   @Get('all')
-  @ApiOperation({ summary: 'Listado plano de sucursales (para dropdowns)' })
+  @ApiOperation({ summary: 'Listado paginado de sucursales (para dropdowns)' })
   @ApiQuery({ name: 'isActive', required: false, type: Boolean })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'pageSize', required: false, type: Number })
   listAll(
     @CurrentUser() user: AuthenticatedUser,
     @BusinessContext() context: Context | undefined,
     @Query('isActive') isActive?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
     const parsedActive =
       isActive === undefined ? undefined : isActive === 'true' ? true : isActive === 'false' ? false : undefined;
     return this.branches.listAll(user, context, {
       ...(parsedActive !== undefined ? { isActive: parsedActive } : {}),
+      ...(page ? { page: Number(page) } : {}),
+      ...(pageSize ? { pageSize: Number(pageSize) } : {}),
     });
   }
 

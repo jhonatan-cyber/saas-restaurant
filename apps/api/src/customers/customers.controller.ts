@@ -11,14 +11,16 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Role } from '@saas/shared';
 import { CustomersService } from './customers.service';
+import { customerFiltersSchema } from '@saas/shared';
 import type {
   CreateCustomerDto,
   UpdateCustomerDto,
-  CustomerFiltersDto,
 } from './dto/customer.dto';
+import type { CustomerFiltersInput } from '@saas/shared';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { BusinessContext } from '../auth/decorators/business-context.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -39,7 +41,7 @@ export class CustomersController {
   list(
     @CurrentUser() user: AuthenticatedUser,
     @BusinessContext() context: Context | undefined,
-    @Query() filters: CustomerFiltersDto,
+    @Query(new ZodValidationPipe(customerFiltersSchema)) filters: CustomerFiltersInput,
   ) {
     return this.customers.list(user, context, filters);
   }

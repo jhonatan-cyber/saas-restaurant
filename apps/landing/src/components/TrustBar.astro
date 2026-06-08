@@ -1,0 +1,22 @@
+---
+const stats = [
+  { value: 847, suffix: '+', label: 'Restaurantes activos', prefix: '' },
+  { value: 2.4, suffix: 'M', label: 'Órdenes procesadas', prefix: '', decimals: 1 },
+  { value: 34, suffix: '%', label: 'Más rapidez en servicio', prefix: '+', decimals: 0 },
+  { value: 99.8, suffix: '%', label: 'Uptime garantizado', prefix: '', decimals: 1 },
+];
+---
+<section class="section-gap relative" style="background: var(--surface-muted);">
+  <div class="section-shell">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 stagger">
+      {stats.map((stat) => (
+        <div class="stat-card text-center reveal">
+          <span class="stat-number" data-count={stat.value} data-suffix={stat.suffix} data-prefix={stat.prefix} data-decimals={stat.decimals}>
+            {stat.prefix}0{stat.suffix}
+          </span>
+          <p class="mt-3 text-sm font-semibold" style="color: var(--text-secondary);">{stat.label}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

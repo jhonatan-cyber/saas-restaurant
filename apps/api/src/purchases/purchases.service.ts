@@ -13,6 +13,7 @@ import {
   UpdatePurchaseDto,
   type PurchaseFiltersDto,
 } from './dto/purchase.dto';
+import { toPurchaseDto, toPurchaseListItemDto, type PurchaseWithRelations } from './mappers';
 
 /**
  * PurchasesService: CRUD de compras + finalización.
@@ -67,7 +68,7 @@ export class PurchasesService {
     ]);
 
     return {
-      data: rows.map((p) => this.toListItem(p)),
+      data: rows.map((p) => toPurchaseListItemDto(p)),
       meta: {
         total,
         page,
@@ -91,7 +92,7 @@ export class PurchasesService {
       },
     });
     if (!purchase) throw new NotFoundException('Compra no encontrada');
-    return this.toDto(purchase);
+    return toPurchaseDto(purchase);
   }
 
   async create(
@@ -188,7 +189,7 @@ export class PurchasesService {
       },
     });
 
-    return this.toDto(created);
+    return toPurchaseDto(created);
   }
 
   async update(
@@ -228,7 +229,7 @@ export class PurchasesService {
       include: { supplier: true, items: true },
     });
 
-    return this.toDto(updated);
+    return toPurchaseDto(updated);
   }
 
   /**
@@ -321,7 +322,7 @@ export class PurchasesService {
       where: { id },
       include: { supplier: true, items: true },
     });
-    return this.toDto(full!);
+    return toPurchaseDto(full!);
   }
 
   /**
@@ -349,73 +350,11 @@ export class PurchasesService {
       include: { supplier: true, items: true },
     });
 
-    return this.toDto(updated);
+    return toPurchaseDto(updated);
   }
 
   // ==================== HELPERS ====================
 
-  private toListItem(
-    p: any,
-  ): PurchaseListItemDTO {
-    return {
-      id: p.id,
-      purchaseNumber: p.purchaseNumber,
-      supplierName: p.supplier?.name ?? null,
-      status: p.status as PurchaseListItemDTO['status'],
-      total: p.total.toString(),
-      itemCount: p.items.length,
-      createdAt: p.createdAt.toISOString(),
-    };
-  }
+  // toListItem and toDto moved to ./mappers.ts — imported as toPurchaseListItemDto and toPurchaseDto
 
-  private toDto(
-    p: any,
-  ): PurchaseDTO {
-    return {
-      id: p.id,
-      businessId: p.businessId,
-      branchId: p.branchId,
-      supplierId: p.supplierId,
-      purchaseNumber: p.purchaseNumber,
-      status: p.status as PurchaseDTO['status'],
-      subtotal: p.subtotal.toString(),
-      taxTotal: p.taxTotal.toString(),
-      total: p.total.toString(),
-      notes: p.notes,
-      receivedAt: p.receivedAt?.toISOString() ?? null,
-      receivedBy: p.receivedBy,
-      invoiceUrl: p.invoiceUrl,
-      createdById: p.createdById,
-      supplier: p.supplier
-        ? {
-            id: p.supplier.id,
-            name: p.supplier.name,
-            businessId: p.supplier.businessId,
-            branchId: p.supplier.branchId,
-            contactName: p.supplier.contactName,
-            email: p.supplier.email,
-            phone: p.supplier.phone,
-            address: p.supplier.address,
-            taxId: p.supplier.taxId,
-            notes: p.supplier.notes,
-            isActive: p.supplier.isActive,
-            purchaseCount: 0,
-            createdAt: p.supplier.createdAt.toISOString(),
-            updatedAt: p.supplier.updatedAt.toISOString(),
-          }
-        : null,
-      items: p.items.map((i: any) => ({
-        id: i.id,
-        purchaseId: i.purchaseId,
-        productId: i.productId,
-        productName: i.productName,
-        unitCost: i.unitCost.toString(),
-        quantity: i.quantity.toString(),
-        lineTotal: i.lineTotal.toString(),
-        createdAt: i.createdAt.toISOString(),
-      })),
-      createdAt: p.createdAt.toISOString(),
-      updatedAt: p.updatedAt.toISOString(),
-    };
-  }
 }

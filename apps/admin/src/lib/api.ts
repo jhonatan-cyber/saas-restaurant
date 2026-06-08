@@ -1,5 +1,6 @@
 import { useAuthStore } from './auth-store';
 import { STORAGE_KEYS, type AuthenticatedUserDTO, HEADERS, type OrderStatus, type OrderType } from '@saas/shared';
+import { apiRequest as axiosRequest, ApiClientError as AxiosApiClientError } from './axios-client';
 
 const isBrowser = typeof window !== 'undefined';
 
@@ -42,8 +43,10 @@ function formatErrorMessage(body: ApiErrorBody): string {
   return body.error || 'Error desconocido';
 }
 
-interface ApiOptions extends Omit<RequestInit, 'body'> {
+interface ApiOptions {
+  method?: string;
   body?: unknown;
+  headers?: Record<string, string>;
   /** Headers extra opcionales (x-branch-id, etc.) */
   extraHeaders?: Record<string, string>;
   /** Si es true, no agrega Authorization (útil para endpoints públicos) */
@@ -54,55 +57,53 @@ interface ApiOptions extends Omit<RequestInit, 'body'> {
 
 /**
  * Cliente HTTP base.
+ *  - Ahora usa axios internamente (via axios-client.ts) con interceptores
+ *    de refresh automático y manejo de errores.
+ *  - Mantiene la misma firma y los mismos tipos de error (ApiClientError)
+ *    para compatibilidad con todas las pantallas existentes.
  *  - Centraliza Authorization, headers de tenant y manejo de errores.
- *  - Lee el token y el user de Zustand (no de localStorage) para reactividad.
- *  - Parsea el body de error al formato uniforme del HttpExceptionFilter.
+ */
+/**
+ * Cliente HTTP base.
+ *  - Ahora usa axios internamente (via axios-client.ts) con interceptores
+ *    de refresh automático y manejo de errores.
+ *  - Mantiene la misma firma y los mismos tipos de error (ApiClientError)
+ *    para compatibilidad con todas las pantallas existentes.
+ *
+ * NOTA: `extraHeaders` se incluye aquí por compatibilidad con código
+ * existente, pero los interceptores de axios ya manejan auth y tenant
+ * headers de forma automática. Para headers ad-hoc, se puede pasar
+ * `headers` directamente o usar `axiosRequest` de axios-client.ts.
  */
 export async function api<T>(path: string, options: ApiOptions = {}): Promise<T> {
-  const { body, extraHeaders, skipAuth, headers, branchId, ...rest } = options;
+  const { body, extraHeaders, headers, skipAuth, branchId, ...rest } = options;
 
-  const authHeaders: Record<string, string> = {};
-  if (!skipAuth) {
-    const state = useAuthStore.getState();
-    if (state.accessToken) authHeaders.Authorization = `Bearer ${state.accessToken}`;
-    if (state.user) authHeaders[HEADERS.BUSINESS_ID] = state.user.businessId;
-    if (branchId !== undefined && branchId !== null) {
-      authHeaders[HEADERS.BRANCH_ID] = branchId;
+  try {
+    return await axiosRequest<T>(path, {
+      method: options.method ?? rest.method,
+      body,
+      skipAuth,
+      branchId: branchId ?? undefined,
+      // Merge extraHeaders y headers para compatibilidad
+      headers: {
+        ...(extraHeaders as Record<string, string> | undefined),
+        ...(headers as Record<string, string> | undefined),
+      },
+    });
+  } catch (error: unknown) {
+    // Convertir AxiosApiClientError a ApiClientError (compatibilidad)
+    if (error instanceof AxiosApiClientError) {
+      const normalized: ApiErrorBody = {
+        statusCode: error.statusCode,
+        error: 'Error',
+        message: error.message,
+        path: path,
+        timestamp: new Date().toISOString(),
+      };
+      throw new ApiClientError(error.statusCode, normalized);
     }
+    throw error;
   }
-
-  const finalHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
-    ...authHeaders,
-    ...extraHeaders,
-    ...(headers ? (headers as Record<string, string>) : {}),
-  };
-
-  const init: RequestInit = {
-    ...rest,
-    headers: finalHeaders,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  };
-
-  const res = await fetch(`${API_BASE_URL}${path}`, init);
-
-  if (!res.ok) {
-    const errBody = (await res.json().catch(() => ({}))) as Partial<ApiErrorBody>;
-    const normalized: ApiErrorBody = {
-      statusCode: errBody.statusCode ?? res.status,
-      error: errBody.error ?? 'Error',
-      message: errBody.message ?? res.statusText,
-      path: errBody.path ?? path,
-      timestamp: errBody.timestamp ?? new Date().toISOString(),
-    };
-    throw new ApiClientError(res.status, normalized);
-  }
-
-  if (res.status === 204) {
-    return undefined as T;
-  }
-  return (await res.json()) as T;
 }
 
 // ============== API tipada de auth ==============
@@ -129,6 +130,13 @@ export const authApi = {
     api<LoginResponse>('/auth/login', {
       method: 'POST',
       body: data,
+      skipAuth: true,
+    }),
+
+  stationLogin: (businessSig: string) =>
+    api<LoginResponse>('/pos-stations/station-login', {
+      method: 'POST',
+      body: { businessSig },
       skipAuth: true,
     }),
 
@@ -215,12 +223,14 @@ export const categoriesApi = {
     return api<PaginatedResponse<Category>>(`/categories${qs ? `?${qs}` : ''}`, { method: 'GET' });
   },
 
-  all: (filters: { isActive?: boolean; branchId?: string } = {}) => {
+  all: (filters: { isActive?: boolean; branchId?: string; page?: number; pageSize?: number } = {}) => {
     const params = new URLSearchParams();
     if (filters.isActive !== undefined) params.set('isActive', String(filters.isActive));
     if (filters.branchId) params.set('branchId', filters.branchId);
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.pageSize) params.set('pageSize', String(filters.pageSize));
     const qs = params.toString();
-    return api<CategoryListItem[]>(`/categories/all${qs ? `?${qs}` : ''}`, { method: 'GET' });
+    return api<PaginatedResponse<CategoryListItem>>(`/categories/all${qs ? `?${qs}` : ''}`, { method: 'GET' });
   },
 
   get: (id: string) => api<Category>(`/categories/${id}`, { method: 'GET' }),
@@ -295,11 +305,13 @@ export const branchesApi = {
     return api<PaginatedResponse<Branch>>(`/branches${qs ? `?${qs}` : ''}`, { method: 'GET' });
   },
 
-  all: (filters: { isActive?: boolean } = {}) => {
+  all: (filters: { isActive?: boolean; page?: number; pageSize?: number } = {}) => {
     const params = new URLSearchParams();
     if (filters.isActive !== undefined) params.set('isActive', String(filters.isActive));
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.pageSize) params.set('pageSize', String(filters.pageSize));
     const qs = params.toString();
-    return api<BranchListItem[]>(`/branches/all${qs ? `?${qs}` : ''}`, { method: 'GET' });
+    return api<PaginatedResponse<BranchListItem>>(`/branches/all${qs ? `?${qs}` : ''}`, { method: 'GET' });
   },
 
   get: (id: string) => api<Branch>(`/branches/${id}`, { method: 'GET' }),
@@ -606,11 +618,13 @@ export const suppliersApi = {
     return api<PaginatedResponse<Supplier>>(`/suppliers${qs ? `?${qs}` : ''}`, { method: 'GET' });
   },
 
-  all: (filters: { isActive?: boolean } = {}) => {
+  all: (filters: { isActive?: boolean; page?: number; pageSize?: number } = {}) => {
     const params = new URLSearchParams();
     if (filters.isActive !== undefined) params.set('isActive', String(filters.isActive));
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.pageSize) params.set('pageSize', String(filters.pageSize));
     const qs = params.toString();
-    return api<SupplierListItem[]>(`/suppliers/all${qs ? `?${qs}` : ''}`, { method: 'GET' });
+    return api<PaginatedResponse<SupplierListItem>>(`/suppliers/all${qs ? `?${qs}` : ''}`, { method: 'GET' });
   },
 
   get: (id: string) => api<Supplier>(`/suppliers/${id}`, { method: 'GET' }),
@@ -710,12 +724,14 @@ export const productsApi = {
     return api<PaginatedResponse<Product>>(`/products${qs ? `?${qs}` : ''}`, { method: 'GET' });
   },
 
-  all: (filters: { categoryId?: string; isAvailable?: boolean } = {}) => {
+  all: (filters: { categoryId?: string; isAvailable?: boolean; page?: number; pageSize?: number } = {}) => {
     const params = new URLSearchParams();
     if (filters.categoryId) params.set('categoryId', filters.categoryId);
     if (filters.isAvailable !== undefined) params.set('isAvailable', String(filters.isAvailable));
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.pageSize) params.set('pageSize', String(filters.pageSize));
     const qs = params.toString();
-    return api<ProductListItem[]>(`/products/all${qs ? `?${qs}` : ''}`, { method: 'GET' });
+    return api<PaginatedResponse<ProductListItem>>(`/products/all${qs ? `?${qs}` : ''}`, { method: 'GET' });
   },
 
   lowStock: () => api<ProductListItem[]>('/products/low-stock', { method: 'GET' }),
@@ -787,12 +803,14 @@ export const preparationAreasApi = {
     );
   },
 
-  all: (filters: { isActive?: boolean; branchId?: string } = {}) => {
+  all: (filters: { isActive?: boolean; branchId?: string; page?: number; pageSize?: number } = {}) => {
     const params = new URLSearchParams();
     if (filters.isActive !== undefined) params.set('isActive', String(filters.isActive));
     if (filters.branchId) params.set('branchId', filters.branchId);
+    if (filters.page) params.set('page', String(filters.page));
+    if (filters.pageSize) params.set('pageSize', String(filters.pageSize));
     const qs = params.toString();
-    return api<PreparationAreaListItem[]>(`/preparation-areas/all${qs ? `?${qs}` : ''}`, {
+    return api<PaginatedResponse<PreparationAreaListItem>>(`/preparation-areas/all${qs ? `?${qs}` : ''}`, {
       method: 'GET',
     });
   },
@@ -865,11 +883,13 @@ export const tablesApi = {
     });
   },
 
-  all: (branchId?: string) => {
+  all: (branchId?: string, page?: number, pageSize?: number) => {
     const params = new URLSearchParams();
     if (branchId) params.set('branchId', branchId);
+    if (page) params.set('page', String(page));
+    if (pageSize) params.set('pageSize', String(pageSize));
     const qs = params.toString();
-    return api<RestaurantTable[]>(`/tables/all${qs ? `?${qs}` : ''}`, {
+    return api<PaginatedResponse<RestaurantTable>>(`/tables/all${qs ? `?${qs}` : ''}`, {
       method: 'GET',
       ...(branchId ? { branchId } : {}),
     });

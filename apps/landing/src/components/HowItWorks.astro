@@ -1,47 +1,222 @@
 ---
-const steps = [
+const tabs = [
   {
-    number: '1',
-    title: 'Cargá tu menú',
-    description:
-      'Importá tus productos, precios y modificadores. Categorías, combos y variantes en minutos.',
+    id: 'pos',
+    label: 'Punto de Venta',
+    kicker: 'Interfaz de venta',
+    title: 'Un POS que se siente tan rápido como pensar.',
+    copy: 'Categorías por colores, productos con fotos, notas por ítem y cierre de cuenta en un toque. Diseñado para que cualquier mesero lo domine en minutos.',
   },
   {
-    number: '2',
-    title: 'Configurá tus usuarios',
-    description:
-      'Mozo, cajero, cocina, administración. Cada rol con los permisos que le corresponden.',
+    id: 'kds',
+    label: 'Cocina (KDS)',
+    kicker: 'Preparación',
+    title: 'La cocina ve exactamente qué preparar, en orden.',
+    copy: 'Pantallas de preparación con prioridad, tiempo transcurrido, notas del cliente y flujo continuo. Sin tickets de papel perdidos.',
   },
   {
-    number: '3',
-    title: 'Empezá a vender',
-    description:
-      'Toma pedidos desde el salón o delivery. Las comandas viajan a la cocina y los pagos se registran automáticamente.',
+    id: 'reportes',
+    label: 'Reportes',
+    kicker: 'Inteligencia',
+    title: 'Los números de tu restaurante, en tiempo real.',
+    copy: 'Ventas por turno, productos más vendidos, rendimiento por empleado y alertas de stock. Decisiones con datos, no con intuición.',
   },
 ];
 ---
-<section id="como-funciona" class="bg-brand-50 py-20">
-  <div class="mx-auto max-w-6xl px-6">
-    <div class="text-center">
-      <h2 class="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-        Cómo funciona
-      </h2>
-      <p class="mx-auto mt-4 max-w-2xl text-lg text-gray-600">
-        Empezás a operar en el día, sin curva de aprendizaje.
+<section id="producto" class="section-gap" style="background: var(--surface-muted);">
+  <div class="section-shell">
+    <div class="text-center max-w-3xl mx-auto reveal">
+      <span class="eyebrow">El producto</span>
+      <h2 class="section-title mt-6">Diseñado para fluir con tu operación.</h2>
+      <p class="section-subtitle mt-5 mx-auto">
+        Cada pantalla fue pensada para resolver un momento real del servicio. Sin pantallas de más, sin clics de más.
       </p>
     </div>
-    <ol class="mt-16 grid grid-cols-1 gap-8 md:grid-cols-3">
-      {
-        steps.map((step) => (
-          <li class="rounded-lg bg-white p-6 shadow-sm">
-            <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand-600 text-lg font-bold text-white">
-              {step.number}
-            </span>
-            <h3 class="mt-4 text-lg font-semibold text-gray-900">{step.title}</h3>
-            <p class="mt-2 text-sm text-gray-600">{step.description}</p>
-          </li>
-        ))
-      }
-    </ol>
+
+    <!-- Tabs -->
+    <div class="mt-12 flex justify-center reveal">
+      <div class="showcase-tabs" id="showcase-tabs">
+        {tabs.map((tab, i) => (
+          <button class={`showcase-tab ${i === 0 ? 'active' : ''}`} data-tab={tab.id}>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="mt-12 grid gap-10 lg:grid-cols-[1fr_1.2fr] lg:items-center reveal-scale" id="showcase-content">
+      <!-- Text -->
+      <div>
+        <span class="eyebrow">{tabs[0].kicker}</span>
+        <h3 class="section-title mt-5">{tabs[0].title}</h3>
+        <p class="section-subtitle mt-4">{tabs[0].copy}</p>
+        <div class="mt-8 flex flex-wrap gap-2" id="showcase-tags">
+          <span class="rounded-full px-4 py-2 text-xs font-bold" style="background: var(--accent-glow); color: var(--accent);">Rápido</span>
+          <span class="rounded-full px-4 py-2 text-xs font-bold" style="background: var(--accent-glow); color: var(--accent);">Intuitivo</span>
+          <span class="rounded-full px-4 py-2 text-xs font-bold" style="background: var(--accent-glow); color: var(--accent);">Profesional</span>
+        </div>
+      </div>
+
+      <!-- Mock Screen -->
+      <div class="rounded-3xl p-5" style="background: linear-gradient(135deg, var(--surface-solid), var(--surface-elevated)); border: 1px solid var(--surface-border-strong); box-shadow: var(--shadow-lg);">
+        <div class="flex gap-2 mb-4">
+          <span class="h-3 w-3 rounded-full" style="background: #ef4444;"></span>
+          <span class="h-3 w-3 rounded-full" style="background: #f59e0b;"></span>
+          <span class="h-3 w-3 rounded-full" style="background: #22c55e;"></span>
+        </div>
+        <div class="rounded-2xl p-4" id="showcase-mock" style="background: var(--surface-elevated); border: 1px solid var(--surface-border); min-height: 320px;">
+          <!-- POS Mock -->
+          <div id="mock-pos">
+            <div class="flex items-center justify-between mb-4">
+              <span class="text-xs font-bold uppercase" style="color: var(--text-tertiary); letter-spacing: 0.1em;">Mesa 12 &bull; Salón</span>
+              <span class="text-xs font-bold px-2 py-1 rounded-full" style="background: rgba(16,185,129,0.15); color: #10b981;">Activa</span>
+            </div>
+            <div class="grid grid-cols-4 gap-2 mb-4">
+              <div class="rounded-xl p-3 text-center text-xs font-semibold" style="background: var(--accent-glow); color: var(--accent);">Bebidas</div>
+              <div class="rounded-xl p-3 text-center text-xs font-semibold" style="background: var(--surface-muted); color: var(--text-secondary);">Entradas</div>
+              <div class="rounded-xl p-3 text-center text-xs font-semibold" style="background: var(--surface-muted); color: var(--text-secondary);">Platos</div>
+              <div class="rounded-xl p-3 text-center text-xs font-semibold" style="background: var(--surface-muted); color: var(--text-secondary);">Postres</div>
+            </div>
+            <div class="space-y-2">
+              <div class="flex items-center justify-between rounded-xl p-3" style="background: var(--surface-muted);">
+                <span class="text-sm font-medium" style="color: var(--text-primary);">Coca-Cola</span>
+                <span class="text-sm font-semibold" style="color: var(--accent);">$2.500</span>
+              </div>
+              <div class="flex items-center justify-between rounded-xl p-3" style="background: var(--surface-muted);">
+                <span class="text-sm font-medium" style="color: var(--text-primary);">Milanesa Napolitana</span>
+                <span class="text-sm font-semibold" style="color: var(--accent);">$12.800</span>
+              </div>
+              <div class="flex items-center justify-between rounded-xl p-3" style="background: var(--surface-muted);">
+                <span class="text-sm font-medium" style="color: var(--text-primary);">Empanadas x6</span>
+                <span class="text-sm font-semibold" style="color: var(--accent);">$7.200</span>
+              </div>
+            </div>
+            <div class="mt-4 flex items-center justify-between rounded-xl p-3" style="background: linear-gradient(135deg, rgba(249,115,22,0.12), rgba(249,115,22,0.04)); border: 1px solid rgba(249,115,22,0.15);">
+              <span class="text-sm font-bold" style="color: var(--text-primary);">Total</span>
+              <span class="text-lg font-display font-normal" style="color: var(--accent);">$22.500</span>
+            </div>
+          </div>
+
+          <!-- KDS Mock (hidden by default) -->
+          <div id="mock-kds" style="display: none;">
+            <div class="flex items-center justify-between mb-4">
+              <span class="text-xs font-bold uppercase" style="color: var(--text-tertiary); letter-spacing: 0.1em;">Estación: Parrilla</span>
+              <span class="text-xs font-bold px-2 py-1 rounded-full" style="background: rgba(249,115,22,0.15); color: var(--accent);">3 pendientes</span>
+            </div>
+            <div class="space-y-3">
+              <div class="rounded-xl p-3" style="background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.15);">
+                <div class="flex justify-between">
+                  <span class="text-sm font-bold" style="color: var(--text-primary);">Mesa 5 &bull; #1247</span>
+                  <span class="text-xs font-mono font-bold" style="color: #ef4444;">12:34</span>
+                </div>
+                <p class="mt-1 text-sm" style="color: var(--text-secondary);">2x Lomo al paso + sin cebolla</p>
+              </div>
+              <div class="rounded-xl p-3" style="background: rgba(249,115,22,0.08); border: 1px solid rgba(249,115,22,0.15);">
+                <div class="flex justify-between">
+                  <span class="text-sm font-bold" style="color: var(--text-primary);">Mesa 12 &bull; #1248</span>
+                  <span class="text-xs font-mono font-bold" style="color: var(--accent);">08:12</span>
+                </div>
+                <p class="mt-1 text-sm" style="color: var(--text-secondary);">1x Milanesa napolitana + extra huevo</p>
+              </div>
+              <div class="rounded-xl p-3" style="background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.15);">
+                <div class="flex justify-between">
+                  <span class="text-sm font-bold" style="color: var(--text-primary);">Mesa 8 &bull; #1246</span>
+                  <span class="text-xs font-mono font-bold" style="color: #22c55e;">04:20</span>
+                </div>
+                <p class="mt-1 text-sm" style="color: var(--text-secondary);">3x Hamburguesa clásica</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Reports Mock (hidden by default) -->
+          <div id="mock-reportes" style="display: none;">
+            <div class="flex items-center justify-between mb-4">
+              <span class="text-xs font-bold uppercase" style="color: var(--text-tertiary); letter-spacing: 0.1em;">Turno noche &bull; Hoy</span>
+              <span class="text-xs font-bold px-2 py-1 rounded-full" style="background: rgba(139,92,246,0.15); color: #8b5cf6;">En vivo</span>
+            </div>
+            <div class="grid grid-cols-2 gap-3 mb-4">
+              <div class="rounded-xl p-3" style="background: var(--surface-muted);">
+                <span class="text-xs font-bold uppercase" style="color: var(--text-tertiary);">Ingresos</span>
+                <p class="text-xl font-display" style="color: var(--accent);">$3.850.000</p>
+              </div>
+              <div class="rounded-xl p-3" style="background: var(--surface-muted);">
+                <span class="text-xs font-bold uppercase" style="color: var(--text-tertiary);">Órdenes</span>
+                <p class="text-xl font-display" style="color: var(--text-primary);">356</p>
+              </div>
+            </div>
+            <div class="space-y-2">
+              <div class="flex justify-between text-sm" style="color: var(--text-secondary);">
+                <span>⭐ Milanesa Napolitana</span><span class="font-semibold" style="color: var(--text-primary);">87 u.</span>
+              </div>
+              <div class="flex justify-between text-sm" style="color: var(--text-secondary);">
+                <span>⭐ Lomo al paso</span><span class="font-semibold" style="color: var(--text-primary);">64 u.</span>
+              </div>
+              <div class="flex justify-between text-sm" style="color: var(--text-secondary);">
+                <span>⭐ Empanadas x6</span><span class="font-semibold" style="color: var(--text-primary);">52 u.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
+
+<script is:inline>
+  (() => {
+    const tabData = {
+      pos: {
+        kicker: 'Interfaz de venta',
+        title: 'Un POS que se siente tan rápido como pensar.',
+        copy: 'Categorías por colores, productos con fotos, notas por ítem y cierre de cuenta en un toque. Diseñado para que cualquier mesero lo domine en minutos.',
+        tags: ['Rápido', 'Intuitivo', 'Profesional'],
+      },
+      kds: {
+        kicker: 'Preparación',
+        title: 'La cocina ve exactamente qué preparar, en orden.',
+        copy: 'Pantallas de preparación con prioridad, tiempo transcurrido, notas del cliente y flujo continuo. Sin tickets de papel perdidos.',
+        tags: ['Priorizado', 'En tiempo real', 'Sin errores'],
+      },
+      reportes: {
+        kicker: 'Inteligencia',
+        title: 'Los números de tu restaurante, en tiempo real.',
+        copy: 'Ventas por turno, productos más vendidos, rendimiento por empleado y alertas de stock. Decisiones con datos, no con intuición.',
+        tags: ['Live', 'Accionable', 'Automático'],
+      },
+    };
+
+    document.getElementById('showcase-tabs')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-tab]');
+      if (!btn) return;
+      const id = btn.dataset.tab;
+
+      // Update active tab
+      document.querySelectorAll('.showcase-tab').forEach((t) => t.classList.remove('active'));
+      btn.classList.add('active');
+
+      // Update mock
+      document.querySelectorAll('[id^="mock-"]').forEach((m) => m.style.display = 'none');
+      const mock = document.getElementById('mock-' + id);
+      if (mock) mock.style.display = 'block';
+
+      // Update text
+      const data = tabData[id];
+      if (!data) return;
+      const kickerEl = document.querySelector('#showcase-content .eyebrow');
+      const titleEl = document.querySelector('#showcase-content .section-title');
+      const copyEl = document.querySelector('#showcase-content .section-subtitle');
+      if (kickerEl) kickerEl.textContent = data.kicker;
+      if (titleEl) titleEl.textContent = data.title;
+      if (copyEl) copyEl.textContent = data.copy;
+
+      // Update tags
+      const tagsEl = document.getElementById('showcase-tags');
+      if (tagsEl) {
+        tagsEl.innerHTML = data.tags.map((t) =>
+          '<span class="rounded-full px-4 py-2 text-xs font-bold" style="background: var(--accent-glow); color: var(--accent);">' + t + '</span>'
+        ).join('');
+      }
+    });
+  })();
+</script>
