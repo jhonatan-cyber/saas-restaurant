@@ -35,6 +35,10 @@ export interface CreateOrderInput {
   customerId?: string;
   waiterId?: string;
   globalNotes?: string;
+  // FASE 7: Loyalty points redemption
+  redeemPoints?: number;
+  discount?: number;
+  discountReason?: string;
   items: CreateOrderItemInput[];
 }
 

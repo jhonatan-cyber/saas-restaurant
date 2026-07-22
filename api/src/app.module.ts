@@ -31,6 +31,8 @@ import { PlansModule } from './plans/plans.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { BillingModule } from './billing/billing.module';
 import { PrintModule } from './print/print.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { LoyaltyModule } from './loyalty/loyalty.module';
 
 /**
  * Módulo raíz del API.
@@ -127,6 +129,8 @@ import { PrintModule } from './print/print.module';
     SubscriptionModule,
     BillingModule,
     PrintModule,
+    DashboardModule,
+    LoyaltyModule,
   ],
   providers: [
     {

@@ -369,6 +369,10 @@ export const createOrderSchema = z.object({
   customerId: z.cuid().optional(),
   waiterId: z.cuid().optional(),
   globalNotes: z.string().trim().max(1000).optional(),
+  // FASE 7: Loyalty points redemption
+  redeemPoints: z.number().int().min(1).optional(),
+  discount: z.number().nonnegative().optional(),
+  discountReason: z.string().trim().max(255).optional(),
   items: z
     .array(createOrderItemSchema)
     .min(1, 'La orden debe tener al menos un ítem'),
@@ -516,6 +520,23 @@ export const previewChangeSchema = z.object({
   tendered: z.coerce.number().min(0.01),
 })
 export type PreviewChangeInput = z.infer<typeof previewChangeSchema>
+
+// ============== Loyalty / Fidelización (FASE 7) ==============
+
+export const updateLoyaltyProgramSchema = z.object({
+  enabled: z.coerce.boolean().optional(),
+  pointsPerCurrency: z.coerce.number().positive('Debe ser > 0').optional(),
+  pointValue: z.coerce.number().nonnegative('No puede ser negativo').optional(),
+  minRedeemPoints: z.coerce.number().int().min(1).optional(),
+  maxRedeemPerOrder: z.coerce.number().int().min(1).nullable().optional(),
+  autoAward: z.coerce.boolean().optional(),
+});
+export type UpdateLoyaltyProgramInput = z.infer<typeof updateLoyaltyProgramSchema>;
+
+export const redeemPointsSchema = z.object({
+  points: z.number().int().min(1, 'Debe canjear al menos 1 punto'),
+});
+export type RedeemPointsInput = z.infer<typeof redeemPointsSchema>;
 
 // ============== Plans / Subscription (FASE 6) ==============
 

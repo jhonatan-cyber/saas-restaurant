@@ -1,7 +1,7 @@
 import { ProductsService } from './products.service';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { createTestUser, createTestContext, decimal } from '../test/mocks';
-import { buildServiceTest, MockPrisma, MockAudit, MockCache } from '../test/service-test.helper';
+import { buildServiceTest, MockPrisma, MockAudit, MockCache, MockQuota } from '../test/service-test.helper';
 import type { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 
 describe('ProductsService', () => {
@@ -9,6 +9,7 @@ describe('ProductsService', () => {
   let prisma: MockPrisma;
   let audit: MockAudit;
   let cache: MockCache;
+  let quota: MockQuota;
 
   const user = createTestUser();
   const context = createTestContext();
@@ -100,11 +101,28 @@ describe('ProductsService', () => {
     prisma = result.prisma;
     audit = result.audit!;
     cache = result.cache!;
+    quota = result.quota!;
   });
 
   afterEach(() => {
     jest.clearAllMocks();
   });
+
+  /** Helper para crear un dto de creación mínimo */
+  function makeCreateDto(overrides: Partial<CreateProductDto> = {}): CreateProductDto {
+    return {
+      name: 'Nuevo Producto',
+      slug: 'nuevo-producto',
+      price: 150,
+      categoryId: 'cat-1',
+      preparationAreaId: 'area-1',
+      trackStock: false,
+      productType: 'SALE',
+      isActive: true,
+      isAvailable: true,
+      ...overrides,
+    };
+  }
 
   // ═════════════════════════════════════════════════════════════════
   //  list
@@ -210,6 +228,15 @@ describe('ProductsService', () => {
       expect(result).toEqual(cached);
       expect(prisma.mockPrisma.product.findMany).not.toHaveBeenCalled();
     });
+
+    it('returns empty array when no products match', async () => {
+      prisma.mockPrisma.product.findMany.mockResolvedValue([]);
+
+      const result = await service.listLowStock(user, context);
+
+      expect(result).toEqual([]);
+      expect(cache!.set).toHaveBeenCalled();
+    });
   });
 
   // ═════════════════════════════════════════════════════════════════
@@ -279,6 +306,104 @@ describe('ProductsService', () => {
       await expect(service.create(user, context, createDto)).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    it('throws NotFoundException when preparationArea does not belong to tenant', async () => {
+      prisma.mockPrisma.product.findFirst.mockResolvedValueOnce(null);
+      prisma.mockPrisma.category.findFirst.mockResolvedValueOnce(baseCategory);
+      prisma.mockPrisma.preparationArea.findFirst.mockResolvedValueOnce(null); // area not found
+
+      await expect(service.create(user, context, createDto)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('throws NotFoundException when branch does not belong to tenant', async () => {
+      const dtoWithBranch = makeCreateDto({ branchId: 'branch-999' });
+      prisma.mockPrisma.product.findFirst.mockResolvedValueOnce(null);
+      prisma.mockPrisma.category.findFirst.mockResolvedValueOnce(baseCategory);
+      prisma.mockPrisma.preparationArea.findFirst.mockResolvedValueOnce(baseArea);
+      prisma.mockPrisma.branch.findFirst.mockResolvedValueOnce(null); // branch not found
+
+      await expect(service.create(user, context, dtoWithBranch)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('calls quota enforcer before creating', async () => {
+      prisma.mockPrisma.product.findFirst.mockResolvedValueOnce(null);
+      prisma.mockPrisma.category.findFirst.mockResolvedValueOnce(baseCategory);
+      prisma.mockPrisma.preparationArea.findFirst.mockResolvedValueOnce(baseArea);
+      prisma.mockPrisma.product.create.mockResolvedValue(baseProduct);
+
+      await service.create(user, context, createDto);
+
+      expect(quota.checkOrThrow).toHaveBeenCalledWith('biz-1', 'products');
+    });
+
+    it('creates a product with all optional fields (bulkPricing, minStock, description, etc.)', async () => {
+      const fullDto = makeCreateDto({
+        description: 'Descripción completa',
+        imageUrl: 'https://example.com/img.png',
+        sku: 'PROD-001',
+        cost: 80,
+        taxRate: 13,
+        trackStock: true,
+        minStock: 10,
+        preparationTimeMin: 15,
+        bulkPricing: [
+          { minQty: 3, unitPrice: 130 },
+          { minQty: 10, unitPrice: 110 },
+        ],
+      });
+
+      prisma.mockPrisma.product.findFirst.mockResolvedValueOnce(null);
+      prisma.mockPrisma.category.findFirst.mockResolvedValueOnce(baseCategory);
+      prisma.mockPrisma.preparationArea.findFirst.mockResolvedValueOnce(baseArea);
+      prisma.mockPrisma.product.create.mockResolvedValue({
+        ...baseProduct,
+        description: 'Descripción completa',
+        imageUrl: 'https://example.com/img.png',
+        sku: 'PROD-001',
+        cost: decimal(80),
+        taxRate: decimal(13),
+        trackStock: true,
+        minStock: 10,
+        preparationTimeMin: 15,
+        bulkPricing: [
+          { minQty: 3, unitPrice: 130 },
+          { minQty: 10, unitPrice: 110 },
+        ],
+      } as any);
+
+      const result = await service.create(user, context, fullDto);
+
+      expect(result.sku).toBe('PROD-001');
+      expect(cache!.delByPattern).toHaveBeenCalledWith('products:*');
+
+      const createCall = prisma.mockPrisma.product.create.mock.calls[0][0];
+      expect(createCall.data.bulkPricing).toHaveLength(2);
+      expect(createCall.data.trackStock).toBe(true);
+      expect(createCall.data.minStock).toBe(10);
+      expect(createCall.data.preparationTimeMin).toBe(15);
+    });
+
+    it('creates product with isActive=false and isAvailable=false', async () => {
+      const inactiveDto = makeCreateDto({ isActive: false, isAvailable: false });
+      prisma.mockPrisma.product.findFirst.mockResolvedValueOnce(null);
+      prisma.mockPrisma.category.findFirst.mockResolvedValueOnce(baseCategory);
+      prisma.mockPrisma.preparationArea.findFirst.mockResolvedValueOnce(baseArea);
+      prisma.mockPrisma.product.create.mockResolvedValue({
+        ...baseProduct,
+        isActive: false,
+        isAvailable: false,
+      } as any);
+
+      const result = await service.create(user, context, inactiveDto);
+
+      const createCall = prisma.mockPrisma.product.create.mock.calls[0][0];
+      expect(createCall.data.isActive).toBe(false);
+      expect(createCall.data.isAvailable).toBe(false);
     });
 
     it('creates a COMBO product with comboItems', async () => {
@@ -384,6 +509,75 @@ describe('ProductsService', () => {
           entity: 'Product',
         }),
       );
+    });
+
+    it('does NOT log audit when price stays the same', async () => {
+      prisma.mockPrisma.product.findFirst.mockResolvedValue(baseProduct);
+      // Update returns the same price
+      prisma.mockPrisma.product.update.mockResolvedValue(baseProduct);
+
+      await service.update(user, context, 'prod-1', { price: 100 });
+
+      expect(audit!.log).not.toHaveBeenCalled();
+    });
+
+    it('updates isActive and isAvailable flags', async () => {
+      prisma.mockPrisma.product.findFirst.mockResolvedValue(baseProduct);
+      prisma.mockPrisma.product.update.mockResolvedValue({
+        ...baseProduct,
+        isActive: false,
+        isAvailable: false,
+      } as any);
+
+      await service.update(user, context, 'prod-1', { isActive: false, isAvailable: false });
+
+      const updateCall = prisma.mockPrisma.product.update.mock.calls[0][0];
+      expect(updateCall.data.isActive).toBe(false);
+      expect(updateCall.data.isAvailable).toBe(false);
+      expect(cache!.delByPattern).toHaveBeenCalledWith('products:*');
+    });
+
+    it('updates trackStock and minStock fields', async () => {
+      prisma.mockPrisma.product.findFirst.mockResolvedValue(baseProduct);
+      prisma.mockPrisma.product.update.mockResolvedValue({
+        ...baseProduct,
+        trackStock: true,
+        minStock: 5,
+      } as any);
+
+      await service.update(user, context, 'prod-1', { trackStock: true, minStock: 5 });
+
+      const updateCall = prisma.mockPrisma.product.update.mock.calls[0][0];
+      expect(updateCall.data.trackStock).toBe(true);
+      expect(updateCall.data.minStock).toBe(5);
+    });
+
+    it('updates description, sku, imageUrl, taxRate, cost, preparationTimeMin', async () => {
+      prisma.mockPrisma.product.findFirst.mockResolvedValue(baseProduct);
+      const updated = {
+        ...baseProduct,
+        description: 'New desc',
+        sku: 'NEW-SKU',
+        imageUrl: 'https://example.com/new.png',
+        taxRate: decimal(15),
+        cost: decimal(70),
+        preparationTimeMin: 20,
+      };
+      prisma.mockPrisma.product.update.mockResolvedValue(updated);
+
+      await service.update(user, context, 'prod-1', {
+        description: 'New desc',
+        sku: 'NEW-SKU',
+        imageUrl: 'https://example.com/new.png',
+        taxRate: 15,
+        cost: 70,
+        preparationTimeMin: 20,
+      });
+
+      const updateCall = prisma.mockPrisma.product.update.mock.calls[0][0];
+      expect(updateCall.data.sku).toBe('NEW-SKU');
+      expect(updateCall.data.description).toBe('New desc');
+      expect(updateCall.data.preparationTimeMin).toBe(20);
     });
 
     it('updates comboItems on a COMBO product', async () => {

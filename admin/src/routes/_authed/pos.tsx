@@ -1,18 +1,25 @@
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { useCallback } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { ProductGrid, type AddableProduct } from '~/components/product-grid';
 import { OrderCartPanel } from '~/components/order-cart-panel';
+import { PosActiveOrders } from '~/components/pos-active-orders';
+import { PaymentModal } from '~/components/payment-modal';
 import { useAuthStore } from '~/lib/auth-store';
 import { useOrdersCartStore } from '~/lib/orders-store';
+import type { OrderListItem } from '~/lib/api';
 
 /**
  * Página de POS (Point of Sale).
- * - Layout split: grid de productos a la izquierda, cart a la derecha.
+ * - Layout split: grid de productos a la izquierda, cart + órdenes activas a la derecha.
  * - Role guard: solo CAJERO, MESERO, ADMIN, OWNER.
  * - Default branch: user.defaultBranchId ?? user.branches[0]?.id.
  * - El cart es DRAFT-only (Zustand, sin persist). Al "Enviar a cocina" se
  *   crea la orden en el backend y se limpia el cart.
+ * - Las órdenes activas aparecen debajo del cart con refetch cada 15s.
+ * - Las órdenes en DELIVERED tienen botón "Cobrar" que abre el PaymentModal.
  */
 export const Route = createFileRoute('/_authed/pos')({
   component: PosPage,
@@ -23,6 +30,9 @@ const ALLOWED_POS_ROLES = ['CAJERO', 'MESERO', 'ADMIN', 'OWNER'] as const;
 function PosPage(): ReactNode {
   const user = useAuthStore((s) => s.user);
   const addItem = useOrdersCartStore((s) => s.addItem);
+  const queryClient = useQueryClient();
+
+  const [payOrder, setPayOrder] = useState<OrderListItem | null>(null);
 
   const onAdd = useCallback(
     (p: AddableProduct) => {
@@ -58,6 +68,11 @@ function PosPage(): ReactNode {
     },
     [addItem],
   );
+
+  const handlePaid = (): void => {
+    setPayOrder(null);
+    void queryClient.invalidateQueries({ queryKey: ['orders'] });
+  };
 
   if (!user) {
     return (
@@ -107,13 +122,33 @@ function PosPage(): ReactNode {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_400px]">
+        {/* Left: Product Grid */}
         <div>
           <ProductGrid branchId={branchId} onAdd={onAdd} />
         </div>
-        <div>
-          <OrderCartPanel branchId={branchId} />
+
+        {/* Right: Cart + Active Orders */}
+        <div className="space-y-4">
+          <div className="sticky top-4">
+            <OrderCartPanel branchId={branchId} />
+          </div>
+          <PosActiveOrders
+            branchId={branchId}
+            onPayOrder={(order) => setPayOrder(order)}
+          />
         </div>
       </div>
+
+      {/* Payment Modal */}
+      {payOrder && (
+        <PaymentModal
+          open={!!payOrder}
+          order={payOrder as any}
+          branchId={branchId}
+          onClose={() => setPayOrder(null)}
+          onPaid={handlePaid}
+        />
+      )}
     </div>
   );
 }

@@ -234,16 +234,16 @@ enum ReportStatus {
 // Subscription. El sistema bloquea creación de recursos si se exceden cuotas.
 // Plan es global (sin businessId): el SaaS provider define los tiers.
 model Plan {
-  id        String   @id @default(cuid())
+  id        String @db.VarChar(80)   @id @default(cuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  code        String  @unique  // "FREE" | "BASIC" | "PRO" | "ENTERPRISE"
-  name        String
+  code        String @db.VarChar(50)  @unique  // "FREE" | "BASIC" | "PRO" | "ENTERPRISE"
+  name String @db.VarChar(80)
   description String?
 
   price          Decimal @default(0) @db.Decimal(10, 2)
-  currency       String  @default("USD")
+  currency       String @db.VarChar(10)  @default("USD")
   billingPeriod  BillingPeriod @default(MONTHLY)
 
   // Límites del plan
@@ -272,12 +272,12 @@ model Plan {
 // Un business tiene UNA suscripción activa a la vez.
 // El stripeSubscriptionId permite integración futura con pagos recurrentes.
 model Subscription {
-  id        String   @id @default(cuid())
+  id        String @db.VarChar(80)   @id @default(cuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  businessId String
-  planId     String
+  businessId String @db.VarChar(80)
+  planId String @db.VarChar(80)
 
   status SubscriptionStatus @default(TRIALING)
 
@@ -304,21 +304,21 @@ model Subscription {
 // ============================ MODELS =======================================
 
 model Business {
-  id        String         @id @default(cuid())
+  id        String @db.VarChar(80)         @id @default(cuid())
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
-  name        String
+  name String @db.VarChar(80)
   slug        String        @unique
   legalName   String?
-  taxId       String?
-  email       String
+  taxId String? @db.VarChar(80)
+  email String @db.VarChar(80)
   phone       String?
   logoUrl     String?
-  currency    String        @default("BOB")
-  timezone    String        @default("America/La_Paz")
+  currency    String @db.VarChar(10)        @default("BOB")
+  timezone    String @db.VarChar(50)        @default("America/La_Paz")
   status      BusinessStatus @default(ACTIVE)
-  plan        String        @default("FREE") // deprecado en F6, usar relación con Plan
+  plan        String @db.VarChar(20)        @default("FREE") // deprecado en F6, usar relación con Plan
   trialEndsAt DateTime?                        // deprecado en F6
 
   // Feature flags locales (pueden sobreescribir límites del plan)
@@ -348,7 +348,7 @@ model Business {
   auditLogs          AuditLog[]
   posStations        PosStation[]
   planRef            Plan?            @relation(fields: [planId], references: [id])
-  planId             String?
+  planId String? @db.VarChar(80)
   subscription       Subscription?
   suppliers          Supplier[]
   purchases          Purchase[]
@@ -362,13 +362,13 @@ model Business {
 }
 
 model Branch {
-  id        String       @id @default(cuid())
+  id        String @db.VarChar(80)       @id @default(cuid())
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
-  businessId String
-  name       String
-  code       String
+  businessId String @db.VarChar(80)
+  name String @db.VarChar(80)
+  code String @db.VarChar(80)
   address    String?
   phone      String?
   isMain     Boolean      @default(false)
@@ -397,11 +397,11 @@ model Branch {
 }
 
 model User {
-  id        String     @id @default(cuid())
+  id        String @db.VarChar(80)     @id @default(cuid())
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
-  email        String
+  email String @db.VarChar(80)
   passwordHash String
   fullName     String
   phone        String?
@@ -409,8 +409,8 @@ model User {
   role         Role       @default(CAJERO)
   status       UserStatus @default(INVITED)
 
-  businessId String
-  defaultBranchId String?
+  businessId String @db.VarChar(80)
+  defaultBranchId String? @db.VarChar(80)
 
   lastLoginAt DateTime?
 
@@ -447,16 +447,16 @@ model User {
 }
 
 model Category {
-  id        String    @id @default(cuid())
+  id        String @db.VarChar(80)    @id @default(cuid())
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  businessId String
-  branchId   String?
+  businessId String @db.VarChar(80)
+  branchId String? @db.VarChar(80)
 
-  name        String
-  slug        String
+  name String @db.VarChar(80)
+  slug String @db.VarChar(50)
   description String?
   imageUrl    String?
 
@@ -479,22 +479,22 @@ model Category {
 }
 
 model Product {
-  id        String    @id @default(cuid())
+  id        String @db.VarChar(80)    @id @default(cuid())
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  businessId        String
-  branchId          String?
-  categoryId        String?
-  preparationAreaId String?
+  businessId String @db.VarChar(80)
+  branchId String? @db.VarChar(80)
+  categoryId String? @db.VarChar(80)
+  preparationAreaId String? @db.VarChar(80)
 
-  name        String
-  slug        String
+  name String @db.VarChar(80)
+  slug String @db.VarChar(80)
   description String?
   imageUrl    String?
 
-  sku String?
+  sku String? @db.VarChar(80)
 
   price    Decimal  @db.Decimal(12, 2)
   cost     Decimal? @db.Decimal(12, 2)
@@ -543,15 +543,15 @@ model Product {
 // ==================== Phase 2: nuevas entidades ====================
 
 model PreparationArea {
-  id        String   @id @default(cuid())
+  id        String @db.VarChar(80)   @id @default(cuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  businessId String
-  branchId   String?
+  businessId String @db.VarChar(80)
+  branchId String? @db.VarChar(80)
 
-  name        String
-  code        String
+  name String @db.VarChar(80)
+  code String @db.VarChar(80)
   description String?
   isActive    Boolean @default(true)
   displayOrder Int    @default(0)
@@ -572,20 +572,20 @@ model PreparationArea {
 // La relación es M:N vía la tabla implícita en Product.suppliers (a través de
 // SupplierProduct, agregada como array en ambos lados).
 model Supplier {
-  id        String    @id @default(cuid())
+  id        String @db.VarChar(80)    @id @default(cuid())
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  businessId String
-  branchId   String?
+  businessId String @db.VarChar(80)
+  branchId String? @db.VarChar(80)
 
-  name        String
+  name String @db.VarChar(50)
   contactName String?
-  email       String?
+  email String? @db.VarChar(80)
   phone       String?
   address     String?
-  taxId       String?
+  taxId String? @db.VarChar(80)
   notes       String?
 
   isActive Boolean @default(true)
@@ -606,13 +606,13 @@ model Supplier {
 // status: PENDING = pedido, COMPLETED = recibido, CANCELLED = anulado.
 // Al completar se crean InventoryMovement por cada item.
 model Purchase {
-  id        String   @id @default(cuid())
+  id        String @db.VarChar(80)   @id @default(cuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  businessId String
-  branchId   String
-  supplierId String?
+  businessId String @db.VarChar(80)
+  branchId String @db.VarChar(80)
+  supplierId String? @db.VarChar(80)
 
   purchaseNumber String  // número de orden interno o factura
   status         PurchaseStatus @default(PENDING)
@@ -624,7 +624,7 @@ model Purchase {
 
   notes         String?
   receivedAt    DateTime?
-  receivedBy    String?  // userId
+  receivedBy    String? @db.VarChar(80)  // userId
   invoiceUrl    String?  // URL de factura/PDF subido
 
   // Relations
@@ -632,7 +632,7 @@ model Purchase {
   branch    Branch        @relation(fields: [branchId], references: [id], onDelete: Cascade)
   supplier  Supplier?     @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   createdBy User          @relation("PurchaseCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  createdById String
+  createdById String @db.VarChar(80)
 
   items PurchaseItem[]
 
@@ -645,11 +645,11 @@ model Purchase {
 // Ítem individual de compra. Snapshot de precio al momento de comprar.
 // Al completar la compra se genera un InventoryMovement por item.
 model PurchaseItem {
-  id        String   @id @default(cuid())
+  id        String @db.VarChar(80)   @id @default(cuid())
   createdAt DateTime @default(now())
 
-  purchaseId String
-  productId  String?
+  purchaseId String @db.VarChar(80)
+  productId String? @db.VarChar(80)
 
   // Snapshot
   productName String
@@ -672,16 +672,16 @@ model PurchaseItem {
 // El saldo (runningBalance) es el balance acumulado después del movimiento.
 // Se registran en orden cronológico y se recalcula al detectar inconsistencias.
 model InventoryMovement {
-  id        String   @id @default(cuid())
+  id        String @db.VarChar(80)   @id @default(cuid())
   createdAt DateTime @default(now())
 
-  businessId String
-  branchId   String
-  productId  String
+  businessId String @db.VarChar(80)
+  branchId String @db.VarChar(80)
+  productId String @db.VarChar(80)
 
   type    InventoryMovementType  @default(IN)
   referenceType InventoryReferenceType
-  referenceId   String?  // ID del documento origen: Purchase.id, OrderItem.id, etc.
+  referenceId   String? @db.VarChar(80)  // ID del documento origen: Purchase.id, OrderItem.id, etc.
 
   // Cantidades
   quantity Decimal @db.Decimal(12, 2)  // positiva para IN, negativa para OUT
@@ -706,18 +706,19 @@ model InventoryMovement {
 }
 
 model RestaurantTable {
-  id        String    @id @default(cuid())
+  id        String @db.VarChar(80)    @id @default(cuid())
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  businessId String
-  branchId   String
+  businessId String @db.VarChar(80)
+  branchId String @db.VarChar(80)
 
-  number       String
+  number String @db.VarChar(50)
   capacity     Int           @default(4)
   location     TableLocation @default(INDOOR)
   status       TableStatus   @default(FREE)
+  isActive     Boolean       @default(true)
   displayOrder Int           @default(0)
   notes        String?
   posX         Int?
@@ -737,14 +738,14 @@ model RestaurantTable {
 }
 
 model TableStateLog {
-  id        String   @id @default(cuid())
+  id        String @db.VarChar(80)   @id @default(cuid())
   createdAt DateTime @default(now())
 
-  businessId       String
-  tableId          String
+  businessId String @db.VarChar(80)
+  tableId String @db.VarChar(80)
   previousStatus   TableStatus
   newStatus        TableStatus
-  changedByUserId  String
+  changedByUserId String @db.VarChar(80)
   reason           String?
 
   // Relations
@@ -757,17 +758,17 @@ model TableStateLog {
 }
 
 model Customer {
-  id        String    @id @default(cuid())
+  id        String @db.VarChar(80)    @id @default(cuid())
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  businessId String
+  businessId String @db.VarChar(80)
 
-  name            String
-  taxId           String?
-  taxIdType       String?
-  email           String?
+  name String @db.VarChar(80)
+  taxId String? @db.VarChar(80)
+  taxIdType       String? @db.VarChar(20)
+  email String? @db.VarChar(80)
   phone           String?
   address         String?
   addressReference String?
@@ -780,9 +781,16 @@ model Customer {
   totalSpent   Decimal  @default(0) @db.Decimal(14, 2)
   lastOrderAt  DateTime?
 
+  // Loyalty points (FASE 7: Programa de fidelización)
+  loyaltyPoints       Int @default(0)  // Puntos actuales disponibles
+  loyaltyPointsEarned Int @default(0)  // Total de puntos ganados históricamente
+
   // Relations
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  orders   Order[]
+  business           Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orders             Order[]
+  loyaltyRedemptions LoyaltyRedemption[]
+
+  @@index([businessId, loyaltyPoints])
 
   @@index([businessId, isActive])
   @@index([businessId, name])
@@ -805,18 +813,18 @@ model Customer {
 //    cambia RestaurantTable.status a OCCUPIED al primer order PENDING
 //    y a FREE cuando todos los orders activos están PAID/CANCELLED.
 model Order {
-  id        String   @id @default(cuid())
+  id        String @db.VarChar(80)   @id @default(cuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  businessId String
-  branchId   String  // SIEMPRE presente: toda orden es de una sucursal concreta
+  businessId String @db.VarChar(80)
+  branchId   String @db.VarChar(80)  // SIEMPRE presente: toda orden es de una sucursal concreta
 
-  tableId    String?  // null para TAKEOUT/DELIVERY
-  customerId String?
+  tableId    String? @db.VarChar(80)  // null para TAKEOUT/DELIVERY
+  customerId String? @db.VarChar(80)
 
-  cashierId String  // userId que abre la orden (del JWT al crear)
-  waiterId  String? // userId del mesero (asignable después)
+  cashierId String @db.VarChar(80)  // userId que abre la orden (del JWT al crear)
+  waiterId  String? @db.VarChar(80) // userId del mesero (asignable después)
 
   type    OrderType    @default(DINE_IN)
   channel OrderChannel @default(POS_WEB)
@@ -830,16 +838,20 @@ model Order {
   globalNotes String?
 
   // Forward-compat F4 (D1=A): FK a sesión de caja abierta al crear.
-  cashRegisterId String?
-  shiftId        String?
+  cashRegisterId String? @db.VarChar(80)
+  shiftId String? @db.VarChar(80)
 
   // Optimistic lock (R4)
   version Int @default(0)
 
   // Cancelación inmutable (R6): userId + reason obligatorios al cancelar.
   cancelledAt        DateTime?
-  cancelledByUserId  String?
+  cancelledByUserId String? @db.VarChar(80)
   cancellationReason String?
+
+  // FASE 7: Discount / Loyalty
+  discount       Decimal @default(0) @db.Decimal(14, 2)  // Descuento aplicado
+  discountReason String?                                  // Motivo del descuento
 
   // Relations
   business       Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
@@ -870,21 +882,21 @@ model Order {
 // Snapshot inmutable (R8). NO guardar FKs a Product como únicas fuentes:
 // si el product se edita o se soft-deletea, el item debe seguir intacto.
 model OrderItem {
-  id        String   @id @default(cuid())
+  id        String @db.VarChar(80)   @id @default(cuid())
   createdAt DateTime @default(now())
 
-  businessId String
-  orderId    String
+  businessId String @db.VarChar(80)
+  orderId String @db.VarChar(80)
 
   // Opcional: si el product es hard-eliminado (no debería pasar por soft-delete),
   // queda null pero el snapshot sigue válido.
-  productId String?
+  productId String? @db.VarChar(80)
 
   // ===== SNAPSHOT (R8): columnas planas, NO relaciones =====
   productName          String
   unitPrice            Decimal  @db.Decimal(12, 2)
   taxRate              Decimal? @db.Decimal(5, 2)
-  preparationAreaId    String?
+  preparationAreaId String? @db.VarChar(80)
   preparationAreaName  String?
   // =======================================================
 
@@ -904,15 +916,15 @@ model OrderItem {
 
 // Historial inmutable de transiciones de estado. R3 + auditoría.
 model OrderStateLog {
-  id        String   @id @default(cuid())
+  id        String @db.VarChar(80)   @id @default(cuid())
   createdAt DateTime @default(now())
 
-  businessId String
-  orderId    String
+  businessId String @db.VarChar(80)
+  orderId String @db.VarChar(80)
 
   fromStatus  OrderStatus?
   toStatus    OrderStatus
-  changedByUserId String
+  changedByUserId String @db.VarChar(80)
   reason      String?
   metadata    Json?
 
@@ -929,19 +941,19 @@ model OrderStateLog {
 // Schema mínimo forward-compatible con F4. En F3 NO hay CRUD; solo lectura
 // desde OrdersService para validar OPEN cash + OPEN shift antes de crear.
 model CashRegister {
-  id        String   @id @default(cuid())
+  id        String @db.VarChar(80)   @id @default(cuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  businessId String
-  branchId   String
-  code       String
+  businessId String @db.VarChar(80)
+  branchId String @db.VarChar(80)
+  code String @db.VarChar(50)
   status     CashRegisterStatus @default(OPEN)
 
   openedAt      DateTime  @default(now())
   closedAt      DateTime?
-  openedByUserId  String
-  closedByUserId  String?
+  openedByUserId String @db.VarChar(80)
+  closedByUserId String? @db.VarChar(80)
 
   // Relations
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
@@ -957,14 +969,14 @@ model CashRegister {
 }
 
 model Shift {
-  id        String   @id @default(cuid())
+  id        String @db.VarChar(80)   @id @default(cuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  businessId     String
-  branchId       String
-  cashRegisterId String
-  userId         String  // cajero dueño del turno
+  businessId String @db.VarChar(80)
+  branchId String @db.VarChar(80)
+  cashRegisterId String @db.VarChar(80)
+  userId         String @db.VarChar(80)  // cajero dueño del turno
 
   status ShiftStatus @default(OPEN)
 
@@ -997,11 +1009,11 @@ model Shift {
 // Cada Payment acredita una parte del total. Pagos mixtos = N Payment rows.
 // El Order pasa a PAID cuando Σ(payments.amount) >= order.total.
 model Payment {
-  id        String   @id @default(cuid())
+  id        String @db.VarChar(80)   @id @default(cuid())
   createdAt DateTime @default(now())
 
-  businessId String
-  orderId    String
+  businessId String @db.VarChar(80)
+  orderId String @db.VarChar(80)
   method     PaymentMethod
 
   // amount: lo que se acredita al order (NETO).
@@ -1013,7 +1025,7 @@ model Payment {
   change    Decimal? @db.Decimal(14, 2)  // CASH: vuelto
   reference String?                       // QR/TRANSFER: número de comprobante
 
-  cashierId String  // userId que registró el cobro
+  cashierId String @db.VarChar(80)  // userId que registró el cobro
 
   // Relations
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
@@ -1032,19 +1044,19 @@ model Payment {
 // shift abierto. Si NO tienen shift, son movimientos directos del business
 // (ej. aporte de capital del dueño cuando aún no hay turno).
 model CashMovement {
-  id        String   @id @default(cuid())
+  id        String @db.VarChar(80)   @id @default(cuid())
   createdAt DateTime @default(now())
 
-  businessId String
-  branchId   String
-  shiftId    String?  // null = movimiento sin turno (ej. aporte inicial)
+  businessId String @db.VarChar(80)
+  branchId String @db.VarChar(80)
+  shiftId    String? @db.VarChar(80)  // null = movimiento sin turno (ej. aporte inicial)
 
   type     CashMovementType
   category CashMovementCategory
   amount   Decimal @db.Decimal(14, 2)
   reason   String?  // descripción libre
 
-  createdByUserId String
+  createdByUserId String @db.VarChar(80)
 
   // Relations
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
@@ -1069,14 +1081,14 @@ model CashMovement {
 //  - Pagos
 // before/after son snapshots JSON del entity modificado.
 model AuditLog {
-  id        String   @id @default(cuid())
+  id        String @db.VarChar(80)   @id @default(cuid())
   createdAt DateTime @default(now())
 
-  businessId String
-  userId     String
+  businessId String @db.VarChar(80)
+  userId String @db.VarChar(80)
 
-  entity   String      // "Product" | "Order" | "Shift" | "CashMovement" | "Payment"
-  entityId String
+  entity   String @db.VarChar(50)      // "Product" | "Order" | "Shift" | "CashMovement" | "Payment"
+  entityId String @db.VarChar(80)
   action   AuditAction
 
   before   Json?  // snapshot anterior (UPDATE, SOFT_DELETE, VOID, PRICE_CHANGE)
@@ -1097,21 +1109,21 @@ model AuditLog {
 // ================= FASE 5: Estaciones POS (Desktop) =================
 
 model PosStation {
-  id        String   @id @default(cuid())
+  id        String @db.VarChar(80)   @id @default(cuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  businessId String
-  branchId   String
+  businessId String @db.VarChar(80)
+  branchId String @db.VarChar(80)
 
   // Station identity
-  stationCode String  // código de activación (6-8 chars, ingresa el usuario)
+  stationCode String @db.VarChar(80)  // código de activación (6-8 chars, ingresa el usuario)
   name        String? // nombre amigable ej. "Caja Principal"
   deviceName  String? // hostname detectado automáticamente
 
   // Activation
   activatedAt DateTime?
-  activatedBy String?  // userId que activó la estación
+  activatedBy String? @db.VarChar(80)  // userId que activó la estación
   lastSeenAt  DateTime?
   isActive    Boolean  @default(true)
 
@@ -1126,17 +1138,61 @@ model PosStation {
   @@map("pos_stations")
 }
 
+// ==================== FASE 7: Programa de Fidelización ====================
+// Configuración del programa de puntos por negocio.
+// Cada business define sus propias reglas.
+model LoyaltyProgram {
+  id        String @db.VarChar(80)   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  businessId String @db.VarChar(80)  @unique
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  enabled            Boolean @default(true)
+  pointsPerCurrency  Decimal @default(10) @db.Decimal(10, 2)  // 1 punto por cada X de moneda (ej. Bs 10)
+  pointValue         Decimal @default(0.50) @db.Decimal(10, 2) // Valor en descuento de cada punto
+  minRedeemPoints    Int     @default(10)                     // Mínimo de puntos para canjear
+  maxRedeemPerOrder  Int?                                     // Máximo por orden (null = sin límite)
+  autoAward          Boolean @default(true)                   // Otorgar puntos automáticamente al pagar
+
+  @@map("loyalty_programs")
+}
+
+// Historial de canjes de puntos de un cliente.
+model LoyaltyRedemption {
+  id        String @db.VarChar(80)   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  businessId String @db.VarChar(80)
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  customerId String @db.VarChar(80)
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  orderId String @db.VarChar(80)
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  pointsUsed     Int     // Puntos canjeados
+  discountAmount Decimal @db.Decimal(14, 2)  // Descuento otorgado = pointsUsed * pointValue al momento
+  notes          String?
+
+  @@index([customerId, createdAt])
+  @@index([orderId])
+  @@map("loyalty_redemptions")
+}
+
 // ==================== FASE 6: Reportes ====================
 // Cola de generación de reportes. Un usuario solicita un reporte,
 // BullMQ lo procesa en background, y el resultado (PDF/XLSX) se guarda
 // en storage. El frontend puede consultar el status y descargar.
 model Report {
-  id        String   @id @default(cuid())
+  id        String @db.VarChar(80)   @id @default(cuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  businessId String
-  requestedBy String
+  businessId String @db.VarChar(80)
+  requestedBy String @db.VarChar(80)
 
   type       ReportType
   format     ReportFormat @default(PDF)

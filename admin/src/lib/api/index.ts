@@ -248,3 +248,10 @@ export {
   type AuditFilters,
   type AuditLogEntry,
 } from './audit';
+export {
+  dashboardApi,
+  type DashboardMetrics,
+} from './dashboard';
+export {
+  loyaltyApi,
+} from './loyalty';

@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import {
   ordersApi,
-  tablesApi,
   ApiClientError,
   type Order,
 } from '../lib/api';
@@ -17,6 +16,24 @@ import {
   cartItemCount,
 } from '../lib/orders-store';
 import { SubmitButton } from './submit-button';
+import { TableFloorPlan } from './table-floor-plan';
+import { CustomerPicker } from './customer-picker';
+import { CustomerOrderHistory } from './customer-order-history';
+
+function AutoCloseFloorPlan({
+  success,
+  showFloorPlan,
+  onClose,
+}: {
+  success: boolean;
+  showFloorPlan: boolean;
+  onClose: () => void;
+}): null {
+  useEffect(() => {
+    if (success && showFloorPlan) onClose();
+  }, [success]); // eslint-disable-line react-hooks/exhaustive-deps
+  return null;
+}
 import { ERROR_CODES, ORDER_TYPE_LABELS, type OrderType } from '@saas/shared';
 
 interface OrderCartPanelProps {
@@ -44,9 +61,12 @@ export function OrderCartPanel({ branchId }: OrderCartPanelProps): ReactNode {
   const items = useOrdersCartStore((s) => s.items);
   const tableId = useOrdersCartStore((s) => s.tableId);
   const tableNumber = useOrdersCartStore((s) => s.tableNumber);
+  const customerId = useOrdersCartStore((s) => s.customerId);
+  const customerName = useOrdersCartStore((s) => s.customerName);
   const type = useOrdersCartStore((s) => s.type);
   const globalNotes = useOrdersCartStore((s) => s.globalNotes);
   const setTable = useOrdersCartStore((s) => s.setTable);
+  const setCustomer = useOrdersCartStore((s) => s.setCustomer);
   const setType = useOrdersCartStore((s) => s.setType);
   const setGlobalNotes = useOrdersCartStore((s) => s.setGlobalNotes);
   const updateQty = useOrdersCartStore((s) => s.updateQty);
@@ -57,13 +77,7 @@ export function OrderCartPanel({ branchId }: OrderCartPanelProps): ReactNode {
   const [success, setSuccess] = useState<{ orderId: string } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Mesas libres de la sucursal (para el select)
-  const tablesQuery = useQuery({
-    queryKey: ['tables', 'all', { branchId }],
-    queryFn: () => tablesApi.all(branchId),
-    select: (res) => res.data,
-    enabled: !!branchId,
-  });
+  const [showFloorPlan, setShowFloorPlan] = useState(false);
 
   const sendMutation = useMutation({
     mutationFn: async (): Promise<Order> => {
@@ -72,6 +86,7 @@ export function OrderCartPanel({ branchId }: OrderCartPanelProps): ReactNode {
           type,
           channel: 'POS_WEB',
           tableId: tableId ?? undefined,
+          customerId: customerId ?? undefined,
           globalNotes: globalNotes.trim() || undefined,
           items: items.map((i) => ({
             productId: i.productId,
@@ -120,7 +135,7 @@ export function OrderCartPanel({ branchId }: OrderCartPanelProps): ReactNode {
     },
   });
 
-  const tables = tablesQuery.data ?? [];
+
   const subtotal = computeSubtotal(items);
   const tax = computeTax(items);
   const total = computeTotal(items);
@@ -131,6 +146,23 @@ export function OrderCartPanel({ branchId }: OrderCartPanelProps): ReactNode {
     <div className="card sticky top-4 flex max-h-[calc(100vh-6rem)] flex-col p-4">
       {/* Header: type + mesa */}
       <div className="space-y-3 border-b border-slate-200 pb-3">
+        {/* Cliente */}
+        <CustomerPicker
+          selectedCustomerId={customerId}
+          selectedCustomerName={customerName}
+          onSelect={setCustomer}
+        />
+
+        {/* Customer order history (shown only when a customer is selected) */}
+        {customerId && customerName && (
+          <div className="animate-in slide-in-from-top-2 fade-in">
+            <CustomerOrderHistory
+              customerId={customerId}
+              customerName={customerName}
+            />
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -152,24 +184,78 @@ export function OrderCartPanel({ branchId }: OrderCartPanelProps): ReactNode {
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
               Mesa
             </label>
-            <select
-              className="input"
-              value={tableId ?? ''}
-              onChange={(e) => {
-                const id = e.target.value || null;
-                const tbl = tables.find((t) => t.id === id);
-                setTable(id, tbl ? tbl.number : null);
-              }}
+            <button
+              type="button"
+              onClick={() => setShowFloorPlan((p) => !p)}
+              className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-sm transition-all ${
+                tableId
+                  ? 'border-brand-300 bg-brand-50 text-brand-800'
+                  : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400'
+              }`}
             >
-              <option value="">Sin mesa</option>
-              {tables.map((t) => (
-                <option key={t.id} value={t.id}>
-                  Mesa {t.number} (cap. {t.capacity})
-                </option>
-              ))}
-            </select>
+              <span className="flex items-center gap-2">
+                {tableId && tableNumber ? (
+                  <>
+                    <svg className="h-4 w-4 text-brand-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="2" y="2" width="20" height="20" rx="2" />
+                      <path d="M12 8v8M8 12h8" />
+                    </svg>
+                    Mesa {tableNumber}
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <rect x="4" y="4" width="16" height="16" rx="2" />
+                      <path d="M4 10h16M10 4v16M14 4v16" />
+                    </svg>
+                    Sin mesa
+                  </>
+                )}
+              </span>
+              <svg
+                className={`h-4 w-4 transition-transform ${showFloorPlan ? 'rotate-180' : ''}`}
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
           </div>
         </div>
+
+        {/* Floor plan desplegable */}
+        {showFloorPlan && (
+          <div className="animate-in slide-in-from-top-2 fade-in rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-xs font-medium text-slate-600">
+                Tocá una mesa <span className="text-emerald-600">libre</span> para seleccionarla
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setTable(null, null);
+                  setShowFloorPlan(false);
+                }}
+                className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                Limpiar
+              </button>
+            </div>
+            <TableFloorPlan
+              branchId={branchId}
+              selectedTableId={tableId}
+              selectedTableNumber={tableNumber}
+              onSelect={(tid, tnum) => {
+                setTable(tid, tnum);
+                setShowFloorPlan(false);
+              }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Lista de items */}
@@ -328,6 +414,13 @@ export function OrderCartPanel({ branchId }: OrderCartPanelProps): ReactNode {
           Mesa {tableNumber} · {ORDER_TYPE_LABELS[type]}
         </p>
       )}
+
+      {/* Auto-close floor plan on successful send */}
+      <AutoCloseFloorPlan
+        success={!!success}
+        showFloorPlan={showFloorPlan}
+        onClose={() => setShowFloorPlan(false)}
+      />
     </div>
   );
 }

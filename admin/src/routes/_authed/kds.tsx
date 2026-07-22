@@ -5,6 +5,7 @@ import { KdsOrderCard } from '~/components/kds-order-card';
 import { ordersApi, type KdsOrder } from '~/lib/api';
 import { useAuthStore } from '~/lib/auth-store';
 import { useRealtimeStore } from '~/lib/realtime-store';
+import { useKdsSounds } from '~/lib/use-kds-sounds';
 import type { OrderStatus } from '@saas/shared';
 
 /**
@@ -24,6 +25,7 @@ function KdsPage(): ReactNode {
   const user = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
   const wsStatus = useRealtimeStore((s) => s.status);
+  const { muted, toggleMuted } = useKdsSounds();
 
   const branchId = user?.defaultBranchId ?? user?.branches[0]?.id ?? null;
 
@@ -103,6 +105,33 @@ function KdsPage(): ReactNode {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Sound toggle */}
+          <button
+            type="button"
+            onClick={toggleMuted}
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+              muted
+                ? 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+            }`}
+            title={muted ? 'Activar sonido' : 'Silenciar'}
+            aria-label={muted ? 'Activar sonido' : 'Silenciar'}
+          >
+            {muted ? (
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M11 5L6 9H2v6h4l5 4V5z" />
+                <line x1="23" y1="9" x2="17" y2="15" />
+                <line x1="17" y1="9" x2="23" y2="15" />
+              </svg>
+            ) : (
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M11 5L6 9H2v6h4l5 4V5z" />
+                <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" />
+              </svg>
+            )}
+            {muted ? 'Silenciado' : 'Sonido'}
+          </button>
+
           <ConnectionPill status={wsStatus} />
           <button
             type="button"

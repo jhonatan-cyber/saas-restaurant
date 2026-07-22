@@ -53,6 +53,34 @@ describe('ProductsController', () => {
       expect(serviceMock.listAll).toHaveBeenCalledWith(mockUser, mockCtx, {});
     });
 
+    it('parses isAvailable=false string correctly', async () => {
+      serviceMock.listAll.mockResolvedValue({ data: [], total: 0 });
+      const ctrl = await buildControllerTest(ProductsController, [
+        { provide: ProductsService, useValue: serviceMock },
+      ]);
+      await ctrl.listAll(mockUser, mockCtx, undefined, 'false', undefined, undefined);
+      expect(serviceMock.listAll).toHaveBeenCalledWith(mockUser, mockCtx, { isAvailable: false });
+    });
+
+    it('parses isAvailable as undefined for non-boolean strings', async () => {
+      serviceMock.listAll.mockResolvedValue({ data: [], total: 0 });
+      const ctrl = await buildControllerTest(ProductsController, [
+        { provide: ProductsService, useValue: serviceMock },
+      ]);
+      // 'maybe' no es 'true' ni 'false' → undefined
+      await ctrl.listAll(mockUser, mockCtx, undefined, 'maybe', undefined, undefined);
+      expect(serviceMock.listAll).toHaveBeenCalledWith(mockUser, mockCtx, {});
+    });
+
+    it('parses page and pageSize as numbers', async () => {
+      serviceMock.listAll.mockResolvedValue({ data: [], total: 0 });
+      const ctrl = await buildControllerTest(ProductsController, [
+        { provide: ProductsService, useValue: serviceMock },
+      ]);
+      await ctrl.listAll(mockUser, mockCtx, undefined, undefined, '2', '50');
+      expect(serviceMock.listAll).toHaveBeenCalledWith(mockUser, mockCtx, { page: 2, pageSize: 50 });
+    });
+
     it('passes through errors from service', async () => {
       serviceMock.listAll.mockRejectedValue(serverError);
       const ctrl = await buildControllerTest(ProductsController, [
@@ -167,6 +195,37 @@ describe('ProductsController', () => {
               { provide: ProductsService, useValue: serviceMock },
             ]);
       await expect(ctrl.remove(mockUser, mockCtx, 'prod-1')).rejects.toThrow(serverError);
+    });
+  });
+
+  // ═════════════════════════════════════════════════════════════════
+  //  Guards — verify Roles decorator is present
+  // ═════════════════════════════════════════════════════════════════
+  describe('guards', () => {
+    it('requires OWNER or ADMIN role for create', () => {
+      const roles = Reflect.getMetadata('required-roles', ProductsController.prototype.create);
+      expect(roles).toBeDefined();
+      expect(roles).toContain('OWNER');
+      expect(roles).toContain('ADMIN');
+    });
+
+    it('requires OWNER or ADMIN role for update', () => {
+      const roles = Reflect.getMetadata('required-roles', ProductsController.prototype.update);
+      expect(roles).toBeDefined();
+      expect(roles).toContain('OWNER');
+      expect(roles).toContain('ADMIN');
+    });
+
+    it('requires OWNER or ADMIN role for remove', () => {
+      const roles = Reflect.getMetadata('required-roles', ProductsController.prototype.remove);
+      expect(roles).toBeDefined();
+      expect(roles).toContain('OWNER');
+      expect(roles).toContain('ADMIN');
+    });
+
+    it('does NOT require roles for list', () => {
+      const roles = Reflect.getMetadata('required-roles', ProductsController.prototype.list);
+      expect(roles).toBeUndefined();
     });
   });
 

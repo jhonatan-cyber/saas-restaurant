@@ -338,6 +338,9 @@ export interface CustomerDTO {
   /** Decimal como string. */
   totalSpent: string;
   lastOrderAt: string | null;
+  // FASE 7: Loyalty
+  loyaltyPoints: number;
+  loyaltyPointsEarned: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -349,6 +352,8 @@ export type CreateCustomerDTO = Omit<
   | 'totalOrders'
   | 'totalSpent'
   | 'lastOrderAt'
+  | 'loyaltyPoints'
+  | 'loyaltyPointsEarned'
   | 'createdAt'
   | 'updatedAt'
 >;
@@ -422,6 +427,9 @@ export interface OrderDTO {
   cashRegisterId: string | null;
   shiftId: string | null;
   version: number;
+  // FASE 7: Discount / Loyalty
+  discount: string;
+  discountReason: string | null;
   cancelledAt: string | null;
   cancelledByUserId: string | null;
   cancellationReason: string | null;
@@ -462,6 +470,10 @@ export interface CreateOrderDTO {
     notes?: string;
     unitPrice?: number;
   }>;
+  // FASE 7: Loyalty points to redeem (optional)
+  redeemPoints?: number;
+  discount?: number;
+  discountReason?: string;
 }
 
 export type UpdateOrderItemDTO = {
@@ -875,6 +887,48 @@ export interface LowStockProductDTO {
   currentStock: string;
   minStock: number | null;
 }
+
+// =================== FASE 7: Loyalty / Programa de Fidelización ===================
+
+export interface LoyaltyProgramDTO {
+  id: string;
+  businessId: string;
+  enabled: boolean;
+  pointsPerCurrency: number;
+  pointValue: number;
+  minRedeemPoints: number;
+  maxRedeemPerOrder: number | null;
+  autoAward: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LoyaltyRedemptionDTO {
+  id: string;
+  customerId: string;
+  orderId: string;
+  pointsUsed: number;
+  discountAmount: string;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface CustomerLoyaltyDTO {
+  customer: CustomerDTO;
+  program: LoyaltyProgramDTO | null;
+  availablePoints: number;
+  pointsEarned: number;
+  maxRedeemable: number;
+  pointsToNextAward: number;
+}
+
+export interface RedeemPointsDTO {
+  points: number;
+  discount: number;
+  discountReason: string;
+}
+
+export type UpdateLoyaltyProgramDTO = Partial<Omit<LoyaltyProgramDTO, 'id' | 'businessId' | 'createdAt' | 'updatedAt'>>;
 
 // =================== FASE 6: Reportes ===================
 

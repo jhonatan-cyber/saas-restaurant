@@ -2,9 +2,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import { authApi, categoriesApi, productsApi, tablesApi, customersApi, suppliersApi, ordersApi, branchesApi, inventoryApi } from '~/lib/api';
+import { authApi } from '~/lib/api';
+import { useDashboardMetrics } from '~/lib/admin-hooks';
 import { useAuthStore } from '~/lib/auth-store';
 import { ROLE_LABELS, TABLE_STATUS_LABELS } from '@saas/shared';
+import { SalesChart, TopProductsList, RecentOrdersList, PaymentMethodsChart } from '~/components/dashboard';
 
 export const Route = createFileRoute('/_authed/dashboard')({
   component: DashboardPage,
@@ -259,7 +261,7 @@ function DashboardPage(): ReactNode {
   useEffect(() => { setMounted(true); }, []);
 
   // Refresh user data
-  const { data: me, isLoading, error } = useQuery({
+  const { data: me, isLoading: userLoading, error: userError } = useQuery({
     queryKey: ['auth', 'me'],
     queryFn: () => authApi.me(),
     staleTime: 60_000,
@@ -274,42 +276,9 @@ function DashboardPage(): ReactNode {
 
   const user = me ?? storedUser;
 
-  // Data queries
-  const { data: categoriesData } = useQuery({
-    queryKey: ['categories', 'count'],
-    queryFn: () => categoriesApi.list({ pageSize: 1 }),
-    staleTime: 30_000,
-  });
-  const { data: productsData } = useQuery({
-    queryKey: ['products', 'count'],
-    queryFn: () => productsApi.list({ pageSize: 1 }),
-    staleTime: 30_000,
-  });
-  const { data: tablesData } = useQuery({
-    queryKey: ['tables', 'count'],
-    queryFn: () => tablesApi.list({ pageSize: 100 }),
-    staleTime: 30_000,
-  });
-  const { data: customersData } = useQuery({
-    queryKey: ['customers', 'count'],
-    queryFn: () => customersApi.list({ pageSize: 1 }),
-    staleTime: 30_000,
-  });
-  const { data: suppliersData } = useQuery({
-    queryKey: ['suppliers', 'count'],
-    queryFn: () => suppliersApi.list({ pageSize: 1 }),
-    staleTime: 30_000,
-  });
-  const { data: ordersData } = useQuery({
-    queryKey: ['orders', 'active-count'],
-    queryFn: () => ordersApi.list({ status: ['PENDING', 'SENT_TO_KITCHEN', 'IN_PREPARATION', 'READY', 'DELIVERED'], pageSize: 1 }),
-    staleTime: 15_000,
-  });
-  const { data: lowStockData } = useQuery({
-    queryKey: ['inventory', 'low-stock'],
-    queryFn: () => inventoryApi.getLowStock(),
-    staleTime: 30_000,
-  });
+  // Dashboard metrics - consolidated single endpoint
+  const branchId = user?.branches?.[0]?.id ?? undefined;
+  const { data: metrics, isLoading: metricsLoading, error: metricsError } = useDashboardMetrics(branchId);
 
   const handleLogout = (): void => {
     clear();
@@ -317,7 +286,7 @@ function DashboardPage(): ReactNode {
     void navigate({ to: '/login' });
   };
 
-  if (isLoading && !user) {
+  if (userLoading && !user) {
     return (
       <div className="flex items-center justify-center py-12">
         <p className="text-slate-500">Cargando…</p>
@@ -325,7 +294,7 @@ function DashboardPage(): ReactNode {
     );
   }
 
-  if (error && !user) {
+  if (userError && !user) {
     return (
       <div className="px-4 py-8">
         <div className="card p-6 mx-auto max-w-md text-center">
@@ -341,19 +310,23 @@ function DashboardPage(): ReactNode {
 
   if (!user) return null;
 
+  const c = metrics?.counts;
+  const ts = metrics?.tablesSummary;
+  const as = metrics?.activeOrdersByStatus;
+
   const quickLinks: QuickLink[] = [
-    { to: '/categories', title: 'Categorías', description: 'Organiza tu menú en secciones', icon: <TagIcon />, color: 'orange', cta: 'Gestionar', count: categoriesData?.meta.total },
-    { to: '/products', title: 'Productos', description: 'Catálogo de platos, bebidas y servicios', icon: <BoxIcon />, color: 'blue', cta: 'Ver catálogo', count: productsData?.meta.total },
-    { to: '/orders', title: 'Órdenes', description: 'Pedidos activos y facturación', icon: <ReceiptIcon />, color: 'green', cta: 'Ver órdenes', count: ordersData?.meta.total },
-    { to: '/tables', title: 'Mesas', description: 'Salón, reservas y floor plan', icon: <TableIcon />, color: 'purple', cta: 'Ver mesas', count: tablesData?.meta.total },
-    { to: '/customers', title: 'Clientes', description: 'Directorio de clientes frecuentes', icon: <UsersIcon />, color: 'teal', cta: 'Ver clientes', count: customersData?.meta.total },
-    { to: '/suppliers', title: 'Proveedores', description: 'Gestión de compras e insumos', icon: <TruckIcon />, color: 'red', cta: 'Ver proveedores', count: suppliersData?.meta.total },
+    { to: '/categories', title: 'Categorías', description: 'Organiza tu menú en secciones', icon: <TagIcon />, color: 'orange', cta: 'Gestionar', count: c?.categories },
+    { to: '/products', title: 'Productos', description: 'Catálogo de platos, bebidas y servicios', icon: <BoxIcon />, color: 'blue', cta: 'Ver catálogo', count: c?.products },
+    { to: '/orders', title: 'Órdenes', description: 'Pedidos activos y facturación', icon: <ReceiptIcon />, color: 'green', cta: 'Ver órdenes', count: as?.total },
+    { to: '/tables', title: 'Mesas', description: 'Salón, reservas y floor plan', icon: <TableIcon />, color: 'purple', cta: 'Ver mesas', count: ts?.total },
+    { to: '/customers', title: 'Clientes', description: 'Directorio de clientes frecuentes', icon: <UsersIcon />, color: 'teal', cta: 'Ver clientes', count: c?.customers },
+    { to: '/suppliers', title: 'Proveedores', description: 'Gestión de compras e insumos', icon: <TruckIcon />, color: 'red', cta: 'Ver proveedores', count: c?.users },
   ];
 
-  const activeOrdersCount = ordersData?.meta.total ?? 0;
-  const freeTables = tablesData?.data.filter((t) => t.status === 'FREE').length ?? 0;
-  const occupiedTables = tablesData?.data.filter((t) => t.status === 'OCCUPIED').length ?? 0;
-  const totalTables = tablesData?.meta.total ?? 0;
+  const activeOrdersCount = as?.total ?? 0;
+  const freeTables = ts?.free ?? 0;
+  const occupiedTables = ts?.occupied ?? 0;
+  const totalTables = ts?.total ?? 0;
   const occupancyPct = totalTables > 0 ? Math.round((occupiedTables / totalTables) * 100) : 0;
 
   return (
@@ -416,10 +389,10 @@ function DashboardPage(): ReactNode {
           {/* ── Mini metrics row ── */}
           <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
+              { label: 'Ventas hoy', value: metrics?.todaySales.total ? `$${Number(metrics.todaySales.total).toLocaleString('es-BO')}` : '$0', color: 'text-slate-100' },
               { label: 'Órdenes activas', value: activeOrdersCount, color: 'text-slate-100' },
               { label: 'Mesas ocupadas', value: `${occupiedTables}/${totalTables}`, color: 'text-slate-100' },
               { label: 'Ocupación', value: `${occupancyPct}%`, color: 'text-slate-100' },
-              { label: 'Productos', value: productsData?.meta.total ?? 0, color: 'text-slate-100' },
             ].map((item, i) => (
               <div
                 key={item.label}
@@ -440,12 +413,12 @@ function DashboardPage(): ReactNode {
 
       {/* ── Metric Cards Grid ── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <MetricCard label="Categorías" value={categoriesData?.meta.total} icon={<TagIcon />} color="orange" to="/categories" index={0} mounted={mounted} />
-        <MetricCard label="Productos" value={productsData?.meta.total} icon={<BoxIcon />} color="blue" to="/products" index={1} mounted={mounted} />
-        <MetricCard label="Clientes" value={customersData?.meta.total} icon={<UsersIcon />} color="green" to="/customers" index={2} mounted={mounted} />
-        <MetricCard label="Mesas" value={tablesData?.meta.total} icon={<TableIcon />} color="purple" to="/tables" index={3} mounted={mounted} />
+        <MetricCard label="Ventas hoy" value={metrics?.todaySales.total ? `$${Number(metrics.todaySales.total).toLocaleString('es-BO')}` : '$0'} icon={<CurrencyIcon />} color="green" index={0} mounted={mounted} />
+        <MetricCard label="Órdenes hoy" value={metrics?.todayOrdersCount.total} icon={<ReceiptIcon />} color="blue" to="/orders" index={1} mounted={mounted} />
+        <MetricCard label="Productos" value={c?.products} icon={<BoxIcon />} color="orange" to="/products" index={2} mounted={mounted} />
+        <MetricCard label="Clientes" value={c?.customers} icon={<UsersIcon />} color="purple" to="/customers" index={3} mounted={mounted} />
         <MetricCard label="Órdenes activas" value={activeOrdersCount} icon={<ReceiptIcon />} color="red" to="/orders" index={4} mounted={mounted} />
-        <MetricCard label="Proveedores" value={suppliersData?.meta.total} icon={<TruckIcon />} color="teal" to="/suppliers" index={5} mounted={mounted} />
+        <MetricCard label="Mesas" value={totalTables} icon={<TableIcon />} color="teal" to="/tables" index={5} mounted={mounted} />
       </div>
 
       {/* ── Quick Access + Alerts ── */}
@@ -473,7 +446,7 @@ function DashboardPage(): ReactNode {
           </h2>
 
           {/* Low Stock Alert */}
-          {lowStockData && lowStockData.length > 0 && (
+          {(c?.lowStock ?? 0) > 0 && (
             <div
               className="mb-3 overflow-hidden rounded-xl border border-red-200/80 bg-white"
               style={{
@@ -485,27 +458,19 @@ function DashboardPage(): ReactNode {
               <div className="flex items-center gap-2 border-b border-red-100 bg-red-50/50 px-4 py-2.5">
                 <AlertIcon className="h-4 w-4 text-red-500" />
                 <span className="text-xs font-semibold uppercase tracking-wider text-red-600">
-                  Stock bajo ({lowStockData.length})
+                  Stock bajo ({c?.lowStock})
                 </span>
               </div>
-              <div className="divide-y divide-slate-100">
-                {lowStockData.slice(0, 4).map((p) => (
-                  <div key={p.id} className="flex items-center justify-between px-4 py-2.5">
-                    <span className="text-sm text-slate-700">{p.name}</span>
-                    <span className="text-xs font-medium text-red-600">{p.currentStock} uds.</span>
-                  </div>
-                ))}
-                {lowStockData.length > 4 && (
-                  <Link to="/inventory" className="block px-4 py-2 text-center text-xs font-medium text-slate-600 hover:bg-slate-100">
-                    Ver todos ({lowStockData.length})
-                  </Link>
-                )}
+              <div className="px-4 py-3 text-center">
+                <Link to="/inventory" className="text-xs font-medium text-red-600 hover:text-red-700">
+                  Ir a inventario
+                </Link>
               </div>
             </div>
           )}
 
           {/* Table Occupancy */}
-          {tablesData && tablesData.data.length > 0 && (
+          {ts && ts.total > 0 && (
             <div
               className="overflow-hidden rounded-xl border border-slate-200/80 bg-white"
               style={{
@@ -524,44 +489,144 @@ function DashboardPage(): ReactNode {
               <div className="px-4 pt-4">
                 <div className="flex h-3 overflow-hidden rounded-full bg-slate-100">
                     <div
-                      className="bg-white/30 transition-all duration-1000 ease-out"
+                      className="bg-emerald-400 transition-all duration-1000 ease-out"
                       style={{ width: `${(freeTables / totalTables) * 100}%` }}
                     />
                     <div
-                      className="bg-white/50 transition-all duration-1000 delay-200 ease-out"
+                      className="bg-amber-400 transition-all duration-1000 delay-200 ease-out"
                       style={{ width: `${(occupiedTables / totalTables) * 100}%` }}
                     />
                     <div
-                      className="bg-slate-400 transition-all duration-1000 delay-400 ease-out"
-                      style={{ width: `${(totalTables - freeTables - occupiedTables) / totalTables * 100}%` }}
+                      className="bg-slate-300 transition-all duration-1000 delay-400 ease-out"
+                      style={{ width: `${((ts.reserved ?? 0) / totalTables) * 100}%` }}
                     />
                 </div>
               </div>
 
               {/* Legend */}
               <div className="grid grid-cols-3 divide-x divide-slate-100 px-2 pb-4 pt-3">
-                {(['FREE', 'OCCUPIED', 'RESERVED'] as const).map((status) => {
-                  const count = tablesData.data.filter((t) => t.status === status).length;
-                  const colors = {
-                    FREE: 'text-slate-600',
-                    OCCUPIED: 'text-slate-900',
-                    RESERVED: 'text-slate-500',
-                  };
-                  const labels = {
-                    FREE: 'Libres',
-                    OCCUPIED: 'Ocupadas',
-                    RESERVED: 'Reservadas',
-                  };
-                  return (
-                    <div key={status} className="text-center">
-                      <p className={`text-lg font-bold ${colors[status]}`}>{count}</p>
-                      <p className="text-xs text-slate-500">{labels[status]}</p>
-                    </div>
-                  );
-                })}
+                <div className="text-center">
+                  <p className="text-lg font-bold text-emerald-600">{freeTables}</p>
+                  <p className="text-xs text-slate-500">Libres</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-bold text-amber-600">{occupiedTables}</p>
+                  <p className="text-xs text-slate-500">Ocupadas</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-bold text-slate-500">{ts.reserved}</p>
+                  <p className="text-xs text-slate-500">Reservadas</p>
+                </div>
               </div>
             </div>
           )}
+
+          {/* Average ticket */}
+          <div
+            className="mt-3 overflow-hidden rounded-xl border border-slate-200/80 bg-white p-4"
+            style={{
+              opacity: mounted ? 1 : 0,
+              transform: mounted ? 'translateY(0)' : 'translateY(16px)',
+              transition: 'all 0.5s ease-out 0.75s',
+            }}
+          >
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-600">Ticket promedio</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">
+              {metrics?.todaySales.average ? `$${Number(metrics.todaySales.average).toLocaleString('es-BO')}` : '$0'}
+            </p>
+            <p className="text-xs text-slate-400 mt-1">
+              {metrics?.todaySales.count ?? 0} órdenes pagadas hoy
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Charts Row: Sales + Top Products ── */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Sales Trend Chart */}
+        <div
+          className="rounded-xl border border-slate-200/80 bg-white p-5"
+          style={{
+            opacity: mounted ? 1 : 0,
+            transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+            transition: 'all 0.5s ease-out 0.8s',
+          }}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-slate-900">Ventas últimos 7 días</h2>
+            <span className="text-xs text-slate-500">
+              Total: ${metrics?.weeklySalesTrend.total.toLocaleString('es-BO') ?? '0'}
+            </span>
+          </div>
+          <SalesChart
+            data={{
+              labels: metrics?.weeklySalesTrend.days.map((d) => d.label) ?? [],
+              values: metrics?.weeklySalesTrend.days.map((d) => d.total) ?? [],
+              currency: user?.business.currency ?? 'BOB',
+            }}
+            isLoading={metricsLoading}
+            error={metricsError instanceof Error ? metricsError.message : null}
+          />
+        </div>
+
+        {/* Top Products */}
+        <div
+          className="rounded-xl border border-slate-200/80 bg-white p-5"
+          style={{
+            opacity: mounted ? 1 : 0,
+            transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+            transition: 'all 0.5s ease-out 0.85s',
+          }}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-slate-900">Productos más vendidos hoy</h2>
+          </div>
+          <TopProductsList
+            items={metrics?.topProducts.items ?? []}
+            total={metrics?.topProducts.total ?? 0}
+            isLoading={metricsLoading}
+          />
+        </div>
+      </div>
+
+      {/* ── Charts Row: Payment Methods + Recent Orders ── */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Payment Methods */}
+        <div
+          className="rounded-xl border border-slate-200/80 bg-white p-5"
+          style={{
+            opacity: mounted ? 1 : 0,
+            transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+            transition: 'all 0.5s ease-out 0.9s',
+          }}
+        >
+          <h2 className="text-sm font-semibold text-slate-900 mb-4">Métodos de pago hoy</h2>
+          <PaymentMethodsChart
+            methods={metrics?.paymentMethods.methods ?? []}
+            total={metrics?.paymentMethods.total ?? '0'}
+            isLoading={metricsLoading}
+          />
+        </div>
+
+        {/* Recent Orders */}
+        <div
+          className="rounded-xl border border-slate-200/80 bg-white p-5"
+          style={{
+            opacity: mounted ? 1 : 0,
+            transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+            transition: 'all 0.5s ease-out 0.95s',
+          }}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-slate-900">Órdenes activas recientes</h2>
+            <Link to="/orders" className="text-xs font-medium text-slate-600 hover:text-slate-800">
+              Ver todas
+            </Link>
+          </div>
+          <RecentOrdersList
+            orders={metrics?.activeOrdersByStatus.recent ?? []}
+            isLoading={metricsLoading}
+          />
         </div>
       </div>
 

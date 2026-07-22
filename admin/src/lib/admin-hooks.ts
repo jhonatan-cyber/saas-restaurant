@@ -87,6 +87,8 @@ import {
   auditApi,
   inventoryApi,
   preparationAreasApi,
+  dashboardApi,
+  type DashboardMetrics,
 } from './api';
 
 // ═════════════════════════════════════════════════════════════════════
@@ -390,5 +392,18 @@ export function usePreparationAreas(filters?: Record<string, unknown>) {
     queryKey: queryKeys.preparationAreas.list(filters),
     queryFn: () => preparationAreasApi.list(filters as any),
     staleTime: 30_000,
+  });
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  DASHBOARD METRICS HOOK
+// ═════════════════════════════════════════════════════════════════════
+
+export function useDashboardMetrics(branchId?: string) {
+  return useQuery({
+    queryKey: ['dashboard', 'metrics', branchId] as const,
+    queryFn: () => dashboardApi.metrics(branchId),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
   });
 }

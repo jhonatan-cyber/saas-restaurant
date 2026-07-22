@@ -20,6 +20,9 @@ export function toCustomerDto(c: Customer): CustomerDTO {
     totalOrders: c.totalOrders,
     totalSpent: c.totalSpent.toString(),
     lastOrderAt: dateToNull(c.lastOrderAt),
+    // FASE 7: Loyalty points
+    loyaltyPoints: c.loyaltyPoints,
+    loyaltyPointsEarned: c.loyaltyPointsEarned,
     createdAt: dateToString(c.createdAt),
     updatedAt: dateToString(c.updatedAt),
   };
