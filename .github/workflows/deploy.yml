@@ -1,90 +1,32 @@
-name: Build & Deploy
+name: CI & Build
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_PREFIX: ${{ github.repository }}
-
 jobs:
-  build:
+  ci:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install dependencies
+        run: bun install
 
-      - name: Build and push API
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: apps/api/Dockerfile
-          target: production
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/api:${{ github.sha }},${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/api:latest
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/api:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/api:buildcache,mode=max
+      - name: Generate Prisma client
+        run: cd api && bunx prisma generate
 
-      - name: Build and push Admin
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: apps/admin/Dockerfile
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/admin:${{ github.sha }},${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/admin:latest
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/admin:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/admin:buildcache,mode=max
+      - name: Typecheck
+        run: bun run typecheck
 
-      - name: Build and push Landing
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: apps/landing/Dockerfile
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/landing:${{ github.sha }},${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/landing:latest
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/landing:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/landing:buildcache,mode=max
+      - name: Lint
+        run: bun run lint
 
-      - name: Build and push Print Agent
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: apps/print-agent/Dockerfile
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/print-agent:${{ github.sha }},${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/print-agent:latest
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/print-agent:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/print-agent:buildcache,mode=max
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Deploy to production server
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.PROD_SERVER_HOST }}
-          username: ${{ secrets.PROD_SERVER_USER }}
-          key: ${{ secrets.PROD_SERVER_SSH_KEY }}
-          script: |
-            cd /opt/saas-restaurant
-            git pull origin main
-            DOMAIN=${{ secrets.PROD_DOMAIN }} docker compose -f docker-compose.prod.yml pull
-            DOMAIN=${{ secrets.PROD_DOMAIN }} docker compose -f docker-compose.prod.yml up -d --force-recreate
-            docker image prune -f
-            echo "Deployment complete!"
+      - name: Test
+        run: cd api && bun run test -- --no-coverage

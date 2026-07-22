@@ -106,10 +106,26 @@ export const createBranchSchema = z.object({
     .regex(/^[A-Z0-9_-]+$/, 'Código inválido'),
   address: z.string().trim().max(255).optional(),
   phone: z.string().trim().max(40).optional(),
-  isMain: z.boolean().default(false),
+  isMain: z.boolean().optional(),
 });
 
 export type CreateBranchInput = z.infer<typeof createBranchSchema>;
+
+export const updateBranchSchema = createBranchSchema.partial().extend({
+  status: z.nativeEnum(BranchStatus).optional(),
+});
+export type UpdateBranchInput = z.infer<typeof updateBranchSchema>;
+
+export const branchFiltersSchema = z.object({
+  isActive: z
+    .union([z.literal('true'), z.literal('false')])
+    .transform((v) => v === 'true')
+    .optional(),
+  search: z.string().trim().max(120).optional(),
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().min(1).max(100).optional(),
+});
+export type BranchFiltersInput = z.infer<typeof branchFiltersSchema>;
 
 export const createCategorySchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -147,14 +163,25 @@ export type ReorderCategoriesInput = z.infer<typeof reorderCategoriesSchema>;
 export const categoryFiltersSchema = z.object({
   isActive: z
     .union([z.literal('true'), z.literal('false')])
-    .optional()
-    .transform((v) => (v === undefined ? undefined : v === 'true')),
+    .transform((v) => v === 'true')
+    .optional(),
   branchId: z.cuid().optional(),
   search: z.string().trim().max(120).optional(),
-  page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().min(1).max(100).optional(),
 });
 export type CategoryFiltersInput = z.infer<typeof categoryFiltersSchema>;
+
+const comboItemSchema = z.object({
+  productId: z.cuid({ message: 'Producto inválido' }),
+  productName: z.string().trim().min(1, 'Nombre del producto requerido'),
+  quantity: z.number().int().min(1, 'Cantidad mínima 1').max(999, 'Máximo 999'),
+});
+
+const bulkPricingTierSchema = z.object({
+  minQty: z.number().int().min(2, 'Mínimo 2 unidades para precio por cantidad'),
+  unitPrice: z.number().nonnegative('Precio unitario no puede ser negativo'),
+});
 
 export const createProductSchema = z.object({
   name: z.string().trim().min(1).max(160),
@@ -177,6 +204,8 @@ export const createProductSchema = z.object({
   trackStock: z.boolean().default(false),
   minStock: z.number().int().nonnegative().optional(),
   productType: z.nativeEnum(ProductType).default(ProductType.SALE),
+  comboItems: z.array(comboItemSchema).optional(),
+  bulkPricing: z.array(bulkPricingTierSchema).optional(),
   preparationTimeMin: z.number().int().min(0).max(600).optional(),
   isActive: z.boolean().default(true),
   isAvailable: z.boolean().default(true),
@@ -191,16 +220,16 @@ export const productFiltersSchema = z.object({
   categoryId: z.cuid().optional(),
   isActive: z
     .union([z.literal('true'), z.literal('false')])
-    .optional()
-    .transform((v) => (v === undefined ? undefined : v === 'true')),
+    .transform((v) => v === 'true')
+    .optional(),
   isAvailable: z
     .union([z.literal('true'), z.literal('false')])
-    .optional()
-    .transform((v) => (v === undefined ? undefined : v === 'true')),
+    .transform((v) => v === 'true')
+    .optional(),
   productType: z.nativeEnum(ProductType).optional(),
   search: z.string().trim().max(120).optional(),
-  page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().min(1).max(100).optional(),
 });
 export type ProductFiltersInput = z.infer<typeof productFiltersSchema>;
 
@@ -240,11 +269,11 @@ export type ReorderPreparationAreasInput = z.infer<typeof reorderPreparationArea
 export const preparationAreaFiltersSchema = z.object({
   isActive: z
     .union([z.literal('true'), z.literal('false')])
-    .optional()
-    .transform((v) => (v === undefined ? undefined : v === 'true')),
+    .transform((v) => v === 'true')
+    .optional(),
   branchId: z.cuid().optional(),
-  page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().min(1).max(100).optional(),
 });
 export type PreparationAreaFiltersInput = z.infer<typeof preparationAreaFiltersSchema>;
 
@@ -275,8 +304,8 @@ export const tableFiltersSchema = z.object({
   branchId: z.cuid().optional(),
   status: z.nativeEnum(TableStatus).optional(),
   location: z.nativeEnum(TableLocation).optional(),
-  page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().min(1).max(100).optional(),
 });
 export type TableFiltersInput = z.infer<typeof tableFiltersSchema>;
 
@@ -308,11 +337,11 @@ export type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;
 export const customerFiltersSchema = z.object({
   isActive: z
     .union([z.literal('true'), z.literal('false')])
-    .optional()
-    .transform((v) => (v === undefined ? undefined : v === 'true')),
+    .transform((v) => v === 'true')
+    .optional(),
   search: z.string().trim().max(120).optional(),
-  page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().min(1).max(100).optional(),
 });
 export type CustomerFiltersInput = z.infer<typeof customerFiltersSchema>;
 
@@ -551,6 +580,19 @@ export const inventoryFiltersSchema = z.object({
 export type InventoryFiltersInput = z.infer<typeof inventoryFiltersSchema>
 
 /**
+ * Ajuste manual de inventario (F4-03).
+ * type: 'IN' para entrada, 'OUT' para salida.
+ */
+export const adjustInventorySchema = z.object({
+  productId: z.cuid({ message: 'Producto inválido' }),
+  branchId: z.cuid({ message: 'Sucursal obligatoria' }),
+  type: z.enum(['IN', 'OUT']),
+  quantity: z.number().positive('La cantidad debe ser mayor a 0'),
+  reason: z.string().trim().min(1, 'El motivo es obligatorio').max(500, 'Motivo demasiado largo'),
+})
+export type AdjustInventoryInput = z.infer<typeof adjustInventorySchema>
+
+/**
  * Re-export de enums para conveniencia en formularios.
  */
 // ============== Suppliers (FASE 6) ==============
@@ -573,12 +615,12 @@ export type UpdateSupplierInput = z.infer<typeof updateSupplierSchema>;
 export const supplierFiltersSchema = z.object({
   isActive: z
     .union([z.literal('true'), z.literal('false')])
-    .optional()
-    .transform((v) => (v === undefined ? undefined : v === 'true')),
+    .transform((v) => v === 'true')
+    .optional(),
   branchId: z.cuid().optional(),
   search: z.string().trim().max(120).optional(),
-  page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().min(1).max(100).optional(),
 });
 export type SupplierFiltersInput = z.infer<typeof supplierFiltersSchema>;
 
@@ -620,8 +662,8 @@ export const purchaseFiltersSchema = z.object({
   dateFrom: z.coerce.date().optional(),
   dateTo: z.coerce.date().optional(),
   search: z.string().trim().max(120).optional(),
-  page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().min(1).max(100).optional(),
 });
 export type PurchaseFiltersInput = z.infer<typeof purchaseFiltersSchema>;
 

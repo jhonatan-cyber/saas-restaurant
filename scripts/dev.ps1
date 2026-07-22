@@ -1,6 +1,5 @@
 # ── Desarrollo Local: SaaS Restaurant ──────────────────────────────────
-# Requiere: MySQL y Redis corriendo en Docker
-#   docker compose up -d mysql redis phpmyadmin
+# Requiere: MySQL 8 y Redis 7 instalados y corriendo localmente
 #
 # Uso:
 #   .\scripts\dev.ps1          # Arranca API + Admin
@@ -24,33 +23,44 @@ Write-Host "║   SaaS Restaurant — Desarrollo Local     ║" -ForegroundColor
 Write-Host "╚══════════════════════════════════════════╝" -ForegroundColor DarkYellow
 Write-Host ""
 
-# ── Verificar MySQL y Redis en Docker ──────────────────────────────────
-$mysqlRunning = docker compose -f "$rootDir/docker-compose.yml" ps --format json mysql 2>$null | ConvertFrom-Json | Select-Object -ExpandProperty State
-$redisRunning = docker compose -f "$rootDir/docker-compose.yml" ps --format json redis 2>$null | ConvertFrom-Json | Select-Object -ExpandProperty State
+# ── Verificar MySQL y Redis local ───────────────────────────────────────
+try {
+  $mysqlOk = $false
+  $redisOk = $false
 
-if ($mysqlRunning -ne "running") {
-  Write-Host "❌ MySQL no está corriendo. Ejecuta: docker compose up -d mysql" -ForegroundColor Red
-  exit 1
-}
-if ($redisRunning -ne "running") {
-  Write-Host "❌ Redis no está corriendo. Ejecuta: docker compose up -d redis" -ForegroundColor Red
-  exit 1
-}
+  # Intentar conectar a MySQL via el cliente mysqladmin
+  $mysqlTest = & "mysqladmin" "ping" "-h" "localhost" "-u" "root" "-prootpass" "--silent" 2>$null
+  if ($LASTEXITCODE -eq 0) { $mysqlOk = $true }
 
-Write-Host "✅ MySQL y Redis están corriendo" -ForegroundColor Green
+  # Intentar conectar a Redis via redis-cli
+  $redisTest = & "redis-cli" "-h" "localhost" "-p" "6379" "PING" 2>$null
+  if ($redisTest -eq "PONG") { $redisOk = $true }
+
+  if (-not $mysqlOk) {
+    Write-Host "⚠️  MySQL no responde en localhost:3306. Verificá que esté corriendo." -ForegroundColor Yellow
+    Write-Host "   Puede iniciarlo con: net start MySQL80 (Windows) o mysql.server start (Mac)" -ForegroundColor Gray
+  } else {
+    Write-Host "✅ MySQL está corriendo en localhost:3306" -ForegroundColor Green
+  }
+
+  if (-not $redisOk) {
+    Write-Host "⚠️  Redis no responde en localhost:6379. Verificá que esté corriendo." -ForegroundColor Yellow
+    Write-Host "   Puede iniciarlo con: redis-server (si está instalado localmente)" -ForegroundColor Gray
+  } else {
+    Write-Host "✅ Redis está corriendo en localhost:6379" -ForegroundColor Green
+  }
+} catch {
+  Write-Host "⚠️  No se pudieron verificar los servicios. Asegurate de que MySQL y Redis estén corriendo." -ForegroundColor Yellow
+}
 Write-Host ""
-
-# ── Detener contenedores Docker de api/admin ──────────────────────────
-Write-Host "⏹  Deteniendo contenedores Docker de api/admin..." -ForegroundColor Cyan
-docker compose -f "$rootDir/docker-compose.yml" stop api admin 2>$null
 
 # ── Arrancar API ───────────────────────────────────────────────────────
 if ($startApi) {
   Write-Host "🚀 Arrancando API (http://localhost:3001) con hot-reload..." -ForegroundColor Cyan
   $apiJob = Start-Job -ScriptBlock {
     param($dir)
-    Set-Location "$dir/apps/api"
-    $env:DATABASE_URL = "mysql://root:rootpass@localhost:3307/saas_restaurant"
+    Set-Location "$dir/api"
+    $env:DATABASE_URL = "mysql://root:rootpass@localhost:3306/saas_restaurant"
     $env:REDIS_URL = "redis://localhost:6379"
     $env:NODE_ENV = "development"
     $env:JWT_SECRET = "dev-jwt-secret-key-change-in-production-but-ok-for-local"
@@ -58,7 +68,6 @@ if ($startApi) {
     $env:CORS_ALLOWED_ORIGINS = "http://localhost:3000,http://localhost:5173"
     $env:API_PORT = "3001"
     $env:LOG_LEVEL = "debug"
-    $env:DISABLE_WS = "true"
     bunx tsx watch src/main.ts
   } -ArgumentList $rootDir
   Write-Host "   PID del job: $($apiJob.Id)" -ForegroundColor Gray
@@ -69,7 +78,7 @@ if ($startAdmin) {
   Write-Host "🚀 Arrancando Admin (http://localhost:3000/app) con HMR..." -ForegroundColor Cyan
   $adminJob = Start-Job -ScriptBlock {
     param($dir)
-    Set-Location "$dir/apps/admin"
+    Set-Location "$dir/admin"
     bun run dev
   } -ArgumentList $rootDir
   Write-Host "   PID del job: $($adminJob.Id)" -ForegroundColor Gray
@@ -82,7 +91,6 @@ Write-Host "║                                          ║" -ForegroundColor G
 Write-Host "║   Admin: http://localhost:3000/app/login  ║" -ForegroundColor Green
 Write-Host "║   API:   http://localhost:3001/api        ║" -ForegroundColor Green
 Write-Host "║   Swagger: http://localhost:3001/docs     ║" -ForegroundColor Green
-Write-Host "║   phpMyAdmin: http://localhost:8081       ║" -ForegroundColor Green
 Write-Host "║                                          ║" -ForegroundColor Green
 Write-Host "║   Presiona Ctrl+C para detener            ║" -ForegroundColor Green
 Write-Host "╚══════════════════════════════════════════╝" -ForegroundColor Green
@@ -91,7 +99,6 @@ Write-Host "╚═════════════════════�
 try {
   while ($true) {
     Start-Sleep -Seconds 10
-    # Mostrar estado
     if ($startApi) { Receive-Job $apiJob -Keep -ErrorAction SilentlyContinue | Select-Object -Last 3 }
     if ($startAdmin) { Receive-Job $adminJob -Keep -ErrorAction SilentlyContinue | Select-Object -Last 3 }
   }

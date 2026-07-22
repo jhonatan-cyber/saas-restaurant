@@ -190,6 +190,23 @@ export type UpdateCategoryDTO = Partial<CreateCategoryDTO>;
 
 // =================== Productos ===================
 
+/**
+ * Item individual de un combo (F5-01).
+ */
+export interface ComboItemDTO {
+  productId: string;
+  productName: string;
+  quantity: number;
+}
+
+/**
+ * Escalón de precio por cantidad (F5-02).
+ */
+export interface BulkPricingTierDTO {
+  minQty: number;
+  unitPrice: number;
+}
+
 export interface ProductDTO {
   id: string;
   businessId: string;
@@ -212,6 +229,8 @@ export interface ProductDTO {
   currentStock: string;
   productType: ProductType;
   preparationTimeMin: number | null;
+  comboItems: ComboItemDTO[] | null;
+  bulkPricing: BulkPricingTierDTO[] | null;
   category: CategoryDTO | null;
   preparationArea: PreparationAreaDTO | null;
   createdAt: string;
@@ -469,6 +488,7 @@ export interface CancelOrderDTO {
  */
 export interface KdsOrderDTO {
   id: string;
+  version: number;
   tableId: string | null;
   tableNumber: string | null;
   status: OrderStatus;

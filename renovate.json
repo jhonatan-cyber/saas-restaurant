@@ -39,13 +39,9 @@
     },
     {
       "matchManagers": ["npm"],
-      "matchFileNames": ["apps/mobile/package.json"],
+      "matchFileNames": ["mobile/package.json"],
       "groupName": "expo monorepo",
       "schedule": ["before 8am on monday"]
-    },
-    {
-      "matchPackageNames": ["@tauri-apps/cli", "@tauri-apps/api"],
-      "groupName": "tauri monorepo"
     },
     {
       "matchPackageNames": ["@prisma/client", "prisma"],

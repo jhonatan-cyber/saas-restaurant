@@ -1,0 +1,23 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "outDir": "./dist",
+    "ignoreDeprecations": "6.0",
+    "paths": {
+      "@saas/shared": ["../packages/shared/dist/index.d.ts"],
+      "@saas/shared/*": ["../packages/shared/dist/*"],
+      "~/*": ["./src/*"]
+    },
+    "types": ["vite/client"],
+    "allowJs": false,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*", "vite.config.ts"],
+  "exclude": ["node_modules", ".output", ".vite", "dist"]
+}

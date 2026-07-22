@@ -1,21 +1,33 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-50: #fff7ed;
-  --color-brand-100: #ffedd5;
-  --color-brand-200: #fed7aa;
-  --color-brand-300: #fdba74;
-  --color-brand-400: #fb923c;
-  --color-brand-500: #f97316;
-  --color-brand-600: #ea580c;
-  --color-brand-700: #c2410c;
-  --color-brand-800: #9a3412;
-  --color-brand-900: #7c2d12;
+  --color-slate-50: #ffffff;
+  --color-slate-100: #f7f7f7;
+  --color-slate-200: #e6e6e6;
+  --color-slate-300: #d4d4d4;
+  --color-slate-400: #a3a3a3;
+  --color-slate-500: #737373;
+  --color-slate-600: #525252;
+  --color-slate-700: #404040;
+  --color-slate-800: #262626;
+  --color-slate-900: #171717;
+  --color-slate-950: #000000;
+
+  --color-brand-50: #ffffff;
+  --color-brand-100: #f7f7f7;
+  --color-brand-200: #e6e6e6;
+  --color-brand-300: #d4d4d4;
+  --color-brand-400: #a3a3a3;
+  --color-brand-500: #737373;
+  --color-brand-600: #525252;
+  --color-brand-700: #404040;
+  --color-brand-800: #262626;
+  --color-brand-900: #171717;
 
   --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-mono: "SFMono-Regular", ui-monospace, "Cascadia Mono", monospace;
 
-  --shadow-soft: 0 18px 40px -24px rgba(15, 23, 42, 0.35);
+  --shadow-soft: 0 18px 40px -24px rgba(0, 0, 0, 0.35);
 }
 
 @layer base {
@@ -26,15 +38,12 @@
   }
 
   body {
-    @apply bg-slate-50 text-slate-900 antialiased;
+    @apply bg-white text-black antialiased;
     font-family: var(--font-sans);
-    background-image:
-      radial-gradient(circle at top left, rgba(249, 115, 22, 0.1), transparent 34%),
-      radial-gradient(circle at right top, rgba(15, 23, 42, 0.07), transparent 28%);
   }
 
   ::selection {
-    @apply bg-brand-200 text-brand-900;
+    @apply bg-black/10 text-black;
   }
 }
 
@@ -42,43 +51,43 @@
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium
       transition duration-150 ease-out focus:outline-none focus-visible:ring-2
-      focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed
+      focus-visible:ring-slate-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed
       disabled:opacity-50;
   }
 
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium
       transition duration-150 ease-out focus:outline-none focus-visible:ring-2
-      focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed
-      disabled:opacity-50 bg-brand-600 text-white shadow-sm hover:bg-brand-700;
+      focus-visible:ring-slate-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed
+      disabled:opacity-50 bg-black text-white shadow-sm hover:bg-slate-800;
   }
 
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium
       transition duration-150 ease-out focus:outline-none focus-visible:ring-2
-      focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed
-      disabled:opacity-50 border border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
+      focus-visible:ring-slate-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed
+      disabled:opacity-50 border border-slate-300 bg-white text-slate-700 hover:bg-slate-100;
   }
 
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium
       transition duration-150 ease-out focus:outline-none focus-visible:ring-2
-      focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed
+      focus-visible:ring-slate-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed
       disabled:opacity-50 text-slate-700 hover:bg-slate-100;
   }
 
   .btn-danger {
     @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium
       transition duration-150 ease-out focus:outline-none focus-visible:ring-2
-      focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed
+      focus-visible:ring-slate-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed
       disabled:opacity-50 bg-red-600 text-white hover:bg-red-700;
   }
 
   .input {
     @apply block w-full rounded-full border border-slate-300 bg-white px-3 py-2 text-sm
-      shadow-sm placeholder:text-slate-400 transition focus:border-brand-500
-      focus:outline-none focus:ring-2 focus:ring-brand-500/20 disabled:cursor-not-allowed
-      disabled:bg-slate-50;
+      shadow-sm placeholder:text-slate-400 transition focus:border-slate-500
+      focus:outline-none focus:ring-2 focus:ring-slate-500/20 disabled:cursor-not-allowed
+      disabled:bg-slate-100;
   }
 
   .label {

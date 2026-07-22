@@ -26,6 +26,7 @@ export const STORAGE_KEYS = {
   AUTH_TOKEN: 'saas.auth.token',
   AUTH_REFRESH: 'saas.auth.refresh',
   AUTH_USER: 'saas.auth.user',
+  ACTIVE_BRANCH: 'saas.active_branch',
 } as const;
 
 /**

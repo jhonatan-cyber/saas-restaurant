@@ -1,6 +1,6 @@
 /**
  * Enums compartidos entre backend y frontend.
- * Mantener sincronizados con el schema de Prisma (apps/api/prisma/schema.prisma).
+ * Mantener sincronizados con el schema de Prisma (api/prisma/schema.prisma).
  */
 
 export const Role = {

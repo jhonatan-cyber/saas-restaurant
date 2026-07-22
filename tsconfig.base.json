@@ -30,7 +30,7 @@
       "@saas/shared/*": ["./packages/shared/src/*"],
       "@saas/ui": ["./packages/ui/src/index.ts"],
       "@saas/ui/*": ["./packages/ui/src/*"],
-      "@saas/api/*": ["./apps/api/src/*"]
+      "@saas/api/*": ["./api/src/*"]
     }
   },
   "exclude": ["node_modules", "dist", "build", ".turbo", ".next"]

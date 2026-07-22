@@ -1,6 +1,6 @@
 # SaaS Restaurant — Sistema POS Gastronómico Multi-Tenant
 
-> Plataforma SaaS de punto de venta para restaurantes, construida con NestJS + TanStack Start sobre un monorepo Bun. Multi-tenant, modular, escalable y lista para crecer por fases.
+> Plataforma SaaS de punto de venta para restaurantes, construida con NestJS + TanStack Start sobre un monorepo Bun + Turbo. Multi-tenant, modular, escalable y lista para crecer por fases.
 
 ---
 
@@ -8,11 +8,13 @@
 
 | Capa | Tecnología |
 | --- | --- |
-| Monorepo | Bun Workspaces (>= 1.1) |
-| Backend | NestJS 10, Prisma 5, MySQL 8, JWT, Passport, Swagger, class-validator, bcrypt |
+| Monorepo | Bun Workspaces (>= 1.1) + Turborepo |
+| Backend | NestJS 10, Prisma 7, MySQL 8, JWT, Passport, Swagger, class-validator, bcrypt |
 | Frontend | TanStack Start, React 18, TanStack Router, TanStack Query, Tailwind CSS, Zustand, React Hook Form, Zod |
+| Print Agent | Bun + Hono — servidor local ESC/POS para impresoras térmicas |
 | Shared | TypeScript estricto, Zod, tipos compartidos entre `api` y `admin` |
-| Infra local | Docker Compose (MySQL 8 + Redis 7) |
+| Infra local | MySQL 8 + Redis 7 (locales) |
+| Pagos | Stripe (webhooks + billing + quota enforcer) |
 | Lenguaje | TypeScript con `strict: true` en todo el monorepo |
 
 ---
@@ -21,52 +23,101 @@
 
 ```
 saas-restaurant/
-├── apps/
-│   ├── api/                    # NestJS (puerto 3001)
-│   │   ├── prisma/
-│   │   │   ├── schema.prisma   # Modelos multi-tenant
-│   │   │   └── seed.ts         # Datos demo
-│   │   └── src/
-│   │       ├── auth/           # Login, refresh, /me, strategies, guards
-│   │       ├── prisma/         # PrismaService + módulo global
-│   │       ├── users/          # UsersService
-│   │       ├── common/         # Filtros e interceptores globales
-│   │       ├── app.module.ts
-│   │       └── main.ts
-│   ├── admin/                  # TanStack Start (puerto 3000, montado en /app/* por nginx)
-│   │   └── src/
-│   │       ├── routes/         # File-based routing
-│   │       │   ├── __root.tsx
-│   │       │   ├── index.tsx
-│   │       │   ├── login.tsx
-│   │       │   ├── _authed.tsx
-│   │       │   └── _authed/
-│   │       │       ├── dashboard.tsx
-│   │       │       ├── categories.tsx, categories.new.tsx, categories.$id.tsx
-│   │       │       ├── products.tsx, products.new.tsx, products.$id.tsx
-│   │       │       ├── preparation-areas.tsx, preparation-areas.new.tsx, preparation-areas.$id.tsx
-│   │       │       ├── tables.tsx, tables.new.tsx, tables.$id.tsx
-│   │       │       └── customers.tsx, customers.new.tsx, customers.$id.tsx
-│   │       ├── components/     # admin-layout, form-field, select-field,
-│   │       │                   # textarea-field, submit-button, confirm-dialog, status-badge
-│   │       ├── lib/            # api, auth-store, schemas, slugify, query-client
-│   │       └── styles/app.css
-│   └── landing/                # Astro 5 (one-pager estático, servido en / por nginx)
-│       ├── src/
-│       │   ├── components/     # Hero, Features, HowItWorks, CTA, Footer
-│       │   ├── layouts/Base.astro
-│       │   ├── pages/index.astro
-│       │   └── styles/global.css
-│       ├── astro.config.mjs
-│       └── Dockerfile
+├── api/                      # NestJS (puerto 3001)
+│   ├── prisma/
+│   │   ├── schema.prisma     # Modelos multi-tenant
+│   │   └── seed.ts           # Datos demo
+│   └── src/
+│       ├── auth/             # Login, refresh, /me, strategies, guards
+│       ├── prisma/           # PrismaService + módulo global
+│       ├── users/            # UsersService
+│       ├── branches/         # Sucursales
+│       ├── business/         # Business/tenant
+│       ├── categories/       # Categorías de productos
+│       ├── products/         # Productos
+│       ├── preparation-areas/# Áreas de preparación
+│       ├── tables/           # Mesas
+│       ├── customers/        # Clientes
+│       ├── orders/           # Órdenes
+│       ├── payments/         # Pagos
+│       ├── cash/             # Cajas
+│       ├── cash-movements/   # Movimientos de caja
+│       ├── cash-foundation/  # Fondos iniciales
+│       ├── inventory/        # Inventario
+│       ├── suppliers/        # Proveedores
+│       ├── purchases/        # Compras
+│       ├── reports/          # Reportes
+│       ├── audit/            # Auditoría (persistencia real en AuditLog)
+│       ├── plans/            # Planes de suscripción
+│       ├── subscription/     # Suscripciones
+│       ├── billing/          # Stripe: pagos, webhooks, quota enforcer
+│       ├── pos-stations/     # Estaciones POS
+│       ├── print/            # API de impresión (delega al print-agent)
+│       ├── realtime/         # WebSockets (Gateway)
+│       ├── cache/            # Cache (Redis)
+│       ├── common/           # Filtros e interceptores globales
+│       ├── app.module.ts
+│       └── main.ts
+├── admin/                    # TanStack Start (puerto 3000)
+│   └── src/
+│       ├── routes/           # File-based routing
+│       │   ├── __root.tsx
+│       │   ├── index.tsx
+│       │   ├── login.tsx
+│       │   ├── station-login.tsx   # Login para estaciones POS
+│       │   ├── _authed.tsx
+│       │   └── _authed/
+│       │       ├── dashboard.tsx
+│       │       ├── categories.tsx, categories.new.tsx, categories.$id.tsx
+│       │       ├── products.tsx, products.new.tsx, products.$id.tsx
+│       │       ├── preparation-areas.tsx, preparation-areas.new.tsx, preparation-areas.$id.tsx
+│       │       ├── tables.tsx, tables.new.tsx, tables.$id.tsx
+│       │       ├── customers.tsx, customers.new.tsx, customers.$id.tsx
+│       │       ├── branches.tsx, branches.new.tsx, branches.$id.tsx
+│       │       ├── users.tsx, users.new.tsx, users.$id.tsx
+│       │       ├── orders.tsx, orders.$id.tsx
+│       │       ├── pos.tsx
+│       │       ├── kds.tsx
+│       │       ├── cash.tsx
+│       │       ├── cash-movements.tsx
+│       │       ├── inventory.tsx
+│       │       ├── suppliers.tsx, suppliers.new.tsx, suppliers.$id.tsx
+│       │       ├── purchases.tsx, purchases.new.tsx, purchases.$id.tsx
+│       │       ├── reports.tsx
+│       │       ├── audit.tsx
+│       │       ├── plans.tsx, plans.new.tsx, plans.$id.tsx
+│       │       └── business.tsx
+│       ├── components/       # admin-layout, form-field, select-field,
+│       │                     # textarea-field, submit-button, confirm-dialog, status-badge
+│       ├── lib/              # api, auth-store, schemas, slugify, query-client
+│       └── styles/app.css
+├── landing/                  # Astro 5 (one-pager estático)
+│   └── src/
+│       ├── components/       # Hero, Features, HowItWorks, CTA, Footer
+│       ├── layouts/Base.astro
+│       ├── pages/index.astro
+│       └── styles/global.css
+├── print-agent/              # Servidor local ESC/POS (Bun + Hono)
+│   ├── src/
+│   │   ├── index.ts          # Servidor HTTP local
+│   │   ├── escpos.ts         # Driver ESC/POS
+│   │   ├── routes/           # Endpoints de impresión
+│   │   ├── lib/              # Utilidades
+│   │   └── templates/        # Templates de tickets
+│   └── printers.json         # Config de impresoras locales
+├── mobile/                   # React Native (app móvil para meseros)
 ├── packages/
-│   ├── shared/                 # Enums, Zod, tipos, constantes
-│   ├── ui/                     # Placeholder para componentes compartidos
-│   └── config/                 # tsconfig/eslint/prettier base
-├── docker-compose.yml          # MySQL 8 + Redis 7
+│   ├── shared/               # Enums, Zod, tipos, constantes
+│   ├── ui/                   # Componentes compartidos (placeholder)
+│   └── config/               # tsconfig/eslint/prettier base
+├── scripts/                  # Scripts utilitarios del monorepo
+├── docs/                     # Documentación adicional
+├── Makefile                  # Atajos de comandos frecuentes
+├── turbo.json                # Pipeline de Turborepo
 ├── bunfig.toml
 ├── tsconfig.base.json
 ├── package.json
+├── renovate.json             # Actualizaciones automáticas de deps
 ├── .env.example
 └── README.md
 ```
@@ -76,11 +127,9 @@ saas-restaurant/
 ## ✅ Prerrequisitos
 
 1. **Bun >= 1.1** — [https://bun.sh](https://bun.sh)
-   ```bash
-   curl -fsSL https://bun.sh/install | bash
-   ```
-2. **Docker Desktop** (o Docker Engine + Compose) — para MySQL y Redis
-3. **Node >= 20** (opcional, solo si querés usar `node` directamente)
+2. **MySQL 8** — instalado localmente
+3. **Redis 7** — instalado localmente (opcional, el cache cae a memoria si no está)
+4. **Node >= 22** (requerido por algunos devDependencies)
 
 ---
 
@@ -92,23 +141,19 @@ bun install
 
 # 2. Copiar variables de entorno
 cp .env.example .env
-# (editá los secretos JWT en .env antes de pasar a producción)
+# (editá los secretos JWT y las claves de Stripe en .env antes de pasar a producción)
 
-# 3. Levantar la infraestructura (MySQL + Redis)
-docker compose up -d
-
-# 4. Generar el cliente de Prisma
+# 3. Generar el cliente de Prisma
 bun run db:generate
 
-# 5. Aplicar migraciones (crea las tablas en MySQL)
+# 4. Aplicar migraciones (crea las tablas en MySQL)
 bun run db:migrate
-# Cuando pida nombre de migración: "init"
 
-# 6. Cargar datos demo (1 business, 2 branches, 5 usuarios, 4 categorías, 8 productos,
+# 5. Cargar datos demo (1 business, 2 branches, 5 usuarios, 4 categorías, 8 productos,
 #    3 áreas de preparación, 12 productos expandidos, 8 mesas, 6 clientes)
 bun run db:seed
 
-# 7. Arrancar API + Admin en paralelo
+# 6. Arrancar API + Admin en paralelo
 bun run dev
 ```
 
@@ -180,74 +225,11 @@ phase2_catalog_tables_customers
 
 ---
 
-## 🐳 Docker Development (Hot-Reload)
-
-Todos los servicios tienen hot-reload: editás el código en tu máquina y se refleja automáticamente en el navegador sin reconstruir la imagen Docker.
-
-### Inicio rápido
-
-```bash
-# 1. Copiar variables de entorno
-cp .env.example .env
-
-# 2. Levantar infraestructura (MySQL + Redis + phpMyAdmin)
-make docker-dev-infra
-
-# 3. Aplicar migraciones y seed (esperar a que MySQL esté healthy)
-bun run db:migrate
-bun run db:seed
-
-# 4. Levantar servicios de aplicación (con build)
-make docker-dev-apps
-
-# 5. ¡Listo! Abrí el navegador en las URLs de abajo
-```
-
-### Comandos Docker (Makefile)
-
-| Comando | Qué hace |
-| --- | --- |
-| `make docker-dev` | Levanta todo (apps + infra) con build |
-| `make docker-dev-apps` | Solo servicios de app (api, admin, landing, print-agent) |
-| `make docker-dev-infra` | Solo infraestructura (mysql, redis, phpmyadmin) |
-| `make docker-down` | Detiene todos los contenedores |
-| `make docker-logs` | Sigue logs de todos los servicios en tiempo real |
-| `make docker-ps` | Muestra estado de todos los contenedores |
-| `make docker-restart` | Reinicia todos los contenedores |
-| `make docker-clean` | Detiene + elimina volúmenes y limpieza de imágenes |
-| `make docker-reset` | Reset completo: contenedores + volúmenes + imágenes locales |
-
-### Servicios y puertos (Docker)
-
-| Servicio | Puerto | Hot-reload | Descripción |
-| --- | --- | --- | --- |
-| API | `localhost:3001` | `bun --watch` | NestJS backend |
-| Admin | `localhost:3000` | Vite HMR | TanStack Start frontend |
-| Landing | `localhost:4321` | Astro HMR | One-pager estático |
-| Print Agent | `localhost:3002` | `bun --hot` | Microservicio de impresión |
-| phpMyAdmin | `localhost:8081` | — | Admin de MySQL |
-| Swagger | `localhost:3001/docs` | — | Documentación API |
-
-### Cómo funciona el hot-reload
-
-- **Volumes** montan el código fuente del host directamente en el contenedor
-- **`target: dev`** en cada Dockerfile ejecuta el dev server (Vite/Astro/Bun)
-- **Named volumes** para `node_modules` evitan reinstalar dependencias al reiniciar
-- **`CHOKIDAR_USEPOLLING=true`** fuerza polling para detectar cambios en Docker
-- Los archivos `bun.lock` y `bunfig.toml` NO se montan (evitan errores EBUSY en Windows)
-
-> **No es necesario ejecutar `docker compose build` para cambios en código fuente.**
-> Solo necesitás rebuild si cambiás dependencias en `package.json`.
-
----
-
 ## 🌐 URLs por defecto
 
 | Servicio | URL |
 | --- | --- |
-| Landing (nginx) | http://localhost:8080/ |
-| Admin (nginx) | http://localhost:8080/app/ |
-| Admin (directo, dev) | http://localhost:3000 |
+| Admin (dev) | http://localhost:3000 |
 | API REST | http://localhost:3001/api |
 | Swagger | http://localhost:3001/docs |
 | MySQL | `localhost:3306` (root/rootpass) |
@@ -292,8 +274,8 @@ Todas usan `businessSlug = demo`. Login: `POST /api/auth/login`.
    el email se busca dentro de ese tenant.
 4. **Branch es opcional en Category/Product:** si `branchId IS NULL`, el recurso es **global**
    para el business; si tiene branch, aplica solo a esa sucursal.
-5. **El JWT lleva `businessId` y `branchIds[]`.** El `ScopeGuard` (en `apps/api/src/auth/guards/scope.guard.ts`)
-   valida que los headers `x-business-id` y `x-branch-id` no se "salteen" el tenant del token.
+5. **El JWT lleva `businessId` y `branchIds[]`.** El `ScopeGuard` (en `api/src/auth/guards/scope.guard.ts`)
+   valida que los headers `x-business-id` y `x-branch-id` no se "salteen" el tenant del token (api/src/auth/guards/scope.guard.ts).
 
 ### Cabeceras HTTP multi-tenant
 
@@ -313,98 +295,32 @@ Todas usan `businessSlug = demo`. Login: `POST /api/auth/login`.
 | `bun run dev:api` | Solo NestJS con hot-reload |
 | `bun run dev:admin` | Solo TanStack Start con HMR |
 | `bun run dev:landing` | Solo Astro 5 (one-pager) |
-| `bun run build` | Build de todos los workspaces |
+| `bun run build` | Build de todos los workspaces vía Turbo |
 | `bun run typecheck` | `tsc --noEmit` en todos los workspaces |
-| `bun run lint` | ESLint en `apps/*/src` y `packages/*/src` |
+| `bun run lint` | ESLint en `api/`, `admin/`, `packages/` |
 | `bun run format` | Prettier en todo `src/` |
+| `bun run format:check` | Verifica formato sin modificar archivos |
+| `bun run test` | Tests en todos los workspaces (Turbo) |
+| `bun run test:api` | Tests unitarios de la API |
+| `bun run test:e2e` | Tests E2E de la API |
+| `bun run test:admin` | Tests del frontend admin |
+| `bun run test:print-agent` | Tests del print-agent |
 | `bun run clean` | Borra `dist`, `.output`, `.turbo` |
-
----
-
-## 🔒 SSL / HTTPS (Producción)
-
-Para habilitar HTTPS con Let's Encrypt en producción:
-
-```bash
-# 1. Configurar dominio en .env.prod
-DOMAIN=tu-dominio.com
-
-# 2. Iniciar nginx + certbot
-docker compose -f docker-compose.prod.yml up -d nginx certbot
-
-# 3. Generar certificado inicial (una vez)
-make prod-ssl-init
-
-# 4. Auto-renewal está configurado (cada 12h)
-# Para renovar manualmente:
-make prod-ssl-renew
-```
-
-Los certificados se almacenan en volúmenes Docker (`certbot_conf`, `certbot_www`) y se renuevan automáticamente cada 12 horas.
 
 ---
 
 ## 🚀 CI/CD (GitHub Actions)
 
-El proyecto incluye dos workflows:
+El proyecto incluye el workflow `ci.yml`:
 
 | Workflow | Trigger | Qué hace |
 | --- | --- | --- |
 | `ci.yml` | Push/PR a main | Typecheck, lint, build, test |
-| `deploy.yml` | Push a main | Build Docker images → GHCR → Deploy vía SSH |
-
-### Deploy a producción
-
-**Prerrequisitos** (configurar en GitHub Secrets):
-- `PROD_SERVER_HOST` — IP del servidor
-- `PROD_SERVER_USER` — Usuario SSH
-- `PROD_SERVER_SSH_KEY` — Clave SSH privada
-
-El deploy automático:
-1. Build de imágenes Docker (api, admin, print-agent) → GHCR
-2. SSH al servidor → `git pull` → `docker compose pull` → `docker compose up -d`
-
-### Imágenes Docker en GHCR
-
-```
-ghcr.io/{tu-org}/saas-restaurant/api:latest
-ghcr.io/{tu-org}/saas-restaurant/admin:latest
-ghcr.io/{tu-org}/saas-restaurant/print-agent:latest
-```
+| `deploy.yml` | Push a main | CI + build vía Bun |
 
 ---
 
-## 🌿 Dev Multi-Branch
-
-Trabaja con múltiples branches simultáneamente usando Docker Compose projects:
-
-```bash
-# En la rama main
-git checkout main
-make docker-branch-up    # Crea proyecto saas-main
-
-# En otra rama
-git checkout feature/pos
-docker-branch-up         # Crea proyecto saas-feature-pos
-
-# Cada rama tiene sus propios contenedores, puertos y volúmenes
-# Mismo mapeo de puertos pero namespaces separados
-
-# Ver estado de todos los branches
-docker ps --filter "label=com.docker.compose.project=saas-*"
-
-# Detener un branch
-docker-branch-down
-
-# Logs de un branch
-docker-branch-logs
-```
-
-Los comandos `docker-branch-up`, `docker-branch-down` y `docker-branch-logs` detectan automáticamente la branch actual y usan el prefijo `saas-{branch-name}` como project name de Docker Compose.
-
----
-
-## 📐 Decisiones arquitectónicas clave (Phase 1 + 2)
+## 📐 Decisiones arquitectónicas clave
 
 - **Sin acoplamiento del frontend al cliente Prisma.** El paquete `@saas/shared` define
   DTOs "planos" que tanto la API como el admin consumen. Migraciones o cambios internos de
@@ -418,7 +334,7 @@ Los comandos `docker-branch-up`, `docker-branch-down` y `docker-branch-logs` det
 - **JWT stateless, dos secretos.** `JWT_SECRET` para access (corta duración), `JWT_REFRESH_SECRET`
   para refresh (larga duración). El campo `typ` en el payload impide usar uno en lugar del otro.
 - **Sin cookies HttpOnly todavía.** El frontend guarda tokens en `localStorage` vía Zustand
-  persist. En Phase 5 se evaluará migrar a cookies + CSRF.
+  persist. Pendiente migrar a cookies + CSRF en una fase futura.
 - **Soft delete por convención, no por cascade.** El campo `deletedAt DateTime?` vive en
   Category, Product, RestaurantTable y Customer. Ninguna query permite filtrar
   entidades "muertas" — todas incluyen `deletedAt: null`. Esto preserva el historial
@@ -427,16 +343,91 @@ Los comandos `docker-branch-up`, `docker-branch-down` y `docker-branch-logs` det
   aceptan `branchId` opcional: si es `null`, el recurso es **global** del business;
   si tiene branch, aplica solo a esa sucursal. Table **siempre** tiene branch (no
   tiene sentido una mesa huérfana).
+- **Print Agent como proceso local independiente.** El agente de impresión corre separado
+  de la API (Bun + Hono) y gestiona la comunicación directa con impresoras térmicas ESC/POS.
+  La API envía trabajos de impresión al agente; el agente no tiene acceso a la base de datos.
+- **Turbo pipeline para builds/tests.** `turbo.json` orquesta el orden de builds y cachea
+  artefactos para acelerar CI. Cada workspace declara sus outputs y dependencias.
+- **Quota enforcer en billing.** El `QuotaEnforcer` es un guard/service que valida si el
+  plan de suscripción activo del tenant permite la operación solicitada antes de procesarla.
 
 ---
 
-## 🔭 Próximas fases
+## 🔭 Estado actual del proyecto (Julio 2026)
 
-- **Phase 3** — Flujo de pedido (comanda → cocina → caja), tickets, modificadores,
-  propinas, división de cuenta.
-- **Phase 4** — Facturación, impuestos, reportes, cierre de caja.
-- **Phase 5** — Print agent local, integraciones con impresoras térmicas, cookies + CSRF.
-- **Phase 6** — Inventario real (`currentStock` en Product), delivery, multi-canal.
+### ✅ Phase 1 — Fundación multi-tenant
+- Business, Branches, Users, Auth (JWT dual-secret, refresh, /me, ScopeGuard)
+
+### ✅ Phase 2 — Catálogo, mesas y clientes
+- Categories, Products, PreparationAreas, Tables, Customers
+- CRUD completo en API + frontend; soft delete; reordenamiento
+
+### ✅ Phase 3 — Flujo de pedido
+- **Módulo Orders**: CRUD con estados (`PENDING`, `SENT_TO_KITCHEN`, `PREPARING`, `READY`, `PAID`, `CANCELLED`)
+- **Módulo Payments**: múltiples métodos (EFECTIVO, TARJETA, TRANSFERENCIA, QR)
+- **KDS (Kitchen Display System)**: pantalla en tiempo real vía WebSocket
+- **POS**: interfaz de venta con carrito y flujo de pago
+
+**Endpoints:**
+- `GET/POST/PATCH/DELETE /orders`
+- `POST /orders/:id/pay` — procesar pago
+- `GET /orders/:id/ticket` — generar ticket
+- `GET /kds/orders` — órdenes para cocina (por área de preparación)
+
+### ✅ Phase 4 — Caja y Finanzas
+- **Módulo Cash**: apertura/cierre de turnos
+- **Módulo CashMovements**: ingresos, egresos, retiros, depósitos
+- **Módulo CashFoundation**: fondos iniciales de caja
+
+**Endpoints:**
+- `GET/POST/PATCH /cash`
+- `POST /cash/:id/open` — abrir turno
+- `POST /cash/:id/close` — cerrar turno
+- `GET/POST /cash-movements`
+
+### ✅ Phase 5 — Inventario y Proveedores
+- **Módulo Inventory**: stock actual + movimientos
+- **Módulo Suppliers**: proveedores
+- **Módulo Purchases**: compras a proveedores
+
+**Endpoints:**
+- `GET/POST/PATCH/DELETE /inventory`
+- `GET/POST/PATCH/DELETE /suppliers`
+- `GET/POST/PATCH/DELETE /purchases`
+- `POST /inventory/:id/adjust` — ajuste manual de stock
+
+### ✅ Phase 6 — Reportes y Auditoría
+- **Módulo Reports**: ventas, productos, caja, etc.
+- **Módulo Audit**: persistencia real en tabla `AuditLog` (ya no es stdout)
+
+**Endpoints:**
+- `GET /reports/*` — según tipo
+- `GET /audit` — historial de auditoría
+
+### ✅ Phase 7 — SaaS y Monetización
+- **Módulo Plans**: planes de suscripción (CRUD)
+- **Módulo Subscription**: suscripciones de businesses
+- **Módulo Billing** (Stripe): webhooks, checkout sessions, `QuotaEnforcer`
+
+**Endpoints:**
+- `GET/POST/PATCH/DELETE /plans`
+- `GET/POST/PATCH/DELETE /subscription`
+- `POST /billing/checkout` — crear sesión Stripe
+- `POST /billing/webhook` — webhook de Stripe
+
+### ✅ Phase 8 — Impresión
+- **Módulo Print** (API): endpoint que encola trabajos de impresión
+- **Print Agent** (`@saas/print-agent`): servidor Bun + Hono que gestiona impresoras ESC/POS locales; configurable vía `printers.json`
+- **Station Login**: ruta `/station-login` en el admin para acceso rápido desde estaciones POS
+
+---
+
+## 🔭 Próximas fases (Pendientes)
+
+- **Phase 9** — Features avanzadas de POS: combos, modificadores, división de cuenta, propinas
+- **Phase 10** — Canales satélite: mobile app (React Native), impresión automática
+- **Phase 11** — Infraestructura producción: cookies HttpOnly + CSRF, storage S3/MinIO, CI estricta
+- **Phase 12** — Optimización: reducción de polling, cache agresivo, lazy loading
 
 ---
 
@@ -447,6 +438,7 @@ Los comandos `docker-branch-up`, `docker-branch-down` y `docker-branch-logs` det
 - DTOs con `class-validator` + `@ApiProperty` (Swagger) en el backend.
 - DTOs con Zod en `@saas/shared`, reutilizables para formularios.
 - Naming: `kebab-case` para archivos, `PascalCase` para clases/tipos, `camelCase` para vars/funciones.
+- JSON en camelCase (no snake_case) en toda la API.
 - Commits: conventional commits (`feat:`, `fix:`, `chore:`, etc.) — sin `Co-Authored-By` ni atribuciones AI.
 
 ---

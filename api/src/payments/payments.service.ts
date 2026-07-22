@@ -1,0 +1,414 @@
+import { Injectable, BadRequestException, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+import { Prisma, AuditAction, OrderStatus } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
+import { CashFoundationService } from '../cash-foundation/cash-foundation.service';
+import { PrintService } from '../print/print.service';
+import type { CreatePaymentsDto, PaymentItemDto } from './dto/payment.dto';
+
+/**
+ * PaymentsService (FASE 4).
+ *
+ * Procesa pagos de una orden. Soporta:
+ *  - Pagos mixtos (varios PaymentItemDto con métodos distintos).
+ *  - Efectivo: calcula change (tendered - amount) si no viene explícito.
+ *  - QR/Transferencia: requiere reference.
+ *
+ * Reglas:
+ *  - La orden debe existir y pertenecer al tenant.
+ *  - La orden debe estar en estado "cobrable": DELIVERED o superior (no PAID ya).
+ *  - Σ(payments.amount) DEBE ser EXACTAMENTE = order.total (no overpay, no underpay en F4).
+ *  - El cajero debe tener un shift OPEN en la sucursal de la orden.
+ *  - Todo se hace en una tx: payments + Order.status=PAID + OrderStateLog + audit.
+ */
+@Injectable()
+export class PaymentsService {
+  private readonly logger = new Logger(PaymentsService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+    private readonly cashFoundation: CashFoundationService,
+    private readonly printService: PrintService,
+  ) {}
+
+  /**
+   * Crea los pagos de una orden, la marca como PAID, y registra el state log.
+   * Devuelve el Order actualizado.
+   */
+  async payOrder(params: {
+    businessId: string;
+    userId: string;
+    orderId: string;
+    dto: CreatePaymentsDto;
+  }): Promise<{
+    order: {
+      id: string;
+      status: OrderStatus;
+      total: string;
+      paidAt: Date;
+      payments: Array<{
+        id: string;
+        method: string;
+        amount: string;
+        tendered: string | null;
+        change: string | null;
+        reference: string | null;
+      }>;
+      items: Array<{
+        productName: string;
+        quantity: number;
+        unitPrice: Prisma.Decimal;
+        lineTotal: Prisma.Decimal;
+        taxRate: Prisma.Decimal;
+        notes: string | null;
+        productId: string | null;
+      }>;
+    };
+  }> {
+    // 1. Validaciones previas (fuera de tx, más claras)
+    const order = await this.prisma.order.findFirst({
+      where: { id: params.orderId, businessId: params.businessId },
+      include: { payments: true },
+    });
+    if (!order) {
+      throw new NotFoundException('Orden no encontrada');
+    }
+    if (order.status === 'PAID') {
+      throw new ConflictException('La orden ya está pagada');
+    }
+    if (order.status === 'CANCELLED' || order.status === 'DRAFT') {
+      throw new BadRequestException(
+        `No se puede cobrar una orden en estado ${order.status}`,
+      );
+    }
+    if (order.status !== 'DELIVERED') {
+      throw new BadRequestException(
+        `La orden debe estar en DELIVERED para cobrar (actual: ${order.status}). ` +
+          'Avanzá el estado primero.',
+      );
+    }
+
+    // 2. Validar pagos individualmente + suma total
+    const orderTotal = new Prisma.Decimal(order.total);
+    const sumAmount = params.dto.payments.reduce(
+      (acc, p) => acc.plus(new Prisma.Decimal(p.amount)),
+      new Prisma.Decimal(0),
+    );
+    if (!sumAmount.equals(orderTotal)) {
+      throw new BadRequestException(
+        `La suma de pagos (${sumAmount.toString()}) no coincide con el total de la orden (${orderTotal.toString()}). ` +
+          'Para mixto, ajustá los montos.',
+      );
+    }
+    for (const p of params.dto.payments) {
+      this.validatePaymentItem(p);
+    }
+
+    // 3. Resolver shift del cajero
+    const session = await this.cashFoundation.findOpenCashAndShift(order.branchId);
+    if (!session) {
+      throw new BadRequestException(
+        'No hay caja/turno abierto en esta sucursal. Abrí turno antes de cobrar.',
+      );
+    }
+
+    // 4. Transacción
+    const result = await this.prisma.$transaction(async (tx) => {
+      const createdPayments: Array<{
+        id: string;
+        method: string;
+        amount: string;
+        tendered: string | null;
+        change: string | null;
+        reference: string | null;
+      }> = [];
+
+      for (const p of params.dto.payments) {
+        // CASH: calcular change si no viene
+        let tendered: Prisma.Decimal | null = null;
+        let change: Prisma.Decimal | null = null;
+        if (p.method === 'CASH') {
+          const amt = new Prisma.Decimal(p.amount);
+          const tend = p.tendered !== undefined ? new Prisma.Decimal(p.tendered) : amt;
+          if (tend.lessThan(amt)) {
+            throw new BadRequestException(
+              'Efectivo entregado es menor al monto del pago',
+            );
+          }
+          tendered = tend;
+          change = p.change !== undefined
+            ? new Prisma.Decimal(p.change)
+            : tend.minus(amt);
+        }
+
+        const created = await tx.payment.create({
+          data: {
+            businessId: params.businessId,
+            orderId: order.id,
+            method: p.method,
+            amount: new Prisma.Decimal(p.amount),
+            tendered: tendered,
+            change: change,
+            reference: p.reference ?? null,
+            cashierId: params.userId,
+          },
+        });
+
+        await this.audit.log(
+          {
+            businessId: params.businessId,
+            userId: params.userId,
+            action: AuditAction.PAYMENT,
+            entity: 'Payment',
+            entityId: created.id,
+            after: {
+              orderId: order.id,
+              method: created.method,
+              amount: created.amount.toString(),
+              tendered: created.tendered?.toString() ?? null,
+              change: created.change?.toString() ?? null,
+              reference: created.reference,
+            },
+          },
+          tx,
+        );
+
+        createdPayments.push({
+          id: created.id,
+          method: created.method,
+          amount: created.amount.toString(),
+          tendered: created.tendered?.toString() ?? null,
+          change: created.change?.toString() ?? null,
+          reference: created.reference,
+        });
+      }
+
+      // 5. Transicionar order a PAID
+      const previousStatus = order.status;
+      const updated = await tx.order.update({
+        where: { id: order.id },
+        data: {
+          status: 'PAID',
+          version: { increment: 1 },
+        },
+      });
+
+      await tx.orderStateLog.create({
+        data: {
+          businessId: params.businessId,
+          orderId: order.id,
+          fromStatus: previousStatus,
+          toStatus: 'PAID',
+          changedByUserId: params.userId,
+          reason: `Pagado: ${createdPayments.length} pago(s), total ${orderTotal.toString()}`,
+          metadata: {
+            paymentIds: createdPayments.map((p) => p.id),
+            paymentMethods: createdPayments.map((p) => p.method),
+          },
+        },
+      });
+
+      // 6. Validar stock suficiente (F4-02) + descontar stock (F4-01).
+      //    Por cada item trackeable, verificar que currentStock >= quantity
+      //    antes de crear InventoryMovement OUT.
+      //    Nota: OrderItem no tiene relación Product en Prisma (snapshot),
+      //    así que buscamos los productos por separado.
+      const items = await tx.orderItem.findMany({
+        where: { orderId: order.id },
+      });
+
+      // IDs únicos de productos en los items
+      const productIds = [...new Set(items.map((i) => i.productId).filter(Boolean))] as string[];
+      if (productIds.length > 0) {
+        const products = await tx.product.findMany({
+          where: { id: { in: productIds }, businessId: params.businessId },
+          select: { id: true, name: true, trackStock: true, currentStock: true },
+        });
+        const productMap = new Map(products.map((p) => [p.id, p]));
+
+        // Validación de stock insuficiente (F4-02)
+        const insufficient: Array<{ name: string; stock: number; needed: number }> = [];
+        for (const item of items) {
+          if (!item.productId) continue;
+          const prod = productMap.get(item.productId);
+          if (!prod?.trackStock) continue;
+          if (prod.currentStock.lessThan(item.quantity)) {
+            insufficient.push({
+              name: prod.name,
+              stock: prod.currentStock.toNumber(),
+              needed: item.quantity,
+            });
+          }
+        }
+        if (insufficient.length > 0) {
+          const details = insufficient
+            .map((i) => `"${i.name}": stock ${i.stock}, necesita ${i.needed}`)
+            .join('; ');
+          throw new BadRequestException(
+            `Stock insuficiente para completar la venta: ${details}`,
+          );
+        }
+
+        for (const item of items) {
+          if (!item.productId) continue;
+          const prod = productMap.get(item.productId);
+          if (!prod?.trackStock) continue;
+
+          const qty = new Prisma.Decimal(-item.quantity); // negativo para OUT
+          const newBalance = Prisma.Decimal.max(
+            prod.currentStock.plus(qty),
+            new Prisma.Decimal(0),
+          );
+
+          await tx.inventoryMovement.create({
+            data: {
+              businessId: params.businessId,
+              branchId: order.branchId,
+              productId: item.productId,
+              type: 'OUT',
+              referenceType: 'SALE',
+              referenceId: item.id,
+              quantity: qty,
+              unitCost: item.unitPrice,
+              totalCost: qty.mul(item.unitPrice),
+              runningBalance: newBalance,
+              notes: `Venta Ord #${order.id.slice(0, 8)}`,
+            },
+          });
+
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { currentStock: newBalance },
+          });
+        }
+      }
+
+      return {
+        order: {
+          id: updated.id,
+          status: updated.status,
+          total: updated.total.toString(),
+          paidAt: updated.updatedAt,
+          payments: createdPayments,
+          items: items.map((i) => ({
+            productName: i.productName,
+            quantity: i.quantity,
+            unitPrice: i.unitPrice,
+            lineTotal: i.lineTotal,
+            taxRate: i.taxRate,
+            notes: i.notes,
+            productId: i.productId,
+          })),
+        },
+      };
+    });
+
+    // Fire ticket print (fire-and-forget, never throw)
+    this.printService
+      .printTicketForOrder(
+        params.businessId,
+        {
+          id: order.id,
+          branchId: order.branchId,
+          tableId: order.tableId,
+          total: order.total,
+          createdAt: order.createdAt,
+          items: result.order.items.map((i) => ({
+            productName: i.productName,
+            quantity: i.quantity,
+            unitPrice: i.unitPrice,
+            lineTotal: i.lineTotal,
+            taxRate: i.taxRate,
+            notes: i.notes,
+            productId: i.productId ?? '',
+          })),
+        } as any,
+        result.order.payments.map((p) => ({
+          method: p.method,
+          amount: new Prisma.Decimal(p.amount),
+          change: p.change ? new Prisma.Decimal(p.change) : null,
+        })),
+        params.userId,
+      )
+      .catch(() => {});
+
+    return result;
+  }
+
+  /**
+   * Lista los pagos de una orden.
+   */
+  async listForOrder(params: {
+    businessId: string;
+    orderId: string;
+  }): Promise<Array<{
+    id: string;
+    method: string;
+    amount: string;
+    tendered: string | null;
+    change: string | null;
+    reference: string | null;
+    cashierId: string;
+    createdAt: Date;
+  }>> {
+    const order = await this.prisma.order.findFirst({
+      where: { id: params.orderId, businessId: params.businessId },
+      select: { id: true },
+    });
+    if (!order) throw new NotFoundException('Orden no encontrada');
+
+    const payments = await this.prisma.payment.findMany({
+      where: { businessId: params.businessId, orderId: order.id },
+      orderBy: { createdAt: 'asc' },
+    });
+    return payments.map((p) => ({
+      id: p.id,
+      method: p.method,
+      amount: p.amount.toString(),
+      tendered: p.tendered?.toString() ?? null,
+      change: p.change?.toString() ?? null,
+      reference: p.reference,
+      cashierId: p.cashierId,
+      createdAt: p.createdAt,
+    }));
+  }
+
+  /**
+   * Calcula el cambio para un pago en efectivo sin guardar.
+   * Endpoint de preview para el modal de pago.
+   */
+  previewChange(total: string, tendered: string): {
+    change: string;
+    tendered: string;
+    sufficient: boolean;
+  } {
+    const t = new Prisma.Decimal(tendered);
+    const tot = new Prisma.Decimal(total);
+    const change = t.minus(tot);
+    return {
+      change: change.isNegative() ? '0.00' : change.toString(),
+      tendered: t.toString(),
+      sufficient: !change.isNegative(),
+    };
+  }
+
+  // ============== Helpers ==============
+
+  private validatePaymentItem(p: PaymentItemDto): void {
+    switch (p.method) {
+      case 'CASH':
+        // tendered/change son opcionales (se calculan si no vienen)
+        break;
+      case 'QR':
+      case 'TRANSFER':
+      case 'CARD':
+        if (!p.reference) {
+          throw new BadRequestException(
+            `Pago con ${p.method} requiere el campo "reference" (número de comprobante)`,
+          );
+        }
+        break;
+    }
+  }
+}

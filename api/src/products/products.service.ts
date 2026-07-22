@@ -1,0 +1,431 @@
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma, AuditAction } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
+import { CacheService } from '../cache/cache.service';
+import { QuotaEnforcer } from '../billing/quota.enforcer';
+import type { AuthenticatedUser, BusinessContext } from '../auth/types/jwt-payload.type';
+import type { PaginatedResult } from '../common/dto/pagination.dto';
+import type {
+  ProductDTO,
+  ProductListItemDTO,
+} from '@saas/shared';
+import {
+  CreateProductDto,
+  UpdateProductDto,
+  type ProductFiltersDto,
+} from './dto/product.dto';
+import { toProductDto, toProductListItemDto, type ProductWithRelations } from './mappers';
+
+/**
+ * Tipo del producto con las relaciones que este servicio siempre carga.
+ * Centralizado para mantener simple el `toDto`.
+ */
+// ProductWithRelations moved to ./mappers.ts
+
+
+/**
+ * Productos.
+ * Multi-tenant: SIEMPRE filtra por businessId.
+ * Soft delete: `deletedAt` se setea en DELETE; las queries lo filtran.
+ * Auditoría: cambios de `price` se loggean vía AuditService.
+ */
+@Injectable()
+export class ProductsService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+    private readonly cache: CacheService,
+    private readonly quota: QuotaEnforcer,
+  ) {}
+
+  /**
+   * Listado paginado con filtros. Excluye soft-deleted.
+   */
+  async list(
+    user: AuthenticatedUser,
+    context: BusinessContext | undefined,
+    filters: ProductFiltersDto,
+  ): Promise<PaginatedResult<ProductDTO>> {
+    const page = filters.page ?? 1;
+    const pageSize = filters.pageSize ?? 20;
+    const skip = (page - 1) * pageSize;
+    const tenant = this.prisma.tenantFilter(user, context);
+
+    const where: Prisma.ProductWhereInput = {
+      ...tenant,
+      deletedAt: null,
+      ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
+      ...(filters.isActive !== undefined ? { isActive: filters.isActive } : {}),
+      ...(filters.isAvailable !== undefined ? { isAvailable: filters.isAvailable } : {}),
+      ...(filters.productType ? { productType: filters.productType } : {}),
+      ...(filters.search
+        ? {
+            OR: [
+              { name: { contains: filters.search } },
+              { sku: { contains: filters.search } },
+              { description: { contains: filters.search } },
+            ],
+          }
+        : {}),
+    };
+
+    const cacheKey = CacheService.key('products:list', { ...filters, businessId: tenant.businessId, branchId: tenant.branchId, page, pageSize });
+    const cached = await this.cache.get<PaginatedResult<ProductDTO>>(cacheKey);
+    if (cached) return cached;
+
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.product.count({ where }),
+      this.prisma.product.findMany({
+        where,
+        orderBy: [{ name: 'asc' }],
+        skip,
+        take: pageSize,
+        include: {
+          category: { include: { _count: { select: { products: { where: { deletedAt: null } } } } } },
+          preparationArea: true,
+        },
+      }),
+    ]);
+
+    const result: PaginatedResult<ProductDTO> = {
+      data: rows.map((p) => toProductDto(p)),
+      meta: {
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      },
+    };
+
+    // Cachear por 30s
+    await this.cache.set(cacheKey, result, 30);
+
+    return result;
+  }
+
+  /**
+   * Listado plano para POS (sin paginación).
+   * Solo productos activos y disponibles por defecto.
+   */
+  async listAll(
+    user: AuthenticatedUser,
+    context: BusinessContext | undefined,
+    filters?: { categoryId?: string; isAvailable?: boolean; page?: number; pageSize?: number },
+  ): Promise<PaginatedResult<ProductListItemDTO>> {
+    const page = filters?.page ?? 1;
+    const pageSize = filters?.pageSize ?? 200;
+    const skip = (page - 1) * pageSize;
+    const tenant = this.prisma.tenantFilter(user, context);
+
+    const where = {
+      ...tenant,
+      deletedAt: null,
+      isActive: true,
+      ...(filters?.isAvailable !== undefined ? { isAvailable: filters.isAvailable } : { isAvailable: true }),
+      ...(filters?.categoryId ? { categoryId: filters.categoryId } : {}),
+    };
+
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.product.count({ where }),
+      this.prisma.product.findMany({
+        where,
+        orderBy: [{ name: 'asc' }],
+        skip,
+        take: pageSize,
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          categoryId: true,
+          imageUrl: true,
+          price: true,
+          cost: true,
+          productType: true,
+          isAvailable: true,
+        },
+      }),
+    ]);
+
+    const result: PaginatedResult<ProductListItemDTO> = {
+      data: rows.map((p) => toProductListItemDto(p)),
+      meta: {
+        total,
+        page,
+        pageSize,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      },
+    };
+
+    // Cachear por 15s (usado constantemente en el POS para el grid de productos)
+    await this.cache.set(CacheService.key('products:all', { ...filters, businessId: tenant.businessId, branchId: tenant.branchId }), result, 15);
+    return result;
+  }
+
+  /**
+   * Productos con `minStock` configurado y `trackStock = true`.
+   * Phase 2: la columna `currentStock` aún no existe (se agregará en Phase 6
+   * con el módulo de inventario). Por ahora devolvemos los productos que
+   * tienen `minStock` definido para que la UI pueda mostrar la sección
+   * "Stock bajo" sin romper.
+   *
+   * TODO(phase-6): reemplazar por un check real contra `currentStock <= minStock`.
+   */
+  async listLowStock(
+    user: AuthenticatedUser,
+    context: BusinessContext | undefined,
+  ): Promise<ProductListItemDTO[]> {
+    const tenant = this.prisma.tenantFilter(user, context);
+    const cacheKey = CacheService.key('products:low-stock', { businessId: user.businessId });
+    const cached = await this.cache.get<ProductListItemDTO[]>(cacheKey);
+    if (cached) return cached;
+
+    const rows = await this.prisma.product.findMany({
+      where: {
+        ...tenant,
+        deletedAt: null,
+        isActive: true,
+        trackStock: true,
+        minStock: { not: null },
+      },
+      orderBy: [{ name: 'asc' }],
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        categoryId: true,
+        imageUrl: true,
+        price: true,
+        cost: true,
+        productType: true,
+        isAvailable: true,
+      },
+    });
+    const result = rows.map((p) => toProductListItemDto(p));
+    await this.cache.set(cacheKey, result, 30);
+    return result;
+  }
+
+  async getById(
+    user: AuthenticatedUser,
+    context: BusinessContext | undefined,
+    id: string,
+  ): Promise<ProductDTO> {
+    const tenant = this.prisma.tenantFilter(user, context);
+    const product = await this.prisma.product.findFirst({
+      where: { ...tenant, id, deletedAt: null },
+      include: {
+        category: {
+          include: { _count: { select: { products: { where: { deletedAt: null } } } } },
+        },
+        preparationArea: true,
+      },
+    });
+    if (!product) throw new NotFoundException('Producto no encontrado');
+    return toProductDto(product);
+  }
+
+  async create(
+    user: AuthenticatedUser,
+    context: BusinessContext | undefined,
+    dto: CreateProductDto,
+  ): Promise<ProductDTO> {
+    const tenant = this.prisma.tenantFilter(user, context);
+
+    // Verificar cuota de productos del plan
+    await this.quota.checkOrThrow(tenant.businessId, 'products');
+
+    // Validar slug único por business (soft-deleted NO bloquea re-creación)
+    const dup = await this.prisma.product.findFirst({
+      where: { ...tenant, slug: dto.slug, deletedAt: null },
+      select: { id: true },
+    });
+    if (dup) throw new ConflictException('Ya existe un producto con ese slug');
+
+    // Validar que category/preparationArea pertenezcan al tenant
+    await this.assertRefsBelongToTenant(user, context, {
+      categoryId: dto.categoryId,
+      preparationAreaId: dto.preparationAreaId,
+      branchId: dto.branchId,
+    });
+
+    const created = await this.prisma.product.create({
+      data: {
+        ...tenant,
+        name: dto.name,
+        slug: dto.slug,
+        description: dto.description,
+        imageUrl: dto.imageUrl,
+        categoryId: dto.categoryId,
+        preparationAreaId: dto.preparationAreaId,
+        branchId: dto.branchId,
+        sku: dto.sku,
+        price: new Prisma.Decimal(dto.price),
+        cost: dto.cost !== undefined ? new Prisma.Decimal(dto.cost) : null,
+        taxRate: dto.taxRate !== undefined ? new Prisma.Decimal(dto.taxRate) : null,
+        trackStock: dto.trackStock ?? false,
+        minStock: dto.minStock,
+        productType: dto.productType ?? 'SALE',
+        comboItems: dto.comboItems ?? undefined,
+        bulkPricing: dto.bulkPricing ?? undefined,
+        preparationTimeMin: dto.preparationTimeMin,
+        isActive: dto.isActive ?? true,
+        isAvailable: dto.isAvailable ?? true,
+      },
+      include: {
+        category: { include: { _count: { select: { products: { where: { deletedAt: null } } } } } },
+        preparationArea: true,
+      },
+    });
+
+    // Invalidar caché de productos
+    await this.cache.delByPattern('products:*');
+
+    return toProductDto(created);
+  }
+
+  async update(
+    user: AuthenticatedUser,
+    context: BusinessContext | undefined,
+    id: string,
+    dto: UpdateProductDto,
+  ): Promise<ProductDTO> {
+    const tenant = this.prisma.tenantFilter(user, context);
+
+    const existing = await this.prisma.product.findFirst({
+      where: { ...tenant, id, deletedAt: null },
+    });
+    if (!existing) throw new NotFoundException('Producto no encontrado');
+
+    // Validar slug único si cambia
+    if (dto.slug && dto.slug !== existing.slug) {
+      const dup = await this.prisma.product.findFirst({
+        where: { ...tenant, slug: dto.slug, deletedAt: null, NOT: { id } },
+        select: { id: true },
+      });
+      if (dup) throw new ConflictException('Ya existe un producto con ese slug');
+    }
+
+    // Validar referencias si cambian
+    await this.assertRefsBelongToTenant(user, context, {
+      categoryId: dto.categoryId,
+      preparationAreaId: dto.preparationAreaId,
+      branchId: dto.branchId,
+    });
+
+    const updated = await this.prisma.product.update({
+      where: { id },
+      data: {
+        ...(dto.name !== undefined ? { name: dto.name } : {}),
+        ...(dto.slug !== undefined ? { slug: dto.slug } : {}),
+        ...(dto.description !== undefined ? { description: dto.description } : {}),
+        ...(dto.imageUrl !== undefined ? { imageUrl: dto.imageUrl } : {}),
+        ...(dto.categoryId !== undefined ? { categoryId: dto.categoryId } : {}),
+        ...(dto.preparationAreaId !== undefined
+          ? { preparationAreaId: dto.preparationAreaId }
+          : {}),
+        ...(dto.branchId !== undefined ? { branchId: dto.branchId } : {}),
+        ...(dto.sku !== undefined ? { sku: dto.sku } : {}),
+        ...(dto.price !== undefined ? { price: new Prisma.Decimal(dto.price) } : {}),
+        ...(dto.cost !== undefined ? { cost: new Prisma.Decimal(dto.cost) } : {}),
+        ...(dto.taxRate !== undefined ? { taxRate: new Prisma.Decimal(dto.taxRate) } : {}),
+        ...(dto.trackStock !== undefined ? { trackStock: dto.trackStock } : {}),
+        ...(dto.minStock !== undefined ? { minStock: dto.minStock } : {}),
+        ...(dto.productType !== undefined ? { productType: dto.productType } : {}),
+        ...(dto.comboItems !== undefined ? { comboItems: dto.comboItems } : {}),
+        ...(dto.bulkPricing !== undefined ? { bulkPricing: dto.bulkPricing } : {}),
+        ...(dto.preparationTimeMin !== undefined
+          ? { preparationTimeMin: dto.preparationTimeMin }
+          : {}),
+        ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
+        ...(dto.isAvailable !== undefined ? { isAvailable: dto.isAvailable } : {}),
+      },
+      include: {
+        category: { include: { _count: { select: { products: { where: { deletedAt: null } } } } } },
+        preparationArea: true,
+      },
+    });
+
+    // Si cambió el precio, loggear auditoría
+    if (dto.price !== undefined && !existing.price.equals(updated.price)) {
+      await this.audit.log({
+        businessId: user.businessId,
+        userId: user.id,
+      action: AuditAction.PRICE_CHANGE,
+      entity: 'Product',
+      entityId: updated.id,
+        before: { price: existing.price.toString() },
+        after: { price: updated.price.toString() },
+      });
+    }
+
+    // Invalidar caché de productos (precio/stock/etc. cambió)
+    await this.cache.delByPattern('products:*');
+
+    return toProductDto(updated);
+  }
+
+  async softDelete(
+    user: AuthenticatedUser,
+    context: BusinessContext | undefined,
+    id: string,
+  ): Promise<void> {
+    const tenant = this.prisma.tenantFilter(user, context);
+    const existing = await this.prisma.product.findFirst({
+      where: { ...tenant, id, deletedAt: null },
+      select: { id: true },
+    });
+    if (!existing) throw new NotFoundException('Producto no encontrado');
+
+    await this.prisma.product.update({
+      where: { id },
+      data: { deletedAt: new Date(), isActive: false, isAvailable: false },
+    });
+
+    await this.audit.log({
+      businessId: user.businessId,
+      userId: user.id,
+      action: AuditAction.SOFT_DELETE,
+      entity: 'Product',
+      entityId: id,
+    });
+
+    // Invalidar caché de productos
+    await this.cache.delByPattern('products:*');
+  }
+
+  // ==================== HELPERS ====================
+
+  private async assertRefsBelongToTenant(
+    user: AuthenticatedUser,
+    context: BusinessContext | undefined,
+    refs: { categoryId?: string; preparationAreaId?: string; branchId?: string },
+  ): Promise<void> {
+    const tenant = this.prisma.tenantFilter(user, context);
+
+    if (refs.categoryId) {
+      const cat = await this.prisma.category.findFirst({
+        where: { ...tenant, id: refs.categoryId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!cat) throw new NotFoundException('La categoría indicada no existe o no pertenece al tenant');
+    }
+    if (refs.preparationAreaId) {
+      const area = await this.prisma.preparationArea.findFirst({
+        where: { ...tenant, id: refs.preparationAreaId },
+        select: { id: true },
+      });
+      if (!area) throw new NotFoundException('El área de preparación indicada no existe');
+    }
+    if (refs.branchId) {
+      const branch = await this.prisma.branch.findFirst({
+        where: { businessId: user.businessId, id: refs.branchId },
+        select: { id: true },
+      });
+      if (!branch) throw new NotFoundException('La sucursal indicada no existe');
+    }
+  }
+
+  // toDto and toListItemDto moved to ./mappers.ts — imported as toProductDto and toProductListItemDto
+
+}
