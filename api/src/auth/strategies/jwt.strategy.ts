@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy, StrategyOptions } from 'passport-jwt';
 import type { Request } from 'express';
+import type { Role } from '@saas/shared';
 import type { JwtPayload, AuthenticatedUser } from '../types/jwt-payload.type';
 
 /**
@@ -42,13 +43,27 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('Tipo de token inválido (se esperaba access)');
     }
 
+    if (payload.userType === 'saas') {
+      return {
+        id: payload.sub,
+        email: payload.email,
+        userType: 'saas',
+        role: '' as Role,
+        saasRole: payload.saasRole,
+        businessId: '',
+        branchIds: [],
+        defaultBranchId: null,
+      };
+    }
+
     return {
       id: payload.sub,
       email: payload.email,
-      role: payload.role,
-      businessId: payload.businessId,
-      branchIds: payload.branchIds,
-      defaultBranchId: null, // Se completa en runtime si se necesita
+      userType: 'business',
+      role: payload.role!,
+      businessId: payload.businessId!,
+      branchIds: payload.branchIds ?? [],
+      defaultBranchId: null,
     };
   }
 }

@@ -7,6 +7,7 @@ import { ScopeGuard } from '../auth/guards/scope.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '@saas/shared';
 import type { AuthenticatedUser, BusinessContext as Context } from '../auth/types/jwt-payload.type';
 import type { ReportFiltersDto, RequestReportDto } from './dto/report.dto';
 
@@ -38,7 +39,7 @@ export class ReportsController {
   }
 
   @Post()
-  @Roles('OWNER', 'ADMIN')
+  @Roles(Role.OWNER, Role.ADMIN)
   @ApiOperation({ summary: 'Solicitar generación de un reporte' })
   request(
     @CurrentUser() user: AuthenticatedUser,

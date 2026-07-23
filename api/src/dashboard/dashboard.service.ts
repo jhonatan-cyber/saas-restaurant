@@ -106,7 +106,7 @@ export class DashboardService {
         where: { ...f, status: 'PAID', updatedAt: { gte: d, lt: nd } },
         _sum: { total: true }, _count: { id: true },
       });
-      days.push({ label: labels[d.getDay()], total: Number(r._sum.total ?? 0), count: r._count.id });
+      days.push({ label: labels[d.getDay()] ?? '', total: Number(r._sum.total ?? 0), count: r._count.id });
     }
     return {
       days,

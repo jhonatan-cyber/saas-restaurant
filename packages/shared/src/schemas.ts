@@ -38,8 +38,9 @@ export const passwordSchema = z
   .max(128, 'La contraseña es demasiado larga');
 
 /**
- * Login multi-tenant: email + password + businessSlug.
- * El businessSlug identifica al tenant, el email es único DENTRO del tenant.
+ * Login unificado: email + password + businessSlug (opcional).
+ * - Con businessSlug → login contra User (restaurant)
+ * - Sin businessSlug → login contra SaaSUser (admin plataforma)
  */
 export const loginSchema = z.object({
   email: emailSchema,
@@ -49,7 +50,8 @@ export const loginSchema = z.object({
     .trim()
     .toLowerCase()
     .min(1, 'El slug del negocio es obligatorio')
-    .max(64, 'Slug demasiado largo'),
+    .max(64, 'Slug demasiado largo')
+    .optional(),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
@@ -91,6 +93,7 @@ export const createUserSchema = z.object({
   phone: z.string().trim().max(40).optional(),
   role: z.nativeEnum(Role).default(Role.CAJERO),
   defaultBranchId: z.cuid().optional(),
+  branchIds: z.array(z.string()).optional(),
 });
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
@@ -553,12 +556,52 @@ export const createPlanSchema = z.object({
   maxCategories: z.coerce.number().int().min(1),
   maxMonthlyOrders: z.coerce.number().int().min(1),
   maxStorageMb: z.coerce.number().int().min(1),
+  maxTables: z.coerce.number().int().min(1).default(20),
+  maxSuppliers: z.coerce.number().int().min(1).default(30),
+  maxPurchases: z.coerce.number().int().min(1).default(100),
   features: z.array(z.string()).optional(),
   isActive: z.coerce.boolean().default(true),
   sortOrder: z.coerce.number().int().min(0).default(0),
   isPublic: z.coerce.boolean().default(true),
 })
 export type CreatePlanInput = z.infer<typeof createPlanSchema>
+
+/** Form schema for plan creation/editing with features as comma-separated string */
+export const planFormSchema = z.object({
+  code: z.string().trim().min(1, 'Código requerido').max(50),
+  name: z.string().trim().min(1, 'Nombre requerido').max(255),
+  description: z.string().trim().max(500).optional(),
+  price: z.coerce.number().min(0, 'Precio no puede ser negativo'),
+  currency: z.string().max(3).default('USD'),
+  billingPeriod: z.string().min(1, 'Período requerido'),
+  maxUsers: z.coerce.number().int().min(1, 'Mínimo 1 usuario'),
+  maxBranches: z.coerce.number().int().min(1, 'Mínimo 1 sucursal'),
+  maxProducts: z.coerce.number().int().min(1, 'Mínimo 1 producto'),
+  maxCategories: z.coerce.number().int().min(1, 'Mínimo 1 categoría'),
+  maxMonthlyOrders: z.coerce.number().int().min(1, 'Mínimo 1 orden'),
+  maxStorageMb: z.coerce.number().int().min(1, 'Mínimo 1 MB'),
+  maxTables: z.coerce.number().int().min(1).default(20),
+  maxSuppliers: z.coerce.number().int().min(1).default(30),
+  maxPurchases: z.coerce.number().int().min(1).default(100),
+  featuresString: z.string().optional(),
+  isActive: z.coerce.boolean().default(true),
+  sortOrder: z.coerce.number().int().min(0).default(0),
+  isPublic: z.coerce.boolean().default(true),
+})
+export type PlanFormInput = z.infer<typeof planFormSchema>
+
+/** Transform planFormValues → CreatePlanInput (features as array) */
+export function planFormToCreateInput({
+  featuresString,
+  ...values
+}: PlanFormInput): CreatePlanInput {
+  return {
+    ...values,
+    features: featuresString
+      ? featuresString.split(',').map((s) => s.trim()).filter(Boolean)
+      : undefined,
+  };
+}
 
 export const planFiltersSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -567,6 +610,14 @@ export const planFiltersSchema = z.object({
   isActive: z.coerce.boolean().optional(),
 })
 export type PlanFiltersInput = z.infer<typeof planFiltersSchema>
+
+/** Create SaaS platform user */
+export const createSaaSUserSchema = z.object({
+  email: emailSchema,
+  password: passwordSchema,
+  role: z.string().min(1, 'Rol requerido').default('SUPER_ADMIN'),
+})
+export type CreateSaaSUserInput = z.infer<typeof createSaaSUserSchema>
 
 export const assignPlanSchema = z.object({
   planId: z.cuid({ message: 'Plan inválido' }),

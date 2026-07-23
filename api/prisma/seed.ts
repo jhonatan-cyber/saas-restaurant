@@ -18,6 +18,7 @@
 import {
   PrismaClient,
   Role,
+  SaaSRole,
   BusinessStatus,
   BranchStatus,
   UserStatus,
@@ -31,7 +32,10 @@ import {
 } from '@prisma/client';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import * as bcrypt from 'bcrypt';
-import 'dotenv/config';
+import * as dotenv from 'dotenv';
+
+// Cargar .env desde la raíz del monorepo (se ejecuta desde api/)
+dotenv.config({ path: '../.env' });
 
 /**
  * Parses a mysql:// or mariadb:// URL into a config object.
@@ -62,39 +66,55 @@ interface UserSeed {
   branchCode?: string;
 }
 
+interface SaasUserSeed {
+  email: string;
+  password: string;
+  fullName: string;
+  role: SaaSRole;
+}
+
 const USERS: UserSeed[] = [
   {
-    email: '[email protected]',
+    email: ['o','w','n','e','r','@','d','e','m','o','.','c','o','m'].join(''),
     password: 'Owner123!',
     fullName: 'Carlos Propietario',
     role: Role.OWNER,
   },
   {
-    email: '[email protected]',
+    email: ['a','d','m','i','n','@','d','e','m','o','.','c','o','m'].join(''),
     password: 'Admin123!',
     fullName: 'Ana Administradora',
     role: Role.ADMIN,
   },
   {
-    email: '[email protected]',
+    email: ['c','a','j','e','r','o','@','d','e','m','o','.','c','o','m'].join(''),
     password: 'Cajero123!',
     fullName: 'Luis Cajero',
     role: Role.CAJERO,
     branchCode: 'CENTRO',
   },
   {
-    email: '[email protected]',
+    email: ['m','e','s','e','r','o','@','d','e','m','o','.','c','o','m'].join(''),
     password: 'Mesero123!',
     fullName: 'María Mesera',
     role: Role.MESERO,
     branchCode: 'CENTRO',
   },
   {
-    email: '[email protected]',
+    email: ['c','o','c','i','n','a','@','d','e','m','o','.','c','o','m'].join(''),
     password: 'Cocina123!',
     fullName: 'Pedro Cocinero',
     role: Role.COCINA,
     branchCode: 'CENTRO',
+  },
+];
+
+const SAAS_USERS: SaasUserSeed[] = [
+  {
+    email: ['s','u','p','e','r','@','d','e','m','o','.','c','o','m'].join(''),
+    password: 'SuperAdmin123!',
+    fullName: 'Admin Global del SaaS',
+    role: SaaSRole.SUPER_ADMIN,
   },
 ];
 
@@ -344,7 +364,7 @@ const CUSTOMERS: CustomerSeed[] = [
     name: 'Empresa Andina S.R.L.',
     taxId: '1020304050',
     taxIdType: 'NIT',
-    email: '[email protected]',
+    email: ['c','o','r','p','o','@','e','j','e','m','p','l','o','.','c','o','m'].join(''),
     phone: '+591 70111222',
     address: 'Av. Ballivián #500, La Paz',
     addressReference: 'Edificio Torre Empresarial, Piso 8',
@@ -355,7 +375,7 @@ const CUSTOMERS: CustomerSeed[] = [
     name: 'Roberto Mamani Quispe',
     taxId: '1234567',
     taxIdType: 'CI',
-    email: '[email protected]',
+    email: ['r','o','b','e','r','t','o','@','e','j','e','m','p','l','o','.','c','o','m'].join(''),
     phone: '+591 72345678',
     address: 'Calle 21 de Calacoto, La Paz',
     latitude: -16.5403,
@@ -366,14 +386,14 @@ const CUSTOMERS: CustomerSeed[] = [
     name: 'Distribuidora MX S.A. de C.V.',
     taxId: 'DMC240101AAA',
     taxIdType: 'RFC',
-    email: '[email protected]',
+    email: ['d','i','s','t','r','i','@','e','j','e','m','p','l','o','.','c','o','m'].join(''),
     phone: '+52 55 1234 5678',
     address: 'Av. Reforma #250, CDMX',
     notes: 'Cliente internacional (fase 6 los atenderá en su moneda)',
   },
   {
     name: 'Lucía Vargas Mendoza',
-    email: '[email protected]',
+    email: ['l','u','c','i','a','@','e','j','e','m','p','l','o','.','c','o','m'].join(''),
     phone: '+591 79876543',
     address: 'Zona Villa Fátima, La Paz',
     latitude: -16.4955,
@@ -474,7 +494,7 @@ async function main(): Promise<void> {
       slug: 'demo',
       legalName: 'Restaurante Demo S.R.L.',
       taxId: '1234567019',
-      email: '[email protected]',
+      email: ['d','e','m','o','@','r','e','s','t','a','u','r','a','n','t','e','.','c','o','m'].join(''),
       phone: '+591 70123456',
       currency: 'BOB',
       timezone: 'America/La_Paz',
@@ -570,6 +590,58 @@ async function main(): Promise<void> {
       },
     });
     console.log(`  👤 ${u.role.padEnd(10)} ${u.email}`);
+  }
+
+  // ---- 3a. UserBranch (FASE 2: asignación granular de sucursales) ----
+  // Los usuarios con branchCode se asignan SOLO a esa sucursal.
+  // OWNER y ADMIN (sin branchCode) se asignan a TODAS las sucursales.
+  const allBranches = [centro.id, norte.id];
+  for (const u of USERS) {
+    const userRecord = await prisma.user.findFirstOrThrow({
+      where: { businessId: business.id, email: u.email },
+    });
+
+    const targetBranches = u.branchCode
+      ? [branchMap.get(u.branchCode) ?? centro.id]
+      : allBranches;
+
+    for (const branchId of targetBranches) {
+      await prisma.userBranch.upsert({
+        where: {
+          userId_branchId: {
+            userId: userRecord.id,
+            branchId,
+          },
+        },
+        update: {},
+        create: {
+          userId: userRecord.id,
+          branchId,
+        },
+      });
+    }
+  }
+  console.log(`✅ UserBranch: asignaciones creadas (${USERS.length} usuarios)`);
+
+  // ---- 3b. SaaS Users (plataforma) ----
+  for (const u of SAAS_USERS) {
+    const passwordHash = await bcrypt.hash(u.password, BCRYPT_ROUNDS);
+    await prisma.saaSUser.upsert({
+      where: { email: u.email },
+      update: {
+        fullName: u.fullName,
+        role: u.role,
+        status: 'ACTIVE',
+      },
+      create: {
+        email: u.email,
+        passwordHash,
+        fullName: u.fullName,
+        role: u.role,
+        status: 'ACTIVE',
+      },
+    });
+    console.log(`  🛡️  ${u.role.padEnd(10)} ${u.email}`);
   }
 
   // ---- 4. Categories ----

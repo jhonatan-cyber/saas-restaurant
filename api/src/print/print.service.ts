@@ -78,7 +78,7 @@ export class PrintService {
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
   ) {
-    this.agentUrl = this.config.get<string>('PRINT_AGENT_URL', 'http://localhost:3100');
+    this.agentUrl = this.config.get<string>('PRINT_AGENT_URL', 'http://localhost:3002');
   }
 
   /**

@@ -18,6 +18,7 @@ describe('AuthController', () => {
     login: jest.fn(),
     refresh: jest.fn(),
     buildAuthenticatedUserDto: jest.fn(),
+    checkBusiness: jest.fn(),
   };
 
   const csrfServiceMock = {
@@ -92,6 +93,7 @@ describe('AuthController', () => {
     const user: AuthenticatedUser = {
       id: 'user-1',
       email: 'owner@demo.com',
+      userType: 'business',
       role: 'OWNER' as AuthenticatedUser['role'],
       businessId: 'business-1',
       branchIds: ['branch-1'],
@@ -111,6 +113,26 @@ describe('AuthController', () => {
       role: 'OWNER',
       branchIds: ['branch-1'],
     });
+  });
+
+  it('delegates checkBusiness to AuthService', async () => {
+    authServiceMock.checkBusiness.mockResolvedValue({ exists: true });
+
+    const moduleRef = await Test.createTestingModule({
+      controllers: [AuthController],
+      providers: [
+        { provide: AuthService, useValue: authServiceMock },
+        { provide: CsrfService, useValue: csrfServiceMock },
+        { provide: AuthCookiesService, useValue: authCookiesMock },
+      ],
+    }).compile();
+
+    const controller = moduleRef.get(AuthController);
+
+    const result = await controller.checkBusiness('demo');
+
+    expect(result).toEqual({ exists: true });
+    expect(authServiceMock.checkBusiness).toHaveBeenCalledWith('demo');
   });
 
   it('delegates /me lookups to AuthService', async () => {

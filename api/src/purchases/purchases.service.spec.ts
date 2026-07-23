@@ -49,7 +49,7 @@ describe('PurchasesService', () => {
   };
 
   beforeEach(async () => {
-    const result = await buildServiceTest(PurchasesService);
+    const result = await buildServiceTest(PurchasesService, { quota: true });
     service = result.service;
     prisma = result.prisma;
   });

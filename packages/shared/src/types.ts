@@ -1,5 +1,6 @@
 import type {
   Role,
+  SaaSRole,
   BusinessStatus,
   BranchStatus,
   UserStatus,
@@ -94,6 +95,7 @@ export interface UserDTO {
   status: UserStatus;
   businessId: string;
   defaultBranchId: string | null;
+  branchIds: string[];
   lastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -112,15 +114,22 @@ export interface AuthenticatedUserDTO {
 
 /**
  * Payload JWT (access token). Mantener minimalista.
+ * userType discrimina entre usuarios de negocio y de plataforma (SaaS).
  */
 export interface JwtPayload {
   /** user id */
   sub: string;
   email: string;
-  businessId: string;
-  role: Role;
+  /** Discriminador: 'business' (restaurant) o 'saas' (plataforma) */
+  userType: 'business' | 'saas';
+  /** Solo para business users */
+  businessId?: string;
+  /** Solo para business users */
+  role?: Role;
+  /** Solo para SaaS users */
+  saasRole?: SaaSRole;
   /** branchIds accesibles por el usuario (vacío = todos los del business) */
-  branchIds: string[];
+  branchIds?: string[];
   /** tipo de token */
   typ: 'access' | 'refresh';
   iat?: number;
@@ -444,6 +453,8 @@ export interface OrderListItemDTO {
   businessId: string;
   branchId: string;
   tableId: string | null;
+  /** Número de mesa (populado por el backend al listar). */
+  tableNumber: string | null;
   type: OrderType;
   status: OrderStatus;
   total: string;

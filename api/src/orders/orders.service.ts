@@ -12,6 +12,7 @@ import { AuditService } from '../audit/audit.service';
 import { CashFoundationService } from '../cash-foundation/cash-foundation.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { PrintService } from '../print/print.service';
+import { QuotaEnforcer } from '../billing/quota.enforcer';
 import type { AuthenticatedUser, BusinessContext } from '../auth/types/jwt-payload.type';
 import { ERROR_CODES } from '@saas/shared';
 import {
@@ -63,6 +64,7 @@ export class OrdersService {
     private readonly cash: CashFoundationService,
     private readonly realtime: RealtimeGateway,
     private readonly printService: PrintService,
+    private readonly quota: QuotaEnforcer,
   ) {}
 
   // =============================================================
@@ -93,6 +95,9 @@ export class OrdersService {
         'Crear órdenes requiere una sucursal en el scope (header x-branch-id o defaultBranchId)',
       );
     }
+
+    // Verificar cuota mensual de órdenes del plan
+    await this.quota.checkOrThrow(tenant.businessId, 'monthlyOrders');
 
     // Resolver sesión de caja abierta (fuera de la tx para no alargarla).
     const cashSession = await this.cash.findOpenCashAndShift(branchId);

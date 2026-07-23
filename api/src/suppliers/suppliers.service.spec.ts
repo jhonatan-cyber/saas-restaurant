@@ -30,7 +30,7 @@ describe('SuppliersService', () => {
   };
 
   beforeEach(async () => {
-    const result = await buildServiceTest(SuppliersService, { cache: true });
+    const result = await buildServiceTest(SuppliersService, { cache: true, quota: true });
     service = result.service;
     prisma = result.prisma;
     cache = result.cache!;

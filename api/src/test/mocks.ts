@@ -40,6 +40,7 @@ export function createMockPrisma() {
     'payment', 'auditLog', 'plan', 'subscription', 'preparationArea',
     'business', 'posStation', 'branch', 'user', 'category',
     'supplier', 'purchase', 'inventoryMovement', 'cashMovement', 'report',
+    'saaSUser', 'userBranch',
   ] as const;
 
   // Create model methods eagerly (no Proxy — spread-compatible)

@@ -9,9 +9,10 @@ export default defineConfig({
   build: { format: 'directory' },
   server: {
     host: true,
-    port: 4321,
+    port: Number(process.env.LANDING_PORT ?? 4321),
   },
   vite: {
+    envDir: '..', // Cargar .env de la raíz del monorepo
     server: {
       watch: {
         usePolling: process.env.CHOKIDAR_USEPOLLING === 'true',

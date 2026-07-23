@@ -31,34 +31,36 @@ describe('RolesGuard', () => {
   });
 
   describe('canActivate', () => {
+    const businessUser = { role: 'ADMIN', userType: 'business' } as AuthenticatedUser;
+
     it('returns true when no @Roles() is set', () => {
       getAllAndOverrideSpy.mockReturnValue(undefined);
-      const context = createContext({ role: 'ADMIN' } as AuthenticatedUser);
+      const context = createContext(businessUser);
       expect(guard.canActivate(context)).toBe(true);
     });
 
     it('returns true when @Roles() has empty array', () => {
       getAllAndOverrideSpy.mockReturnValue([]);
-      const context = createContext({ role: 'ADMIN' } as AuthenticatedUser);
+      const context = createContext(businessUser);
       expect(guard.canActivate(context)).toBe(true);
     });
 
     it('returns true when user role is in the required roles', () => {
       getAllAndOverrideSpy.mockReturnValue(['OWNER', 'ADMIN']);
-      const context = createContext({ role: 'ADMIN' } as AuthenticatedUser);
+      const context = createContext({ role: 'ADMIN', userType: 'business' } as AuthenticatedUser);
       expect(guard.canActivate(context)).toBe(true);
     });
 
     it('throws ForbiddenException when user role is not in required roles', () => {
       getAllAndOverrideSpy.mockReturnValue(['OWNER', 'ADMIN']);
-      const context = createContext({ role: 'MESERO' } as AuthenticatedUser);
+      const context = createContext({ role: 'MESERO', userType: 'business' } as AuthenticatedUser);
 
       expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
     });
 
     it('includes required roles in the error message', () => {
       getAllAndOverrideSpy.mockReturnValue(['OWNER', 'ADMIN']);
-      const context = createContext({ role: 'MESERO' } as AuthenticatedUser);
+      const context = createContext({ role: 'MESERO', userType: 'business' } as AuthenticatedUser);
 
       try {
         guard.canActivate(context);

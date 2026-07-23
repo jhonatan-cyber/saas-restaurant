@@ -1,65 +1,28 @@
-import { type PlanDTO, type PaginatedResponseDTO } from '@saas/shared';
-import { api } from './index';
-
-export interface PlanFilters {
-  page?: number;
-  pageSize?: number;
-  search?: string;
-  isActive?: boolean;
-}
+/**
+ * API de planes.
+ */
+import { apiRequest } from './client';
+import type { PlanItem, PlanFilters, PaginatedResponse } from './types';
 
 export const plansApi = {
-  create: (data: {
-    code: string;
-    name: string;
-    description?: string;
-    price: number;
-    currency?: string;
-    billingPeriod: string;
-    maxUsers: number;
-    maxBranches: number;
-    maxProducts: number;
-    maxCategories: number;
-    maxMonthlyOrders: number;
-    maxStorageMb: number;
-    features?: string[];
-    isActive?: boolean;
-    sortOrder?: number;
-    isPublic?: boolean;
-  }) => api<PlanDTO>('/plans', { method: 'POST', body: data }),
-
-  list: (filters: PlanFilters = {}) => {
-    const params = new URLSearchParams();
-    if (filters.page) params.set('page', String(filters.page));
-    if (filters.pageSize) params.set('pageSize', String(filters.pageSize));
-    if (filters.search) params.set('search', filters.search);
-    if (filters.isActive !== undefined) params.set('isActive', String(filters.isActive));
-    const qs = params.toString();
-    return api<PaginatedResponseDTO<PlanDTO>>(`/plans${qs ? `?${qs}` : ''}`, { method: 'GET' });
+  list: (filters?: PlanFilters) => {
+    const q = new URLSearchParams();
+    if (filters?.page) q.set('page', String(filters.page));
+    if (filters?.pageSize) q.set('pageSize', String(filters.pageSize));
+    if (filters?.search) q.set('search', filters.search);
+    if (filters?.isActive !== undefined) q.set('isActive', String(filters.isActive));
+    return apiRequest<PaginatedResponse<PlanItem>>(`/plans?${q}`);
   },
 
-  listPublic: () => api<PlanDTO[]>('/plans/public', { method: 'GET', skipAuth: true }),
+  getById: (id: string) =>
+    apiRequest<PlanItem>(`/plans/${id}`),
 
-  getById: (id: string) => api<PlanDTO>(`/plans/${id}`, { method: 'GET' }),
+  create: (data: Record<string, unknown>) =>
+    apiRequest<PlanItem>('/plans', { method: 'POST', body: JSON.stringify(data) }),
 
-  update: (id: string, data: Partial<{
-    code: string;
-    name: string;
-    description?: string;
-    price: number;
-    currency?: string;
-    billingPeriod: string;
-    maxUsers: number;
-    maxBranches: number;
-    maxProducts: number;
-    maxCategories: number;
-    maxMonthlyOrders: number;
-    maxStorageMb: number;
-    features?: string[];
-    isActive?: boolean;
-    sortOrder?: number;
-    isPublic?: boolean;
-  }>) => api<PlanDTO>(`/plans/${id}`, { method: 'PATCH', body: data }),
+  update: (id: string, data: Record<string, unknown>) =>
+    apiRequest<PlanItem>(`/plans/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
-  remove: (id: string) => api<{ id: string; isActive?: boolean; deleted?: boolean }>(`/plans/${id}`, { method: 'DELETE' }),
+  remove: (id: string) =>
+    apiRequest<void>(`/plans/${id}`, { method: 'DELETE' }),
 };

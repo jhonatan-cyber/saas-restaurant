@@ -5,7 +5,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, Prisma } from '@prisma/client';
 import { createTestUser, createTestContext, decimal } from '../test/mocks';
 import { buildServiceTest, MockPrisma, MockAudit, MockCash, MockRealtime } from '../test/service-test.helper';
 import { PrintService } from '../print/print.service';
@@ -47,6 +47,8 @@ describe('OrdersService', () => {
     subtotal: decimal(100),
     taxTotal: decimal(21),
     total: decimal(121),
+    discount: decimal(0),
+    discountReason: null,
     globalNotes: null,
     cashRegisterId: 'cash-reg-1',
     shiftId: 'shift-1',
@@ -67,6 +69,7 @@ describe('OrdersService', () => {
       audit: true,
       cashFoundation: true,
       realtime: true,
+      quota: true,
       extra: [{ provide: PrintService, useValue: printServiceMock }],
     });
     service = result.service;

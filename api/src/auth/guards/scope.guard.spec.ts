@@ -27,6 +27,7 @@ describe('ScopeGuard', () => {
         id: 'user-1',
         businessId: 'biz-1',
         branchIds: ['branch-1', 'branch-2'],
+        userType: 'business',
       } as AuthenticatedUser,
     };
   });
@@ -110,6 +111,62 @@ describe('ScopeGuard', () => {
       expect(mockRequest.businessContext).toBeDefined();
       expect(mockRequest.businessContext!.businessId).toBe('biz-1');
       expect(mockRequest.businessContext!.branchId).toBe('branch-1');
+    });
+
+    // ── Body branchId validation ─────────────────────────────────────
+
+    it('validates branchId in body against user.branchIds on POST', () => {
+      mockRequest.method = 'POST';
+      mockRequest.body = { branchId: 'branch-1', name: 'test' };
+
+      const result = guard.canActivate(createContext());
+
+      expect(result).toBe(true);
+    });
+
+    it('throws ForbiddenException when body branchId is not in user.branchIds', () => {
+      mockRequest.method = 'POST';
+      mockRequest.body = { branchId: 'branch-unauthorized', name: 'test' };
+
+      expect(() => guard.canActivate(createContext())).toThrow(ForbiddenException);
+    });
+
+    it('allows any body branchId when user.branchIds is empty', () => {
+      mockRequest.user!.branchIds = [];
+      mockRequest.method = 'POST';
+      mockRequest.body = { branchId: 'any-branch', name: 'test' };
+
+      const result = guard.canActivate(createContext());
+
+      expect(result).toBe(true);
+    });
+
+    it('skips body validation on GET requests', () => {
+      mockRequest.method = 'GET';
+      mockRequest.body = { branchId: 'branch-unauthorized', name: 'test' };
+
+      const result = guard.canActivate(createContext());
+
+      expect(result).toBe(true);
+    });
+
+    it('skips body validation when body has no branchId', () => {
+      mockRequest.method = 'POST';
+      mockRequest.body = { name: 'test' };
+
+      const result = guard.canActivate(createContext());
+
+      expect(result).toBe(true);
+    });
+
+    it('allows body branchId even when header is empty (user wants all branches)', () => {
+      setHeader(HEADERS.BRANCH_ID, '');
+      mockRequest.method = 'POST';
+      mockRequest.body = { branchId: 'branch-1', name: 'test' };
+
+      const result = guard.canActivate(createContext());
+
+      expect(result).toBe(true);
     });
   });
 

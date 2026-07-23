@@ -3,6 +3,7 @@ import { Prisma, AuditAction, type RestaurantTable } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CacheService } from '../cache/cache.service';
+import { QuotaEnforcer } from '../billing/quota.enforcer';
 import type { AuthenticatedUser, BusinessContext } from '../auth/types/jwt-payload.type';
 import type { PaginatedResult } from '../common/dto/pagination.dto';
 import type { TableDTO, TableStatus } from '@saas/shared';
@@ -27,6 +28,7 @@ export class TablesService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly cache: CacheService,
+    private readonly quota: QuotaEnforcer,
   ) {}
 
   /**
@@ -168,6 +170,9 @@ export class TablesService {
     dto: CreateTableDto,
   ): Promise<TableDTO> {
     const tenant = this.prisma.tenantFilter(user, context);
+
+    // Verificar cuota de mesas del plan
+    await this.quota.checkOrThrow(tenant.businessId, 'tables');
 
     // Verificar que la branch pertenece al business
     const branch = await this.prisma.branch.findFirst({

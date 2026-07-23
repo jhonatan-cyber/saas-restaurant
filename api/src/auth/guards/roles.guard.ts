@@ -6,10 +6,11 @@ import type { AuthenticatedUser } from '../types/jwt-payload.type';
 import type { Role } from '@saas/shared';
 
 /**
- * RolesGuard: valida que el usuario autenticado tenga uno de los roles
+ * RolesGuard: valida que el usuario autenticado (business) tenga uno de los roles
  * declarados con @Roles(...).
  *
  * Asume que JwtAuthGuard ya pobló `req.user`.
+ * Solo aplica a usuarios de tipo 'business'.
  */
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -30,6 +31,10 @@ export class RolesGuard implements CanActivate {
 
     if (!user) {
       throw new ForbiddenException('Usuario no autenticado');
+    }
+
+    if (user.userType !== 'business') {
+      throw new ForbiddenException('El recurso solo está disponible para usuarios de negocio');
     }
 
     if (!requiredRoles.includes(user.role)) {

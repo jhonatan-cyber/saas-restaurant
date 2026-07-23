@@ -61,6 +61,7 @@ describe('AuthService', () => {
       prisma.mockPrisma.user.findUnique.mockResolvedValue(mockUser);
       prisma.mockPrisma.user.findUnique.mockResolvedValue(mockUser as any);
       prisma.mockPrisma.user.update.mockResolvedValue(mockUser);
+      prisma.mockPrisma.userBranch.findMany.mockResolvedValue([]);
       prisma.mockPrisma.branch.findMany.mockResolvedValue([{
         id: 'branch-1', businessId: 'biz-1', name: 'Centro',
         code: 'CTR', address: null, phone: null, isMain: true,
@@ -143,9 +144,32 @@ describe('AuthService', () => {
     });
   });
 
+  describe('checkBusiness', () => {
+    it('returns exists:true when business slug is found', async () => {
+      prisma.mockPrisma.business.findUnique.mockResolvedValue({ id: 'biz-1' });
+
+      const result = await service.checkBusiness('demo');
+
+      expect(result).toEqual({ exists: true });
+      expect(prisma.mockPrisma.business.findUnique).toHaveBeenCalledWith({
+        where: { slug: 'demo' },
+        select: { id: true },
+      });
+    });
+
+    it('returns exists:false when business slug is not found', async () => {
+      prisma.mockPrisma.business.findUnique.mockResolvedValue(null);
+
+      const result = await service.checkBusiness('nonexistent');
+
+      expect(result).toEqual({ exists: false });
+    });
+  });
+
   describe('buildAuthenticatedUserDto', () => {
     it('builds full user DTO with business and branches', async () => {
       prisma.mockPrisma.user.findUnique.mockResolvedValue(mockUser as any);
+      prisma.mockPrisma.userBranch.findMany.mockResolvedValue([]);
       prisma.mockPrisma.branch.findMany.mockResolvedValue([{
         id: 'branch-1', businessId: 'biz-1', name: 'Centro',
         code: 'CTR', address: null, phone: null, isMain: true,

@@ -78,29 +78,42 @@ export class UsersService {
       throw new BadRequestException('Ya existe un usuario con ese email en el negocio');
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, this.SALT_ROUNDS);
+    const passwordHash = await bcrypt.hash(dto.password, this.SALT_ROUNDS);      // Crear usuario + asignaciones de sucursal en una transacción
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email,
+          passwordHash,
+          fullName: dto.fullName.trim(),
+          phone: dto.phone?.trim() ?? null,
+          role: dto.role,
+          status: 'ACTIVE',
+          businessId,
+          defaultBranchId: dto.defaultBranchId ?? null,
+        },
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          phone: true,
+          role: true,
+          status: true,
+          defaultBranchId: true,
+          createdAt: true,
+        },
+      });
 
-    return this.prisma.user.create({
-      data: {
-        email,
-        passwordHash,
-        fullName: dto.fullName.trim(),
-        phone: dto.phone?.trim() ?? null,
-        role: dto.role,
-        status: 'ACTIVE',
-        businessId,
-        defaultBranchId: dto.defaultBranchId ?? null,
-      },
-      select: {
-        id: true,
-        email: true,
-        fullName: true,
-        phone: true,
-        role: true,
-        status: true,
-        defaultBranchId: true,
-        createdAt: true,
-      },
+      // Crear asignaciones UserBranch si se especificaron
+      if (dto.branchIds && dto.branchIds.length > 0) {
+        await tx.userBranch.createMany({
+          data: dto.branchIds.map((branchId) => ({
+            userId: user.id,
+            branchId,
+          })),
+        });
+      }
+
+      return { ...user, branchIds: dto.branchIds ?? [] };
     });
   }
 
@@ -122,7 +135,7 @@ export class UsersService {
     if (role) where.role = role;
     if (status) where.status = status;
 
-    const [data, total] = await Promise.all([
+    const [users, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
         skip,
@@ -136,6 +149,9 @@ export class UsersService {
           role: true,
           status: true,
           defaultBranchId: true,
+          branchAssignments: {
+            select: { branchId: true },
+          },
           lastLoginAt: true,
           createdAt: true,
           updatedAt: true,
@@ -143,6 +159,14 @@ export class UsersService {
       }),
       this.prisma.user.count({ where }),
     ]);
+
+    const data = users.map((u) => {
+      const { branchAssignments, ...userFields } = u;
+      return {
+        ...userFields,
+        branchIds: branchAssignments.map((a: { branchId: string }) => a.branchId),
+      };
+    });
 
     return {
       data,
@@ -171,13 +195,19 @@ export class UsersService {
         status: true,
         businessId: true,
         defaultBranchId: true,
+        branchAssignments: {
+          select: { branchId: true },
+        },
         lastLoginAt: true,
         createdAt: true,
         updatedAt: true,
       },
     });
     if (!user) throw new NotFoundException('Usuario no encontrado');
-    return user;
+    return {
+      ...user,
+      branchIds: user.branchAssignments.map((a) => a.branchId),
+    };
   }
 
   /**
@@ -204,19 +234,44 @@ export class UsersService {
       data.email = email;
     }
 
-    return this.prisma.user.update({
-      where: { id },
-      data,
-      select: {
-        id: true,
-        email: true,
-        fullName: true,
-        phone: true,
-        role: true,
-        status: true,
-        defaultBranchId: true,
-        updatedAt: true,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id },
+        data,
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          phone: true,
+          role: true,
+          status: true,
+          defaultBranchId: true,
+          updatedAt: true,
+        },
+      });
+
+      // Actualizar asignaciones UserBranch si se especificaron
+      if (dto.branchIds !== undefined) {
+        // Eliminar asignaciones existentes
+        await tx.userBranch.deleteMany({ where: { userId: id } });
+        // Crear nuevas asignaciones
+        if (dto.branchIds.length > 0) {
+          await tx.userBranch.createMany({
+            data: dto.branchIds.map((branchId) => ({
+              userId: id,
+              branchId,
+            })),
+          });
+        }
+      }
+
+      // Retornar branchIds actualizadas (las enviadas si se cambiaron, o las existentes)
+      const resultBranchIds = dto.branchIds ?? (await tx.userBranch.findMany({
+        where: { userId: id },
+        select: { branchId: true },
+      })).map((a) => a.branchId);
+
+      return { ...updated, branchIds: resultBranchIds };
     });
   }
 

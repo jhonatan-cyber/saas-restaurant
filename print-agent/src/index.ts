@@ -1,13 +1,13 @@
 /**
  * Print Agent — Microservicio local de impresión térmica.
  *
- * Corre en la máquina local (localhost:3100 por defecto) y expone
+ * Corre en la máquina local (localhost:3002 por defecto) y expone
  * endpoints HTTP para imprimir tickets, comandas y cierres de caja
  * en impresoras térmicas ESC/POS.
  *
  * Uso:
  *   bun run src/index.ts
- *   # Opcional: PRINT_AGENT_PORT=3100 bun run src/index.ts
+ *   # Opcional: PRINT_AGENT_PORT=3002 bun run src/index.ts
  *   # Opcional: PRINTERS_JSON=ruta/al/archivo.json
  *
  * Configuración de impresoras vía JSON (printers.json en la raíz):
@@ -35,6 +35,11 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import * as dotenv from 'dotenv';
+
+// Cargar .env desde la raíz del monorepo (se ejecuta desde print-agent/)
+dotenv.config({ path: '../.env' });
+
 import { healthRoutes } from './routes/health';
 import { printRoutes } from './routes/print';
 import { setPrinters, type PrinterConfig } from './lib/printer';
@@ -70,7 +75,7 @@ app.use('/*', cors());
 app.route('/', healthRoutes);
 app.route('/print', printRoutes);
 
-const port = Number(process.env.PRINT_AGENT_PORT ?? 3100);
+const port = Number(process.env.PRINT_AGENT_PORT ?? 3002);
 
 console.log(`\n🖨️  Print Agent v0.1.0`);
 console.log(`   Servidor: http://localhost:${port}`);

@@ -2,6 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { Prisma, type Supplier } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheService } from '../cache/cache.service';
+import { QuotaEnforcer } from '../billing/quota.enforcer';
 import type { AuthenticatedUser, BusinessContext } from '../auth/types/jwt-payload.type';
 import type { PaginatedResult } from '../common/dto/pagination.dto';
 import type { SupplierDTO, SupplierListItemDTO } from '@saas/shared';
@@ -17,6 +18,7 @@ export class SuppliersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cache: CacheService,
+    private readonly quota: QuotaEnforcer,
   ) {}
 
   async list(
@@ -139,6 +141,9 @@ export class SuppliersService {
     dto: CreateSupplierDto,
   ): Promise<SupplierDTO> {
     const businessId = context?.businessId ?? user.businessId;
+
+    // Verificar cuota de proveedores del plan
+    await this.quota.checkOrThrow(businessId, 'suppliers');
 
     // Validar nombre único por (business, branch, deletedAt=null)
     const existing = await this.prisma.supplier.findFirst({

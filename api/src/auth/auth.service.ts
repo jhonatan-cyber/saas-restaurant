@@ -1,9 +1,9 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
-import type { BillingPeriod, Role, SubscriptionStatus, LoginInput } from '@saas/shared';
+import type { BillingPeriod, Role, SaaSRole, SubscriptionStatus, LoginInput } from '@saas/shared';
 import type { LoginResponseDTO, JwtPayload, AuthenticatedUserDTO } from '@saas/shared';
 
 /**
@@ -25,18 +25,23 @@ export class AuthService {
   ) {}
 
   /**
-   * Login principal.
-   * Devuelve { accessToken, refreshToken, user }.
+   * Login unificado.
+   * - Si `businessSlug` está presente → login contra User (restaurant).
+   * - Si no → login contra SaaSUser (admin plataforma).
    */
-  async login(input: LoginInput): Promise<LoginResponseDTO> {
+  async login(input: LoginInput): Promise<LoginResponseDTO | { accessToken: string; refreshToken: string; user: { id: string; email: string; role: SaaSRole } }> {
+    if (input.businessSlug) {
+      return this.businessLogin(input as Required<LoginInput>);
+    }
+    return this.saasLogin(input);
+  }
+
+  private async businessLogin(input: Required<LoginInput>): Promise<LoginResponseDTO> {
     const user = await this.validateUser(input.businessSlug, input.email, input.password);
     if (!user) {
-      // Mensaje genérico para no filtrar si el tenant o el email existen.
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
-    // Determinar branchIds del usuario (todas las del business por ahora;
-    // se puede restringir por tabla UserBranch en fases futuras).
     const branchIds = await this.resolveUserBranchIds(user.businessId, user.id);
 
     const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
@@ -45,13 +50,13 @@ export class AuthService {
       businessId: user.businessId,
       role: user.role,
       branchIds,
+      userType: 'business',
       typ: 'access',
     };
 
     const accessToken = await this.signAccessToken(payload);
     const refreshToken = await this.signRefreshToken({ ...payload, typ: 'refresh' });
 
-    // Actualizar lastLoginAt (best-effort: no romper el login si falla)
     await this.prisma.user
       .update({
         where: { id: user.id },
@@ -63,10 +68,57 @@ export class AuthService {
 
     const userDto = await this.buildAuthenticatedUserDto(user.id);
 
+    return { accessToken, refreshToken, user: userDto };
+  }
+
+  private async saasLogin(input: LoginInput): Promise<{ accessToken: string; refreshToken: string; user: { id: string; email: string; role: SaaSRole } }> {
+    const normalizedEmail = input.email.toLowerCase().trim();
+    const saasUser = await this.prisma.saaSUser.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (!saasUser) {
+      throw new UnauthorizedException('Credenciales inválidas');
+    }
+
+    if (saasUser.status !== 'ACTIVE') {
+      throw new UnauthorizedException('Cuenta desactivada. Contacte al administrador.');
+    }
+
+    const passwordOk = await bcrypt.compare(input.password, saasUser.passwordHash);
+    if (!passwordOk) {
+      throw new UnauthorizedException('Credenciales inválidas');
+    }
+
+    await this.prisma.saaSUser.update({
+      where: { id: saasUser.id },
+      data: { lastLoginAt: new Date() },
+    }).catch(() => {});
+
+    const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
+      sub: saasUser.id,
+      email: saasUser.email,
+      saasRole: saasUser.role,
+      userType: 'saas',
+      typ: 'access',
+    };
+
+    const refreshPayload: Omit<JwtPayload, 'iat' | 'exp'> = {
+      ...payload,
+      typ: 'refresh',
+    };
+
+    const accessToken = await this.signAccessToken(payload);
+    const refreshToken = await this.signRefreshToken(refreshPayload);
+
     return {
       accessToken,
       refreshToken,
-      user: userDto,
+      user: {
+        id: saasUser.id,
+        email: saasUser.email,
+        role: saasUser.role,
+      },
     };
   }
 
@@ -74,7 +126,7 @@ export class AuthService {
    * Refresh: recibe el refresh token (validado por JwtRefreshStrategy),
    * emite un nuevo access token con el mismo payload.
    */
-  async refresh(user: { sub: string; email: string; businessId: string; role: Role; branchIds: string[] }): Promise<{
+  async refresh(user: { sub: string; email: string; businessId?: string; role?: Role; saasRole?: SaaSRole; branchIds?: string[]; userType?: 'business' | 'saas' }): Promise<{
     accessToken: string;
     expiresIn: number;
   }> {
@@ -83,7 +135,9 @@ export class AuthService {
       email: user.email,
       businessId: user.businessId,
       role: user.role,
+      saasRole: user.saasRole,
       branchIds: user.branchIds,
+      userType: user.userType || (user.businessId ? 'business' : 'saas'),
       typ: 'access',
     };
 
@@ -118,8 +172,21 @@ export class AuthService {
       throw new UnauthorizedException('Usuario no encontrado');
     }
 
+    // Filtrar branches según asignaciones UserBranch (FASE 2)
+    const assignments = await this.prisma.userBranch.findMany({
+      where: { userId: user.id },
+      select: { branchId: true },
+    });
+
+    const assignedIds: string[] = assignments.map((a: { branchId: string }) => a.branchId);
+
     const branches = await this.prisma.branch.findMany({
-      where: { businessId: user.businessId, status: 'ACTIVE' },
+      where: {
+        businessId: user.businessId,
+        status: 'ACTIVE',
+        // Si el usuario tiene asignaciones explícitas, filtrar solo esas
+        ...(assignments.length > 0 ? { id: { in: assignedIds } } : {}),
+      },
       orderBy: [{ isMain: 'desc' }, { name: 'asc' }],
     });
 
@@ -207,14 +274,24 @@ export class AuthService {
   }
 
   private async resolveUserBranchIds(businessId: string, userId: string): Promise<string[]> {
-    // Phase 1: todos los usuarios ven todas las sucursales activas de su business.
-    // Phase 2+: aquí se consultará la tabla UserBranch para permisos granulares.
+    // FASE 2: Consultar asignaciones explícitas en UserBranch.
+    // Si el usuario tiene registros en UserBranch, SOLO esas sucursales son accesibles.
+    // Si NO tiene registros, asumimos acceso a TODAS las sucursales activas
+    // (compatibilidad hacia atrás con Phase 1).
+    const assignments = await this.prisma.userBranch.findMany({
+      where: { userId },
+      select: { branchId: true },
+    });
+
+    if (assignments.length > 0) {
+      return assignments.map((a) => a.branchId);
+    }
+
+    // Sin asignaciones explícitas: todas las sucursales activas del business
     const branches = await this.prisma.branch.findMany({
       where: { businessId, status: 'ACTIVE' },
       select: { id: true },
     });
-    // userId queda en la firma para uso futuro
-    void userId;
     return branches.map((b) => b.id);
   }
 
@@ -257,6 +334,40 @@ export class AuthService {
     if (!unit) return 900;
     const multipliers: Record<string, number> = { s: 1, m: 60, h: 3600, d: 86400 };
     return value * (multipliers[unit] ?? 60);
+  }
+
+  // ==================== SETUP (first admin) ====================
+
+  async getSetupStatus(): Promise<{ needsSetup: boolean }> {
+    const count = await this.prisma.saaSUser.count();
+    return { needsSetup: count === 0 };
+  }
+
+  /**
+   * Verifica si un business slug existe.
+   * Endpoint público para que el frontend redirija al login o muestre not-found.
+   */
+  async checkBusiness(slug: string): Promise<{ exists: boolean }> {
+    const business = await this.prisma.business.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    return { exists: business !== null };
+  }
+
+  async setup(email: string, password: string): Promise<{ id: string; email: string; role: string }> {
+    const normalizedEmail = email.toLowerCase().trim();
+    const existing = await this.prisma.saaSUser.findUnique({ where: { email: normalizedEmail } });
+    if (existing) throw new BadRequestException('Ya existe un administrador con ese email');
+    if (!email) throw new BadRequestException('Email requerido');
+    if (!password || password.length < 8) throw new BadRequestException('La contraseña debe tener al menos 8 caracteres');
+
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    return this.prisma.saaSUser.create({
+      data: { email: normalizedEmail, passwordHash, role: 'SUPER_ADMIN', fullName: 'Admin' },
+      select: { id: true, email: true, role: true, status: true },
+    });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

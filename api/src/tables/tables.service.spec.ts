@@ -32,7 +32,7 @@ describe('TablesService', () => {
   const mockBranch = { id: 'branch-1', businessId: 'biz-1', isMain: true };
 
   beforeEach(async () => {
-    const result = await buildServiceTest(TablesService, { audit: true, cache: true });
+    const result = await buildServiceTest(TablesService, { audit: true, cache: true, quota: true });
     service = result.service;
     prisma = result.prisma;
     audit = result.audit!;

@@ -32,13 +32,18 @@ datasource db {
 // ============================ ENUMS ========================================
 
 enum Role {
-  SUPER_ADMIN
   OWNER
   ADMIN
   CAJERO
   MESERO
   COCINA
   REPARTIDOR
+}
+
+enum SaaSRole {
+  SUPER_ADMIN
+  SUPPORT
+  BILLING
 }
 
 enum BusinessStatus {
@@ -251,6 +256,9 @@ model Plan {
   maxBranches       Int @default(1)
   maxProducts       Int @default(50)
   maxCategories     Int @default(10)
+  maxTables         Int @default(20)
+  maxSuppliers      Int @default(30)
+  maxPurchases      Int @default(100)
   maxMonthlyOrders  Int @default(500)
   maxStorageMb      Int @default(100)
 
@@ -354,6 +362,8 @@ model Business {
   purchases          Purchase[]
   inventoryMovements InventoryMovement[]
   reports            Report[]
+  loyaltyProgram     LoyaltyProgram?
+  loyaltyRedemptions LoyaltyRedemption[]
 
   @@index([slug])
   @@index([status])
@@ -389,6 +399,9 @@ model Branch {
   suppliers        Supplier[]
   purchases        Purchase[]
   inventoryMovements InventoryMovement[]
+
+  // FASE 2: Asignación granular de usuarios a esta sucursal
+  userAssignments UserBranch[]
 
   // Code único por business (cada sucursal tiene su propio código)
   @@unique([businessId, code])
@@ -439,11 +452,52 @@ model User {
   cashRegistersOpened   CashRegister[] @relation("CashRegisterOpener")
   cashRegistersClosed   CashRegister[] @relation("CashRegisterCloser")
 
+  // FASE 2: Asignación granular de sucursales
+  branchAssignments UserBranch[]
+
   // MULTI-TENANT: email único por business (no global)
   @@unique([businessId, email])
   @@index([businessId, role])
   @@index([businessId, status])
   @@map("users")
+}
+
+// ==================== FASE 2: Asignación de sucursales ====================
+// Relación M:N entre User y Branch. Permite asignar usuarios a sucursales
+// específicas. Si un usuario NO tiene registros en esta tabla, se asume que
+// tiene acceso a TODAS las sucursales del business (compatibilidad hacia atrás).
+// Si TIENE registros, SOLO puede acceder a las sucursales listadas.
+model UserBranch {
+  id        String   @id @default(cuid()) @db.VarChar(80)
+  createdAt DateTime @default(now())
+
+  userId   String @db.VarChar(80)
+  branchId String @db.VarChar(80)
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, branchId])
+  @@index([userId])
+  @@index([branchId])
+  @@map("user_branches")
+}
+
+model SaaSUser {
+  id           String   @id @default(cuid()) @db.VarChar(80)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  email        String   @unique @db.VarChar(80)
+  passwordHash String
+  fullName     String
+  phone        String?
+  role         SaaSRole @default(SUPER_ADMIN)
+  status       UserStatus @default(ACTIVE)
+  lastLoginAt  DateTime?
+
+  @@map("saas_users")
 }
 
 model Category {
@@ -863,9 +917,10 @@ model Order {
   cashRegister   CashRegister?    @relation(fields: [cashRegisterId], references: [id], onDelete: SetNull)
   shift          Shift?           @relation(fields: [shiftId], references: [id], onDelete: SetNull)
 
-  items      OrderItem[]
-  stateLogs  OrderStateLog[]
-  payments   Payment[]
+  items              OrderItem[]
+  stateLogs          OrderStateLog[]
+  payments           Payment[]
+  loyaltyRedemptions LoyaltyRedemption[]
 
   // Índices pensados para las queries calientes:
   //  - (business, branch, status) → KDS filtrado por estado

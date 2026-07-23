@@ -9,7 +9,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
-import { adjustInventorySchema } from '@saas/shared';
+import { adjustInventorySchema, Role } from '@saas/shared';
 import type { AuthenticatedUser, BusinessContext as Context } from '../auth/types/jwt-payload.type';
 
 @ApiTags('inventory')
@@ -52,7 +52,7 @@ export class InventoryController {
   }
 
   @Post('adjust')
-  @Roles('OWNER', 'ADMIN')
+  @Roles(Role.OWNER, Role.ADMIN)
   @ApiOperation({ summary: 'Ajuste manual de inventario (entrada/salida)' })
   adjust(
     @CurrentUser() user: AuthenticatedUser,

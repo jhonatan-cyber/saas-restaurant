@@ -41,31 +41,7 @@ export class PaymentsService {
     userId: string;
     orderId: string;
     dto: CreatePaymentsDto;
-  }): Promise<{
-    order: {
-      id: string;
-      status: OrderStatus;
-      total: string;
-      paidAt: Date;
-      payments: Array<{
-        id: string;
-        method: string;
-        amount: string;
-        tendered: string | null;
-        change: string | null;
-        reference: string | null;
-      }>;
-      items: Array<{
-        productName: string;
-        quantity: number;
-        unitPrice: Prisma.Decimal;
-        lineTotal: Prisma.Decimal;
-        taxRate: Prisma.Decimal;
-        notes: string | null;
-        productId: string | null;
-      }>;
-    };
-  }> {
+    }): Promise<any> {
     // 1. Validaciones previas (fuera de tx, más claras)
     const order = await this.prisma.order.findFirst({
       where: { id: params.orderId, businessId: params.businessId },

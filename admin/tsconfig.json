@@ -9,9 +9,9 @@
     "outDir": "./dist",
     "ignoreDeprecations": "6.0",
     "paths": {
-      "@saas/shared": ["../packages/shared/dist/index.d.ts"],
-      "@saas/shared/*": ["../packages/shared/dist/*"],
-      "~/*": ["./src/*"]
+      "~/*": ["./src/*"],
+      "@components": ["./src/components/index.ts"],
+      "@components/*": ["./src/components/*"]
     },
     "types": ["vite/client"],
     "allowJs": false,

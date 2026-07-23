@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy, StrategyOptions } from 'passport-jwt';
 import type { Request } from 'express';
+import type { Role } from '@saas/shared';
 import type { JwtPayload, AuthenticatedUser } from '../types/jwt-payload.type';
 
 /**
@@ -48,12 +49,26 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
       throw new UnauthorizedException('Tipo de token inválido (se esperaba refresh)');
     }
 
+    if (payload.userType === 'saas') {
+      return {
+        id: payload.sub,
+        email: payload.email,
+        userType: 'saas',
+        role: '' as Role,
+        saasRole: payload.saasRole,
+        businessId: '',
+        branchIds: [],
+        defaultBranchId: null,
+      };
+    }
+
     return {
       id: payload.sub,
       email: payload.email,
-      role: payload.role,
-      businessId: payload.businessId,
-      branchIds: payload.branchIds,
+      userType: 'business',
+      role: payload.role!,
+      businessId: payload.businessId!,
+      branchIds: payload.branchIds ?? [],
       defaultBranchId: null,
     };
   }

@@ -18,9 +18,9 @@ $rootDir = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
 $startApi = (-not $api -and -not $admin) -or $api
 $startAdmin = (-not $api -and -not $admin) -or $admin
 
-Write-Host "╔══════════════════════════════════════════╗" -ForegroundColor DarkYellow
-Write-Host "║   SaaS Restaurant — Desarrollo Local     ║" -ForegroundColor DarkYellow
-Write-Host "╚══════════════════════════════════════════╝" -ForegroundColor DarkYellow
+Write-Host "╔══════════════════════════════════════════════════╗" -ForegroundColor DarkYellow
+Write-Host "║   🍽️  MenuGest SaaS — Desarrollo Local            ║" -ForegroundColor DarkYellow
+Write-Host "╚══════════════════════════════════════════════════╝" -ForegroundColor DarkYellow
 Write-Host ""
 
 # ── Verificar MySQL y Redis local ───────────────────────────────────────
@@ -29,7 +29,7 @@ try {
   $redisOk = $false
 
   # Intentar conectar a MySQL via el cliente mysqladmin
-  $mysqlTest = & "mysqladmin" "ping" "-h" "localhost" "-u" "root" "-prootpass" "--silent" 2>$null
+  $mysqlTest = & "mysqladmin" "ping" "-h" "localhost" "-u" "root" "--silent" 2>$null
   if ($LASTEXITCODE -eq 0) { $mysqlOk = $true }
 
   # Intentar conectar a Redis via redis-cli
@@ -57,15 +57,22 @@ Write-Host ""
 # ── Arrancar API ───────────────────────────────────────────────────────
 if ($startApi) {
   Write-Host "🚀 Arrancando API (http://localhost:3001) con hot-reload..." -ForegroundColor Cyan
+  Write-Host "   📖 Swagger:  http://localhost:3001/docs" -ForegroundColor Gray
   $apiJob = Start-Job -ScriptBlock {
     param($dir)
     Set-Location "$dir/api"
-    $env:DATABASE_URL = "mysql://root:rootpass@localhost:3306/saas_restaurant"
+    # Database — vars individuales (se construye DATABASE_URL)
+    $env:MYSQL_HOST = "localhost"
+    $env:MYSQL_PORT = "3306"
+    $env:MYSQL_USER = "root"
+    $env:MYSQL_PASSWORD = ""
+    $env:MYSQL_DATABASE = "saas_restaurant"
+    $env:DATABASE_URL = "mysql://$($env:MYSQL_USER)@$($env:MYSQL_HOST):$($env:MYSQL_PORT)/$($env:MYSQL_DATABASE)"
     $env:REDIS_URL = "redis://localhost:6379"
     $env:NODE_ENV = "development"
     $env:JWT_SECRET = "dev-jwt-secret-key-change-in-production-but-ok-for-local"
     $env:JWT_REFRESH_SECRET = "dev-jwt-refresh-secret-key-change-in-production"
-    $env:CORS_ALLOWED_ORIGINS = "http://localhost:3000,http://localhost:5173"
+    $env:CORS_ALLOWED_ORIGINS = "http://localhost:3000,http://localhost:3003"
     $env:API_PORT = "3001"
     $env:LOG_LEVEL = "debug"
     bunx tsx watch src/main.ts
@@ -73,27 +80,34 @@ if ($startApi) {
   Write-Host "   PID del job: $($apiJob.Id)" -ForegroundColor Gray
 }
 
-# ── Arrancar Admin ─────────────────────────────────────────────────────
+# ── Arrancar App (panel operativo restaurante - multi-tenant) ──────────
 if ($startAdmin) {
-  Write-Host "🚀 Arrancando Admin (http://localhost:3000/app) con HMR..." -ForegroundColor Cyan
+  Write-Host "🚀 Arrancando App (http://localhost:3000) con HMR..." -ForegroundColor Cyan
+  Write-Host "   💡 Multi-tenant: http://localhost:3000/{slug}" -ForegroundColor Gray
   $adminJob = Start-Job -ScriptBlock {
     param($dir)
-    Set-Location "$dir/admin"
+    Set-Location "$dir/app"
     bun run dev
   } -ArgumentList $rootDir
   Write-Host "   PID del job: $($adminJob.Id)" -ForegroundColor Gray
 }
 
 Write-Host ""
-Write-Host "╔══════════════════════════════════════════╗" -ForegroundColor Green
-Write-Host "║   Servicios disponibles:                  ║" -ForegroundColor Green
-Write-Host "║                                          ║" -ForegroundColor Green
-Write-Host "║   Admin: http://localhost:3000/app/login  ║" -ForegroundColor Green
-Write-Host "║   API:   http://localhost:3001/api        ║" -ForegroundColor Green
-Write-Host "║   Swagger: http://localhost:3001/docs     ║" -ForegroundColor Green
-Write-Host "║                                          ║" -ForegroundColor Green
-Write-Host "║   Presiona Ctrl+C para detener            ║" -ForegroundColor Green
-Write-Host "╚══════════════════════════════════════════╝" -ForegroundColor Green
+Write-Host "╔══════════════════════════════════════════════════╗" -ForegroundColor Green
+Write-Host "║   🍽️  MenuGest SaaS — Servicios Disponibles       ║" -ForegroundColor Green
+Write-Host "╠══════════════════════════════════════════════════╣" -ForegroundColor Green
+Write-Host "║                                                  ║" -ForegroundColor Green
+Write-Host "║   📡 Rutas del proyecto:                         ║" -ForegroundColor Green
+Write-Host "║                                                  ║" -ForegroundColor Green
+Write-Host "║   App          → http://localhost:3000   (multi-tenant)  ║" -ForegroundColor Cyan
+Write-Host "║   Ejemplo      → http://localhost:3000/demo              ║" -ForegroundColor Gray
+Write-Host "║   API          → http://localhost:3001/api               ║" -ForegroundColor Cyan
+Write-Host "║   Admin        → http://localhost:3003                   ║" -ForegroundColor Cyan
+Write-Host "║   Landing      → http://localhost:4321                   ║" -ForegroundColor Cyan
+Write-Host "║   Swagger      → http://localhost:3001/docs              ║" -ForegroundColor Cyan
+Write-Host "║                                                  ║" -ForegroundColor Green
+Write-Host "║   Presiona Ctrl+C para detener todo              ║" -ForegroundColor Green
+Write-Host "╚══════════════════════════════════════════════════╝" -ForegroundColor Green
 
 # Mantener el script vivo
 try {

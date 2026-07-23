@@ -28,5 +28,12 @@ jobs:
       - name: Lint
         run: bun run lint
 
+      - name: Build
+        run: npx turbo run build --filter=!@saas/mobile
+
       - name: Test
-        run: cd api && bun run test -- --no-coverage
+        run: bun run test --filter=!@saas/mobile
+
+      - name: Check formatting
+        run: bun run format:check
+        continue-on-error: true

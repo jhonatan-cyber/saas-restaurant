@@ -19,3 +19,6 @@ export type { CardProps } from './components/card';
 
 export { Input } from './components/input';
 export type { InputProps } from './components/input';
+
+export { OrbSpinner } from './components/orb-spinner';
+export type { OrbSpinnerProps } from './components/orb-spinner';

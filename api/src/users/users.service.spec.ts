@@ -29,6 +29,7 @@ describe('UsersService', () => {
     updatedAt: new Date('2025-01-01'),
     business: { id: bizId, name: 'Test' },
     defaultBranch: null,
+    branchAssignments: [],
   };
 
   beforeEach(async () => {
@@ -175,6 +176,7 @@ describe('UsersService', () => {
         ...baseUser,
         fullName: 'Empleado Actualizado',
       });
+      prisma.mockPrisma.userBranch.findMany.mockResolvedValue([]);
 
       const result = await service.update(user, 'user-2', { fullName: 'Empleado Actualizado' });
 

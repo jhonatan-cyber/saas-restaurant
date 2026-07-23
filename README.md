@@ -12,7 +12,7 @@
 | Backend | NestJS 10, Prisma 7, MySQL 8, JWT, Passport, Swagger, class-validator, bcrypt |
 | Frontend | TanStack Start, React 18, TanStack Router, TanStack Query, Tailwind CSS, Zustand, React Hook Form, Zod |
 | Print Agent | Bun + Hono — servidor local ESC/POS para impresoras térmicas |
-| Shared | TypeScript estricto, Zod, tipos compartidos entre `api` y `admin` |
+| Shared | TypeScript estricto, Zod, tipos compartidos entre `api`, `app` y `admin` |
 | Infra local | MySQL 8 + Redis 7 (locales) |
 | Pagos | Stripe (webhooks + billing + quota enforcer) |
 | Lenguaje | TypeScript con `strict: true` en todo el monorepo |
@@ -58,7 +58,7 @@ saas-restaurant/
 │       ├── common/           # Filtros e interceptores globales
 │       ├── app.module.ts
 │       └── main.ts
-├── admin/                    # TanStack Start (puerto 3000)
+├── app/                      # TanStack Start — Panel operativo del restaurante (puerto 3000)
 │   └── src/
 │       ├── routes/           # File-based routing
 │       │   ├── __root.tsx
@@ -232,7 +232,7 @@ phase2_catalog_tables_customers
 | Admin (dev) | http://localhost:3000 |
 | API REST | http://localhost:3001/api |
 | Swagger | http://localhost:3001/docs |
-| MySQL | `localhost:3306` (root/rootpass) |
+| MySQL | `localhost:3306` (root / sin contraseña) |
 | Redis | `localhost:6379` |
 
 ---
@@ -297,7 +297,7 @@ Todas usan `businessSlug = demo`. Login: `POST /api/auth/login`.
 | `bun run dev:landing` | Solo Astro 5 (one-pager) |
 | `bun run build` | Build de todos los workspaces vía Turbo |
 | `bun run typecheck` | `tsc --noEmit` en todos los workspaces |
-| `bun run lint` | ESLint en `api/`, `admin/`, `packages/` |
+| `bun run lint` | ESLint en `api/`, `app/`, `admin/`, `packages/` |
 | `bun run format` | Prettier en todo `src/` |
 | `bun run format:check` | Verifica formato sin modificar archivos |
 | `bun run test` | Tests en todos los workspaces (Turbo) |

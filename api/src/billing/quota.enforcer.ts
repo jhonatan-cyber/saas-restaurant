@@ -9,6 +9,9 @@ export type QuotaResource =
   | 'branches'
   | 'products'
   | 'categories'
+  | 'tables'
+  | 'suppliers'
+  | 'purchases'
   | 'monthlyOrders';
 
 /**
@@ -19,6 +22,9 @@ const QUOTA_FIELDS: Record<QuotaResource, keyof import('@prisma/client').Plan> =
   branches: 'maxBranches',
   products: 'maxProducts',
   categories: 'maxCategories',
+  tables: 'maxTables',
+  suppliers: 'maxSuppliers',
+  purchases: 'maxPurchases',
   monthlyOrders: 'maxMonthlyOrders',
 };
 
@@ -34,6 +40,12 @@ const QUOTA_COUNT_FN: Record<QuotaResource, (businessId: string, prisma: PrismaS
     prisma.product.count({ where: { businessId, deletedAt: null } }),
   categories: (businessId, prisma) =>
     prisma.category.count({ where: { businessId, deletedAt: null } }),
+  tables: (businessId, prisma) =>
+    prisma.restaurantTable.count({ where: { businessId, deletedAt: null } }),
+  suppliers: (businessId, prisma) =>
+    prisma.supplier.count({ where: { businessId, deletedAt: null } }),
+  purchases: (businessId, prisma) =>
+    prisma.purchase.count({ where: { businessId } }),
   monthlyOrders: (businessId, prisma) => {
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
@@ -129,6 +141,9 @@ export class QuotaEnforcer {
       maxBranches: 1,
       maxProducts: 50,
       maxCategories: 10,
+      maxTables: 20,
+      maxSuppliers: 30,
+      maxPurchases: 100,
       maxMonthlyOrders: 500,
       maxStorageMb: 100,
     };

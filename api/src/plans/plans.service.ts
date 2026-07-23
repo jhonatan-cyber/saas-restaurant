@@ -38,7 +38,9 @@ export class PlansService {
   }
 
   async list(filters: PlanFiltersDto) {
-    const { page = 1, pageSize = 20, search, isActive } = filters;
+    const page = Number(filters.page) || 1;
+    const pageSize = Number(filters.pageSize) || 20;
+    const { search, isActive } = filters;
     const skip = (page - 1) * pageSize;
 
     const where: Prisma.PlanWhereInput = {};

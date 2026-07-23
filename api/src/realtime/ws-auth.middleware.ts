@@ -1,6 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { ERROR_CODES, JwtPayload, Role } from '@saas/shared';
+import { ERROR_CODES, JwtPayload, Role, SaaSRole } from '@saas/shared';
 import { Socket } from 'socket.io';
 import { Logger, UnauthorizedException } from '@nestjs/common';
 
@@ -11,7 +11,10 @@ import { Logger, UnauthorizedException } from '@nestjs/common';
 export interface WsAuthenticatedUser {
   id: string;
   email: string;
+  userType: 'business' | 'saas';
   role: Role;
+  /** Solo para SaaS users */
+  saasRole?: SaaSRole;
   businessId: string;
   branchIds: string[];
   defaultBranchId: string | null;
@@ -70,18 +73,30 @@ export class WsAuthMiddleware {
 
       // Adjuntamos el usuario al socket. El gateway lo lee desde
       // `socket.data.user` para auto-join a rooms.
-      const user: WsAuthenticatedUser = {
-        id: payload.sub,
-        email: payload.email,
-        role: payload.role,
-        businessId: payload.businessId,
-        branchIds: payload.branchIds,
-        defaultBranchId: null, // se completa en REST si se necesita
-      };
+      const user: WsAuthenticatedUser = payload.userType === 'saas'
+        ? {
+            id: payload.sub,
+            email: payload.email,
+            userType: 'saas',
+            role: '' as Role,
+            saasRole: payload.saasRole,
+            businessId: '',
+            branchIds: [],
+            defaultBranchId: null,
+          }
+        : {
+            id: payload.sub,
+            email: payload.email,
+            userType: 'business',
+            role: payload.role!,
+            businessId: payload.businessId!,
+            branchIds: payload.branchIds ?? [],
+            defaultBranchId: null,
+          };
       socket.data.user = user;
 
       this.logger.log(
-        `WS auth ok: userId=${user.id} business=${user.businessId} branches=[${user.branchIds.join(',')}]`,
+        `WS auth ok: userId=${user.id} userType=${user.userType}`,
       );
 
       next();

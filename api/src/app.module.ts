@@ -33,6 +33,7 @@ import { BillingModule } from './billing/billing.module';
 import { PrintModule } from './print/print.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { LoyaltyModule } from './loyalty/loyalty.module';
+import { AdminModule } from './admin/admin.module';
 
 /**
  * Módulo raíz del API.
@@ -62,6 +63,7 @@ import { LoyaltyModule } from './loyalty/loyalty.module';
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
+      envFilePath: '../.env', // Usar .env de la raíz del monorepo
     }),
     BullModule.forRootAsync({
       imports: [ConfigModule],
@@ -131,6 +133,7 @@ import { LoyaltyModule } from './loyalty/loyalty.module';
     PrintModule,
     DashboardModule,
     LoyaltyModule,
+    AdminModule,
   ],
   providers: [
     {

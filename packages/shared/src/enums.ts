@@ -4,7 +4,6 @@
  */
 
 export const Role = {
-  SUPER_ADMIN: 'SUPER_ADMIN',
   OWNER: 'OWNER',
   ADMIN: 'ADMIN',
   CAJERO: 'CAJERO',
@@ -16,6 +15,16 @@ export const Role = {
 export type Role = (typeof Role)[keyof typeof Role];
 
 export const ROLE_VALUES: readonly Role[] = Object.values(Role);
+
+export const SaaSRole = {
+  SUPER_ADMIN: 'SUPER_ADMIN',
+  SUPPORT: 'SUPPORT',
+  BILLING: 'BILLING',
+} as const;
+
+export type SaaSRole = (typeof SaaSRole)[keyof typeof SaaSRole];
+
+export const SAAS_ROLE_VALUES: readonly SaaSRole[] = Object.values(SaaSRole);
 
 export const BusinessStatus = {
   ACTIVE: 'ACTIVE',
@@ -85,7 +94,6 @@ export const TABLE_LOCATION_VALUES: readonly TableLocation[] = Object.values(Tab
  * Etiquetas legibles para UI. No se usan en lógica.
  */
 export const ROLE_LABELS: Record<Role, string> = {
-  SUPER_ADMIN: 'Super Administrador',
   OWNER: 'Dueño',
   ADMIN: 'Administrador',
   CAJERO: 'Cajero',

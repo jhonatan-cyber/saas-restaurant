@@ -52,7 +52,7 @@ describe('PrintService', () => {
     });
 
     config = createMockConfigService({
-      PRINT_AGENT_URL: 'http://print-agent:3100',
+      PRINT_AGENT_URL: 'http://print-agent:3002',
     });
 
     prisma = {
@@ -97,8 +97,8 @@ describe('PrintService', () => {
       const calls = (global.fetch as jest.Mock).mock.calls;
       const urls = calls.map((c: any[]) => c[0]);
       expect(urls).toEqual([
-        'http://print-agent:3100/print/comanda',
-        'http://print-agent:3100/print/comanda',
+        'http://print-agent:3002/print/comanda',
+        'http://print-agent:3002/print/comanda',
       ]);
 
       // Verify payload for COCINA

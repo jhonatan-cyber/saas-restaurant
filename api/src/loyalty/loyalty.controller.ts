@@ -13,6 +13,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { ScopeGuard } from '../auth/guards/scope.guard';
+import { Role } from '@saas/shared';
 import type { Request } from 'express';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload.type';
 
@@ -35,7 +36,7 @@ export class LoyaltyController {
   /** PUT /loyalty/program — Actualizar configuración del programa */
   @Put('program')
   @UseGuards(RolesGuard)
-  @Roles('OWNER', 'ADMIN')
+  @Roles(Role.OWNER, Role.ADMIN)
   async updateProgram(
     @Req() req: AuthedRequest,
     @Body() dto: Record<string, unknown>,

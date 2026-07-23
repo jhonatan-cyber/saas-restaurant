@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { Prisma, type Purchase, PurchaseStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { QuotaEnforcer } from '../billing/quota.enforcer';
 import type { AuthenticatedUser, BusinessContext } from '../auth/types/jwt-payload.type';
 import type { PaginatedResult } from '../common/dto/pagination.dto';
 import type { PurchaseDTO, PurchaseListItemDTO } from '@saas/shared';
@@ -25,7 +26,10 @@ import { toPurchaseDto, toPurchaseListItemDto, type PurchaseWithRelations } from
  */
 @Injectable()
 export class PurchasesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly quota: QuotaEnforcer,
+  ) {}
 
   async list(
     user: AuthenticatedUser,
@@ -101,6 +105,9 @@ export class PurchasesService {
     dto: CreatePurchaseDto,
   ): Promise<PurchaseDTO> {
     const businessId = context?.businessId ?? user.businessId;
+
+    // Verificar cuota de compras del plan
+    await this.quota.checkOrThrow(businessId, 'purchases');
 
     // Validar unicidad de purchaseNumber
     const existing = await this.prisma.purchase.findFirst({

@@ -1,79 +1,37 @@
 import type { ReactNode } from 'react';
-import { useEffect } from 'react';
 
-interface ConfirmDialogProps {
+export function ConfirmDialog({ open, title, message, onConfirm, onCancel, loading }: {
   open: boolean;
   title: string;
-  message: ReactNode;
-  confirmText?: string;
-  cancelText?: string;
-  variant?: 'danger' | 'primary';
-  isLoading?: boolean;
+  message: string;
   onConfirm: () => void;
   onCancel: () => void;
-}
-
-/**
- * Modal de confirmación simple (sin librería externa).
- *  - Cierra con ESC.
- *  - Click en backdrop cancela.
- *  - variant=danger usa colores rojos (default).
- *
- * Pensado para confirmar deletes y cambios de estado importantes.
- */
-export function ConfirmDialog({
-  open,
-  title,
-  message,
-  confirmText = 'Confirmar',
-  cancelText = 'Cancelar',
-  variant = 'danger',
-  isLoading = false,
-  onConfirm,
-  onCancel,
-}: ConfirmDialogProps): ReactNode {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape' && !isLoading) onCancel();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, isLoading, onCancel]);
-
+  loading?: boolean;
+}): ReactNode {
   if (!open) return null;
 
-  const confirmClass = variant === 'danger' ? 'btn-danger' : 'btn-primary';
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4"
-      onClick={isLoading ? undefined : onCancel}
-      role="dialog"
-      aria-modal="true"
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onCancel}>
       <div
-        className="card w-full max-w-md p-6"
+        className="w-full max-w-sm rounded-lg border border-zinc-700 bg-zinc-900 p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-        <div className="mt-2 text-sm text-slate-600">{message}</div>
-        <div className="mt-6 flex items-center justify-end gap-2">
+        <h3 className="mb-2 text-lg font-semibold text-white">{title}</h3>
+        <p className="mb-6 text-sm text-zinc-400">{message}</p>
+        <div className="flex justify-end gap-3">
           <button
-            type="button"
-            className="btn-secondary"
             onClick={onCancel}
-            disabled={isLoading}
+            disabled={loading}
+            className="rounded-md border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
           >
-            {cancelText}
+            Cancelar
           </button>
           <button
-            type="button"
-            className={confirmClass}
             onClick={onConfirm}
-            disabled={isLoading}
+            disabled={loading}
+            className="rounded-md bg-red-700 px-4 py-2 text-sm text-white hover:bg-red-600 disabled:opacity-50"
           >
-            {isLoading ? 'Procesando…' : confirmText}
+            {loading ? 'Procesando...' : 'Confirmar'}
           </button>
         </div>
       </div>

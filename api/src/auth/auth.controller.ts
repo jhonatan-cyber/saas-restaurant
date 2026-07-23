@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   Res,
   UseGuards,
@@ -36,7 +37,7 @@ export class AuthController {
   @Throttle({ default: { limit: 20, ttl: 60000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Login multi-tenant (setea cookies + tokens)' })
+  @ApiOperation({ summary: 'Login unificado (businessSlug opcional). Sin slug → SaaS admin, con slug → restaurant.' })
   async login(
     @Body(new ZodValidationPipe(loginSchema)) input: LoginInput,
     @Res({ passthrough: true }) res: Response,
@@ -83,12 +84,33 @@ export class AuthController {
   }
 
   @Public()
+  @Get('setup-status')
+  @ApiOperation({ summary: 'Verificar si el sistema necesita configuración inicial' })
+  getSetupStatus() {
+    return this.authService.getSetupStatus();
+  }
+
+  @Public()
+  @Post('setup')
+  @ApiOperation({ summary: 'Crear primer SUPER_ADMIN (solo si no hay usuarios)' })
+  async setup(@Body() body: { email: string; password: string }) {
+    return this.authService.setup(body.email, body.password);
+  }
+
+  @Public()
   @Get('csrf-token')
   @ApiOperation({ summary: 'Obtiene token CSRF' })
   getCsrfToken(@Res({ passthrough: true }) res: Response) {
     const token = this.csrfService.generateToken();
     this.authCookies.setCsrfCookie(res, token);
     return { csrfToken: token };
+  }
+
+  @Public()
+  @Get('check-business/:slug')
+  @ApiOperation({ summary: 'Verifica si un slug de negocio existe (público)' })
+  async checkBusiness(@Param('slug') slug: string) {
+    return this.authService.checkBusiness(slug);
   }
 
 }

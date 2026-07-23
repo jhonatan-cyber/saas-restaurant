@@ -23,7 +23,7 @@
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:e2e": "dotenv -e .env.test -- npx jest --config jest-e2e.config.ts --no-coverage --forceExit",
+    "test:e2e": "dotenv -e ../.env.test -- npx jest --config jest-e2e.config.ts --no-coverage --forceExit",
     "test:e2e:setup": "tsx test/e2e/init-db.ts",
     "clean": "rm -rf dist .turbo"
   },
