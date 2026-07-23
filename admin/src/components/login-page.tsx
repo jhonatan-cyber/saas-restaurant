@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { useForm, type UseFormRegisterReturn } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { loginSchema } from '@saas/shared';
+import { loginSchema, capitalizeWords, formatPhone } from '@saas/shared';
 import { authApi } from '~/lib';
 import { ThinkingOrb } from 'thinking-orbs';
 
@@ -137,12 +137,22 @@ function GlassCard({ children, className = '' }: { children: ReactNode; classNam
 }
 
 function InputField({
-  label, id, type = 'text', placeholder, error, registration, icon, autoFocus, readOnly, value,
+  label, id, type = 'text', placeholder, error, registration, icon, autoFocus, readOnly, value, transform,
 }: {
   label: string; id: string; type?: string; placeholder?: string; error?: { message?: string };
   registration: UseFormRegisterReturn; icon?: ReactNode;
   autoFocus?: boolean; readOnly?: boolean; value?: string;
+  /** Transforma el valor en tiempo real mientras el usuario escribe */
+  transform?: (v: string) => string;
 }) {
+  const { ref, onChange: rhfOnChange, onBlur, name } = registration;
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    const val = transform ? transform(raw) : raw;
+    rhfOnChange({ target: { value: val, name } } as React.ChangeEvent<HTMLInputElement>);
+  };
+
   return (
     <div className="group">
       <label htmlFor={id} className="mb-1.5 block text-xs font-medium uppercase tracking-widest text-zinc-500 group-focus-within:text-zinc-300 transition-colors duration-200">
@@ -155,15 +165,18 @@ function InputField({
           </div>
         )}
         <input
+          ref={ref}
           id={id}
+          name={name}
           type={type}
           value={value}
           readOnly={readOnly}
           autoFocus={autoFocus}
-          {...registration}
+          onBlur={onBlur}
+          onChange={handleChange}
           aria-invalid={!!error}
           placeholder={placeholder}
-          className={`w-full rounded-full border bg-white/[0.03] px-4 py-3 text-sm text-zinc-100 placeholder-zinc-600 transition-all duration-200
+          className={`w-full rounded-full border bg-white/[0.03] px-4 py-2 text-sm text-zinc-100 placeholder-zinc-600 transition-all duration-200
             focus:outline-none focus:ring-2 focus:ring-offset-0
             ${error
               ? 'border-red-500/50 focus:border-red-400 focus:ring-red-500/20'
@@ -321,10 +334,10 @@ export function LoginPage(): ReactNode {
             <form onSubmit={hSetup(onSetup)} className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div className="animate-fade-in-up" style={{ animationDelay: '100ms', animationDuration: '500ms' }}>
-                  <InputField label="Nombre" id="setup-firstName" placeholder="Carlos" error={eSetup.firstName} registration={rSetup('firstName')} icon={<UserIcon className="h-4 w-4" />} autoFocus />
+                  <InputField label="Nombre" id="setup-firstName" placeholder="Carlos" error={eSetup.firstName} registration={rSetup('firstName')} icon={<UserIcon className="h-4 w-4" />} autoFocus transform={capitalizeWords} />
                 </div>
                 <div className="animate-fade-in-up" style={{ animationDelay: '150ms', animationDuration: '500ms' }}>
-                  <InputField label="Apellido" id="setup-lastName" placeholder="Pérez" error={eSetup.lastName} registration={rSetup('lastName')} icon={<UserIcon className="h-4 w-4" />} />
+                  <InputField label="Apellido" id="setup-lastName" placeholder="Pérez" error={eSetup.lastName} registration={rSetup('lastName')} icon={<UserIcon className="h-4 w-4" />} transform={capitalizeWords} />
                 </div>
               </div>
 
@@ -333,12 +346,12 @@ export function LoginPage(): ReactNode {
                   <InputField label="CI" id="setup-ci" placeholder="12345678" error={eSetup.ci} registration={rSetup('ci')} icon={<IdIcon className="h-4 w-4" />} />
                 </div>
                 <div className="animate-fade-in-up" style={{ animationDelay: '250ms', animationDuration: '500ms' }}>
-                  <InputField label="Teléfono" id="setup-phone" type="tel" placeholder="099999999" error={eSetup.phone} registration={rSetup('phone')} icon={<PhoneIcon className="h-4 w-4" />} />
+                  <InputField label="Teléfono" id="setup-phone" type="tel" placeholder="712-345-678" error={eSetup.phone} registration={rSetup('phone')} icon={<PhoneIcon className="h-4 w-4" />} transform={formatPhone} />
                 </div>
               </div>
 
               <div className="animate-fade-in-up" style={{ animationDelay: '300ms', animationDuration: '500ms' }}>
-                <InputField label="Dirección" id="setup-address" placeholder="Calle 123, Ciudad" error={eSetup.address} registration={rSetup('address')} icon={<PinIcon className="h-4 w-4" />} />
+                  <InputField label="Dirección" id="setup-address" placeholder="Calle 123, Ciudad" error={eSetup.address} registration={rSetup('address')} icon={<PinIcon className="h-4 w-4" />} transform={capitalizeWords} />
               </div>
 
               <div className="animate-fade-in-up" style={{ animationDelay: '350ms', animationDuration: '500ms' }}>
