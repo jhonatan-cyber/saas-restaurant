@@ -321,14 +321,14 @@ function SubmitButton({
     <button
       type="submit"
       disabled={loading}
-      className={`group relative overflow-hidden rounded-full bg-white px-5 py-2 text-sm font-semibold text-zinc-900 transition-all duration-200
+      className={`group relative overflow-hidden rounded-full bg-white px-5 py-2 text-sm font-semibold text-black transition-all duration-200
         hover:bg-zinc-100 active:scale-[0.97]
         disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100
         ${className}`}
     >
       {loading ? (
         <span className="flex items-center justify-center">
-          <ThinkingOrb state="working" size={20} speed={1.55} />
+          <ThinkingOrb state="working" size={20} speed={1.55} theme="light" />
         </span>
       ) : (
         <span className="relative flex items-center justify-center gap-2">
