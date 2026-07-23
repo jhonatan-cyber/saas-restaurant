@@ -225,32 +225,17 @@ function PhoneInput({
 }) {
   const { ref, onChange: rhfOnChange, onBlur, name } = registration;
   const [open, setOpen] = useState(false);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const [dropdownStyle, setDropdownStyle] = useState<Record<string, string> | undefined>(undefined);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const selected = COUNTRY_CODES.find((c) => c.code === countryCode) ?? COUNTRY_CODES[0];
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      if (btnRef.current && !btnRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setOpen(false);
     };
-    if (open) {
-      document.addEventListener('mousedown', handleClick);
-      // Position the dropdown relative to the button
-      if (btnRef.current) {
-        const rect = btnRef.current.getBoundingClientRect();
-        setDropdownStyle({
-          position: 'fixed',
-          left: `${rect.left}px`,
-          top: `${rect.bottom + 4}px`,
-          width: '176px',
-        });
-      }
-    }
+    document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [open]);
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const digits = e.target.value.replace(/\D/g, '');
@@ -264,9 +249,8 @@ function PhoneInput({
       </label>
       <div className="relative flex">
         {/* Country code selector */}
-        <div className="relative">
+        <div ref={dropdownRef} className="relative">
           <button
-            ref={btnRef}
             type="button"
             onClick={() => setOpen((o) => !o)}
             className="flex h-full items-center gap-1 rounded-l-full border border-r-0 border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-zinc-300 hover:border-white/[0.15] hover:bg-white/[0.06] transition-colors duration-150"
@@ -275,8 +259,8 @@ function PhoneInput({
             <span className="text-xs text-zinc-400">{selected.code}</span>
             <ChevronDownIcon className={`h-3 w-3 text-zinc-500 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
           </button>
-          {open && dropdownStyle && (
-            <div style={dropdownStyle} className="z-50 max-h-48 overflow-y-auto rounded-xl border border-zinc-700 bg-zinc-900 py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+          {open && (
+            <div className="absolute left-0 top-full z-50 mt-1 max-h-48 w-44 overflow-y-auto rounded-xl border border-zinc-700 bg-zinc-900 py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
               {COUNTRY_CODES.map((c) => (
                 <button
                   key={c.code}
