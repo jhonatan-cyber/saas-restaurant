@@ -164,8 +164,13 @@ function InputField({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
-    const val = transform ? transform(raw) : raw;
-    rhfOnChange({ target: { value: val, name } } as React.ChangeEvent<HTMLInputElement>);
+    if (transform) {
+      const val = transform(raw);
+      e.target.value = val;
+      rhfOnChange({ target: { value: val, name } } as React.ChangeEvent<HTMLInputElement>);
+    } else {
+      rhfOnChange(e);
+    }
   };
 
   return (
