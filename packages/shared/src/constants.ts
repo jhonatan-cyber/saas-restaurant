@@ -2,6 +2,12 @@
  * Constantes globales del sistema.
  */
 
+export const APP_NAME = 'SaaS Restaurant';
+export const APP_VERSION = '0.1.0';
+
+export const DEFAULT_CURRENCY = 'BOB';
+export const DEFAULT_TIMEZONE = 'America/La_Paz';
+
 /**
  * Cabeceras HTTP que el cliente debe enviar para establecer contexto multi-tenant.
  * El backend valida que coincidan con el JWT.
