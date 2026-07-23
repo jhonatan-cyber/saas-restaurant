@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useForm, type UseFormRegisterReturn } from 'react-hook-form';
@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { loginSchema } from '@saas/shared';
 import { authApi } from '~/lib';
+import { ThinkingOrb } from 'thinking-orbs';
 
 type PageMode = 'loading' | 'login' | 'setup';
 
@@ -26,7 +27,7 @@ interface SetupFormFields {
   address: string; email: string; password?: string;
 }
 
-/* ── Iconitos inline (evitan dep extra) ─────────────────── */
+/* ── Iconitos inline ────────────────────────────────────── */
 
 function MailIcon({ className }: { className?: string }) {
   return (
@@ -112,24 +113,14 @@ function ArrowRightIcon({ className }: { className?: string }) {
   );
 }
 
-function MenuGestLogo({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 48 48" fill="none">
-      <rect width="48" height="48" rx="12" className="fill-amber-500/20" />
-      <path d="M14 16h8l6 16-6-4-4 4 2-8-6-8Z" className="fill-amber-400" />
-      <circle cx="32" cy="18" r="6" className="fill-amber-400" stroke="white" strokeWidth="2" />
-    </svg>
-  );
-}
-
 /* ── Componentes compartidos ────────────────────────────── */
 
 function FloatingOrbs() {
   return (
     <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
-      <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-amber-500/5 blur-3xl" />
-      <div className="absolute -bottom-48 -right-32 h-[30rem] w-[30rem] rounded-full bg-amber-600/5 blur-3xl" />
-      <div className="absolute left-1/3 top-1/4 h-64 w-64 rounded-full bg-white/[0.02] blur-2xl" />
+      <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-white/5 blur-3xl" />
+      <div className="absolute -bottom-48 -right-32 h-[30rem] w-[30rem] rounded-full bg-white/[0.03] blur-3xl" />
+      <div className="absolute left-1/3 top-1/4 h-64 w-64 rounded-full bg-white/[0.015] blur-2xl" />
     </div>
   );
 }
@@ -137,10 +128,9 @@ function FloatingOrbs() {
 function GlassCard({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border border-white/[0.06] bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-8 shadow-2xl backdrop-blur-xl ${className}`}
+      className={`relative overflow-hidden rounded-2xl border border-white/[0.06] bg-gradient-to-b from-white/[0.05] to-white/[0.02] p-8 shadow-2xl backdrop-blur-xl ${className}`}
     >
-      {/* Borde luminoso superior */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/30 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
       {children}
     </div>
   );
@@ -155,12 +145,12 @@ function InputField({
 }) {
   return (
     <div className="group">
-      <label htmlFor={id} className="mb-1.5 block text-xs font-medium uppercase tracking-widest text-zinc-400 group-focus-within:text-amber-400 transition-colors duration-200">
+      <label htmlFor={id} className="mb-1.5 block text-xs font-medium uppercase tracking-widest text-zinc-500 group-focus-within:text-zinc-300 transition-colors duration-200">
         {label}
       </label>
       <div className="relative">
         {icon && (
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-zinc-500 group-focus-within:text-amber-400 transition-colors duration-200">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-zinc-500 group-focus-within:text-zinc-300 transition-colors duration-200">
             {icon}
           </div>
         )}
@@ -173,13 +163,13 @@ function InputField({
           {...registration}
           aria-invalid={!!error}
           placeholder={placeholder}
-          className={`w-full rounded-xl border bg-white/[0.03] py-3 text-sm text-zinc-100 placeholder-zinc-600 transition-all duration-200
+          className={`w-full rounded-full border bg-white/[0.03] px-4 py-3 text-sm text-zinc-100 placeholder-zinc-600 transition-all duration-200
             focus:outline-none focus:ring-2 focus:ring-offset-0
             ${error
               ? 'border-red-500/50 focus:border-red-400 focus:ring-red-500/20'
-              : 'border-white/[0.08] hover:border-white/[0.15] focus:border-amber-500/50 focus:ring-amber-500/20'
+              : 'border-white/[0.08] hover:border-white/[0.15] focus:border-zinc-400/50 focus:ring-zinc-400/20'
             }
-            ${icon ? 'pl-10' : 'px-4'}
+            ${icon ? 'pl-10' : ''}
             ${readOnly ? 'cursor-not-allowed opacity-60' : ''}
           `}
         />
@@ -200,21 +190,20 @@ function SubmitButton({
     <button
       type="submit"
       disabled={loading}
-      className={`group relative overflow-hidden rounded-xl bg-amber-500 px-6 py-3 text-sm font-semibold text-amber-950 transition-all duration-200
-        hover:bg-amber-400 active:scale-[0.97]
+      className={`group relative overflow-hidden rounded-full bg-white px-6 py-3 text-sm font-semibold text-zinc-900 transition-all duration-200
+        hover:bg-zinc-100 active:scale-[0.97]
         disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100
         ${className}`}
     >
-      {/* Shimmer en hover */}
-      <div className="pointer-events-none absolute inset-0 -translate-x-full skew-x-12 bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-      <span className="relative flex items-center justify-center gap-2">
-        {loading ? (
-          <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
-            <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="opacity-75" />
-          </svg>
-        ) : children}
-      </span>
+      {loading ? (
+        <span className="flex items-center justify-center">
+          <ThinkingOrb state="working" size={20} speed={1.55} />
+        </span>
+      ) : (
+        <span className="relative flex items-center justify-center gap-2">
+          {children}
+        </span>
+      )}
     </button>
   );
 }
@@ -228,7 +217,6 @@ export function LoginPage(): ReactNode {
   const [showPassword, setShowPassword] = useState(false);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
-  const setupFormRef = useRef<HTMLFormElement>(null);
 
   const { register: rLogin, handleSubmit: hLogin, formState: { errors: eLogin } } = useForm<AdminLoginFields>({
     resolver: zodResolver(adminLoginSchema),
@@ -296,17 +284,8 @@ export function LoginPage(): ReactNode {
   /* ── Loading ── */
   if (mode === 'loading') {
     return (
-      <div className="grain-overlay flex min-h-screen items-center justify-center bg-gradient-to-b from-[#0c0a09] via-[#0e0c0b] to-[#1c1917]">
-        <div className="flex flex-col items-center gap-6">
-          <div className="relative">
-            <MenuGestLogo className="h-14 w-14" />
-            <div className="absolute -inset-3 rounded-full bg-amber-500/10 blur-xl animate-pulse" />
-          </div>
-          <svg className="h-6 w-6 animate-spin text-amber-500/70" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-20" />
-            <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="opacity-80" />
-          </svg>
-        </div>
+      <div className="grain-overlay flex min-h-screen items-center justify-center bg-gradient-to-b from-zinc-950 via-zinc-950 to-zinc-900">
+        <ThinkingOrb state="working" size={64} speed={1.55} />
       </div>
     );
   }
@@ -314,20 +293,22 @@ export function LoginPage(): ReactNode {
   /* ── Setup ── */
   if (mode === 'setup') {
     return (
-      <div className="grain-overlay flex min-h-screen items-center justify-center bg-gradient-to-b from-[#0c0a09] via-[#0e0c0b] to-[#1c1917] p-4">
+      <div className="grain-overlay flex min-h-screen items-center justify-center bg-gradient-to-b from-zinc-950 via-zinc-950 to-zinc-900 p-4">
         <FloatingOrbs />
         <div
           className="w-full max-w-lg"
           style={{
             opacity: mounted ? 1 : 0,
             transform: mounted ? 'translateY(0)' : 'translateY(24px)',
-            transition: 'opacity 700ms var(--ease-out-strong), transform 700ms var(--ease-out-strong)',
+            transition: 'opacity 700ms cubic-bezier(0.23, 1, 0.32, 1), transform 700ms cubic-bezier(0.23, 1, 0.32, 1)',
           }}
         >
           <div className="mb-8 text-center">
             <div className="mb-4 flex items-center justify-center gap-3">
-              <MenuGestLogo className="h-10 w-10" />
-              <h1 className="font-display text-3xl font-semibold tracking-tight text-zinc-100">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-700 bg-zinc-800">
+                <span className="text-sm font-bold tracking-tight text-zinc-100">MG</span>
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
                 MenuGest
               </h1>
             </div>
@@ -337,85 +318,47 @@ export function LoginPage(): ReactNode {
           </div>
 
           <GlassCard>
-            <form ref={setupFormRef} onSubmit={hSetup(onSetup)} className="space-y-5">
-              {/* Fila: Nombre + Apellido */}
+            <form onSubmit={hSetup(onSetup)} className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div className="animate-fade-in-up" style={{ animationDelay: '100ms', animationDuration: '500ms' }}>
-                  <InputField
-                    label="Nombre" id="setup-firstName" placeholder="Carlos"
-                    error={eSetup.firstName} registration={rSetup('firstName')}
-                    icon={<UserIcon className="h-4 w-4" />} autoFocus
-                  />
+                  <InputField label="Nombre" id="setup-firstName" placeholder="Carlos" error={eSetup.firstName} registration={rSetup('firstName')} icon={<UserIcon className="h-4 w-4" />} autoFocus />
                 </div>
                 <div className="animate-fade-in-up" style={{ animationDelay: '150ms', animationDuration: '500ms' }}>
-                  <InputField
-                    label="Apellido" id="setup-lastName" placeholder="Pérez"
-                    error={eSetup.lastName} registration={rSetup('lastName')}
-                    icon={<UserIcon className="h-4 w-4" />}
-                  />
+                  <InputField label="Apellido" id="setup-lastName" placeholder="Pérez" error={eSetup.lastName} registration={rSetup('lastName')} icon={<UserIcon className="h-4 w-4" />} />
                 </div>
               </div>
 
-              {/* Fila: CI + Teléfono */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="animate-fade-in-up" style={{ animationDelay: '200ms', animationDuration: '500ms' }}>
-                  <InputField
-                    label="CI" id="setup-ci" placeholder="12345678"
-                    error={eSetup.ci} registration={rSetup('ci')}
-                    icon={<IdIcon className="h-4 w-4" />}
-                  />
+                  <InputField label="CI" id="setup-ci" placeholder="12345678" error={eSetup.ci} registration={rSetup('ci')} icon={<IdIcon className="h-4 w-4" />} />
                 </div>
                 <div className="animate-fade-in-up" style={{ animationDelay: '250ms', animationDuration: '500ms' }}>
-                  <InputField
-                    label="Teléfono" id="setup-phone" type="tel" placeholder="099999999"
-                    error={eSetup.phone} registration={rSetup('phone')}
-                    icon={<PhoneIcon className="h-4 w-4" />}
-                  />
+                  <InputField label="Teléfono" id="setup-phone" type="tel" placeholder="099999999" error={eSetup.phone} registration={rSetup('phone')} icon={<PhoneIcon className="h-4 w-4" />} />
                 </div>
               </div>
 
-              {/* Dirección */}
               <div className="animate-fade-in-up" style={{ animationDelay: '300ms', animationDuration: '500ms' }}>
-                <InputField
-                  label="Dirección" id="setup-address" placeholder="Calle 123, Ciudad"
-                  error={eSetup.address} registration={rSetup('address')}
-                  icon={<PinIcon className="h-4 w-4" />}
-                />
+                <InputField label="Dirección" id="setup-address" placeholder="Calle 123, Ciudad" error={eSetup.address} registration={rSetup('address')} icon={<PinIcon className="h-4 w-4" />} />
               </div>
 
-              {/* Email */}
               <div className="animate-fade-in-up" style={{ animationDelay: '350ms', animationDuration: '500ms' }}>
-                <InputField
-                  label="Correo electrónico" id="setup-email" type="email" placeholder="admin@ejemplo.com"
-                  error={eSetup.email} registration={rSetup('email')}
-                  icon={<MailIcon className="h-4 w-4" />}
-                />
+                <InputField label="Correo electrónico" id="setup-email" type="email" placeholder="admin@ejemplo.com" error={eSetup.email} registration={rSetup('email')} icon={<MailIcon className="h-4 w-4" />} />
               </div>
 
-              {/* Password (autogenerado) */}
               <div className="animate-fade-in-up" style={{ animationDelay: '400ms', animationDuration: '500ms' }}>
-                <InputField
-                  label="Contraseña" id="setup-password" type="password" placeholder="Se usará el CI"
-                  error={eSetup.password} registration={rSetup('password')}
-                  icon={<LockIcon className="h-4 w-4" />}
-                  readOnly value={setupPw}
-                />
+                <InputField label="Contraseña" id="setup-password" type="password" placeholder="Se usará el CI" error={eSetup.password} registration={rSetup('password')} icon={<LockIcon className="h-4 w-4" />} readOnly value={setupPw} />
                 <input type="hidden" {...rSetup('password')} />
-                <p className="mt-1.5 text-xs text-zinc-500">
-                  La contraseña se genera automáticamente a partir del CI.
-                </p>
+                <p className="mt-1.5 text-xs text-zinc-500">La contraseña se genera automáticamente a partir del CI.</p>
               </div>
 
               {error && (
-                <div className="animate-fade-in rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-                  {error}
-                </div>
+                <div className="animate-fade-in rounded-full border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>
               )}
 
               <div className="animate-fade-in-up pt-2" style={{ animationDelay: '450ms', animationDuration: '500ms' }}>
                 <SubmitButton loading={loading}>
                   Crear Super Administrador
-                  <ArrowRightIcon className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                  <ArrowRightIcon className="h-4 w-4" />
                 </SubmitButton>
               </div>
             </form>
@@ -431,21 +374,22 @@ export function LoginPage(): ReactNode {
 
   /* ── Login ── */
   return (
-    <div className="grain-overlay flex min-h-screen items-center justify-center bg-gradient-to-b from-[#0c0a09] via-[#0e0c0b] to-[#1c1917] p-4">
+    <div className="grain-overlay flex min-h-screen items-center justify-center bg-gradient-to-b from-zinc-950 via-zinc-950 to-zinc-900 p-4">
       <FloatingOrbs />
       <div
         className="w-full max-w-sm"
         style={{
           opacity: mounted ? 1 : 0,
           transform: mounted ? 'translateY(0)' : 'translateY(24px)',
-          transition: 'opacity 700ms var(--ease-out-strong), transform 700ms var(--ease-out-strong)',
+          transition: 'opacity 700ms cubic-bezier(0.23, 1, 0.32, 1), transform 700ms cubic-bezier(0.23, 1, 0.32, 1)',
         }}
       >
-        {/* Brand */}
         <div className="mb-8 text-center">
           <div className="mb-4 flex items-center justify-center gap-3">
-            <MenuGestLogo className="h-10 w-10" />
-            <h1 className="font-display text-3xl font-semibold tracking-tight text-zinc-100">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-700 bg-zinc-800">
+              <span className="text-sm font-bold tracking-tight text-zinc-100">MG</span>
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
               MenuGest
             </h1>
           </div>
@@ -457,19 +401,11 @@ export function LoginPage(): ReactNode {
         <GlassCard>
           <form onSubmit={hLogin(onLogin)} className="space-y-5">
             <div className="animate-fade-in-up" style={{ animationDelay: '100ms', animationDuration: '500ms' }}>
-              <InputField
-                label="Correo electrónico" id="email" type="email" placeholder="admin@ejemplo.com"
-                error={eLogin.email} registration={rLogin('email')}
-                icon={<MailIcon className="h-4 w-4" />} autoFocus
-              />
+              <InputField label="Correo electrónico" id="email" type="email" placeholder="admin@ejemplo.com" error={eLogin.email} registration={rLogin('email')} icon={<MailIcon className="h-4 w-4" />} autoFocus />
             </div>
 
             <div className="animate-fade-in-up" style={{ animationDelay: '180ms', animationDuration: '500ms' }}>
-              <InputField
-                label="Contraseña" id="password" type={showPassword ? 'text' : 'password'} placeholder="••••••••"
-                error={eLogin.password} registration={rLogin('password')}
-                icon={<LockIcon className="h-4 w-4" />}
-              />
+              <InputField label="Contraseña" id="password" type={showPassword ? 'text' : 'password'} placeholder="••••••••" error={eLogin.password} registration={rLogin('password')} icon={<LockIcon className="h-4 w-4" />} />
               <div className="mt-1.5 flex justify-end">
                 <button
                   type="button"
@@ -483,15 +419,13 @@ export function LoginPage(): ReactNode {
             </div>
 
             {error && (
-              <div className="animate-fade-in rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-                {error}
-              </div>
+              <div className="animate-fade-in rounded-full border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>
             )}
 
             <div className="animate-fade-in-up pt-1" style={{ animationDelay: '260ms', animationDuration: '500ms' }}>
               <SubmitButton loading={loading}>
                 Ingresar
-                <ArrowRightIcon className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                <ArrowRightIcon className="h-4 w-4" />
               </SubmitButton>
             </div>
           </form>
