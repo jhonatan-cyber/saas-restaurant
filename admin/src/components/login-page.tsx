@@ -260,14 +260,17 @@ function PhoneInput({
             <ChevronDownIcon className={`h-3 w-3 text-zinc-500 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
           </button>
           {open && (
-            <div className="absolute left-0 top-full z-50 mt-1 max-h-48 w-44 overflow-y-auto rounded-xl border border-zinc-700 bg-zinc-900 py-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+            <div
+              className="absolute left-0 top-full z-50 mt-1 max-h-48 w-44 overflow-y-auto rounded-xl border border-zinc-500 py-1 shadow-[0_8px_32px_rgba(0,0,0,0.6)] backdrop-blur-none"
+              style={{ backgroundColor: '#27272a' }}
+            >
               {COUNTRY_CODES.map((c) => (
                 <button
                   key={c.code}
                   type="button"
                   onClick={() => { onCountryCodeChange(c.code); setOpen(false); }}
                   className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors duration-100
-                    ${c.code === countryCode ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'}`}
+                    ${c.code === countryCode ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-400 hover:bg-zinc-700/50 hover:text-zinc-200'}`}
                 >
                   <span className="text-base leading-none">{c.flag}</span>
                   <span>{c.label}</span>
