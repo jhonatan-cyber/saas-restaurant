@@ -151,17 +151,6 @@ function FloatingOrbs() {
   );
 }
 
-function GlassCard({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return (
-    <div
-      className={`relative overflow-hidden rounded-2xl border border-white/[0.06] bg-gradient-to-b from-white/[0.05] to-white/[0.02] p-8 shadow-2xl backdrop-blur-xl ${className}`}
-    >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-      {children}
-    </div>
-  );
-}
-
 function InputField({
   label, id, type = 'text', placeholder, error, registration, icon, autoFocus, readOnly, value, transform, rightElement,
 }: {
@@ -469,8 +458,7 @@ export function LoginPage(): ReactNode {
             </p>
           </div>
 
-          <GlassCard>
-            <form onSubmit={hSetup(onSetup)} className="space-y-5">
+          <form onSubmit={hSetup(onSetup)} className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div className="animate-fade-in-up" style={{ animationDelay: '100ms', animationDuration: '500ms' }}>
                   <InputField label="Nombre" id="setup-firstName" placeholder="Carlos" error={eSetup.firstName} registration={rSetup('firstName')} icon={<UserIcon className="h-4 w-4" />} autoFocus transform={capitalizeWords} />
@@ -529,7 +517,6 @@ export function LoginPage(): ReactNode {
                 </SubmitButton>
               </div>
             </form>
-          </GlassCard>
 
           <p className="mt-6 text-center text-xs text-zinc-600">
             &copy; {new Date().getFullYear()} MenuGest — Panel de Administración
@@ -565,8 +552,7 @@ export function LoginPage(): ReactNode {
           </p>
         </div>
 
-        <GlassCard>
-          <form onSubmit={hLogin(onLogin)} className="space-y-5">
+        <form onSubmit={hLogin(onLogin)} className="space-y-5">
             <div className="animate-fade-in-up" style={{ animationDelay: '100ms', animationDuration: '500ms' }}>
               <InputField label="Correo electrónico" id="email" type="email" placeholder="admin@ejemplo.com" error={eLogin.email} registration={rLogin('email')} icon={<MailIcon className="h-4 w-4" />} autoFocus />
             </div>
@@ -601,7 +587,6 @@ export function LoginPage(): ReactNode {
               </SubmitButton>
             </div>
           </form>
-        </GlassCard>
 
         <p className="mt-6 text-center text-xs text-zinc-600">
           &copy; {new Date().getFullYear()} MenuGest — Panel de Administración
