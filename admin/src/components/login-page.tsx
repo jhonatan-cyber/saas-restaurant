@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useForm, type UseFormRegisterReturn } from 'react-hook-form';
@@ -113,6 +113,32 @@ function ArrowRightIcon({ className }: { className?: string }) {
   );
 }
 
+function ChevronDownIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
+/* ── Códigos de país ────────────────────────────────────── */
+
+const COUNTRY_CODES = [
+  { code: '+591', label: 'BO +591', flag: '🇧🇴' },
+  { code: '+54', label: 'AR +54', flag: '🇦🇷' },
+  { code: '+55', label: 'BR +55', flag: '🇧🇷' },
+  { code: '+52', label: 'MX +52', flag: '🇲🇽' },
+  { code: '+57', label: 'CO +57', flag: '🇨🇴' },
+  { code: '+56', label: 'CL +56', flag: '🇨🇱' },
+  { code: '+51', label: 'PE +51', flag: '🇵🇪' },
+  { code: '+593', label: 'EC +593', flag: '🇪🇨' },
+  { code: '+595', label: 'PY +595', flag: '🇵🇾' },
+  { code: '+598', label: 'UY +598', flag: '🇺🇾' },
+  { code: '+58', label: 'VE +58', flag: '🇻🇪' },
+  { code: '+1', label: 'US +1', flag: '🇺🇸' },
+  { code: '+34', label: 'ES +34', flag: '🇪🇸' },
+] as const;
+
 /* ── Componentes compartidos ────────────────────────────── */
 
 function FloatingOrbs() {
@@ -137,13 +163,13 @@ function GlassCard({ children, className = '' }: { children: ReactNode; classNam
 }
 
 function InputField({
-  label, id, type = 'text', placeholder, error, registration, icon, autoFocus, readOnly, value, transform,
+  label, id, type = 'text', placeholder, error, registration, icon, autoFocus, readOnly, value, transform, rightElement,
 }: {
   label: string; id: string; type?: string; placeholder?: string; error?: { message?: string };
   registration: UseFormRegisterReturn; icon?: ReactNode;
   autoFocus?: boolean; readOnly?: boolean; value?: string;
-  /** Transforma el valor en tiempo real mientras el usuario escribe */
   transform?: (v: string) => string;
+  rightElement?: ReactNode;
 }) {
   const { ref, onChange: rhfOnChange, onBlur, name } = registration;
 
@@ -183,8 +209,103 @@ function InputField({
               : 'border-white/[0.08] hover:border-white/[0.15] focus:border-zinc-400/50 focus:ring-zinc-400/20'
             }
             ${icon ? 'pl-10' : ''}
+            ${rightElement ? 'pr-10' : ''}
             ${readOnly ? 'cursor-not-allowed opacity-60' : ''}
           `}
+        />
+        {rightElement && (
+          <div className="absolute inset-y-0 right-0 flex items-center pr-2">
+            {rightElement}
+          </div>
+        )}
+      </div>
+      {error && (
+        <p className="mt-1.5 text-xs text-red-400">{error.message}</p>
+      )}
+    </div>
+  );
+}
+
+function PhoneInput({
+  countryCode, onCountryCodeChange, error, registration,
+}: {
+  countryCode: string;
+  onCountryCodeChange: (code: string) => void;
+  error?: { message?: string };
+  registration: UseFormRegisterReturn;
+}) {
+  const { ref, onChange: rhfOnChange, onBlur, name } = registration;
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const selected = COUNTRY_CODES.find((c) => c.code === countryCode) ?? COUNTRY_CODES[0];
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, '');
+    rhfOnChange({ target: { value: digits, name } } as React.ChangeEvent<HTMLInputElement>);
+  };
+
+  return (
+    <div className="group">
+      <label htmlFor="setup-phone" className="mb-1.5 block text-xs font-medium uppercase tracking-widest text-zinc-500 group-focus-within:text-zinc-300 transition-colors duration-200">
+        Teléfono
+      </label>
+      <div className="relative flex">
+        {/* Country code selector */}
+        <div ref={dropdownRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            className="flex h-full items-center gap-1 rounded-l-full border border-r-0 border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-zinc-300 hover:border-white/[0.15] hover:bg-white/[0.06] transition-colors duration-150"
+          >
+            <span className="text-base leading-none">{selected.flag}</span>
+            <span className="text-xs text-zinc-400">{selected.code}</span>
+            <ChevronDownIcon className={`h-3 w-3 text-zinc-500 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
+          </button>
+          {open && (
+            <div className="absolute left-0 top-full z-50 mt-1 max-h-48 w-44 overflow-y-auto rounded-xl border border-zinc-700 bg-zinc-900 py-1 shadow-xl">
+              {COUNTRY_CODES.map((c) => (
+                <button
+                  key={c.code}
+                  type="button"
+                  onClick={() => { onCountryCodeChange(c.code); setOpen(false); }}
+                  className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors duration-100
+                    ${c.code === countryCode ? 'bg-zinc-700/50 text-zinc-100' : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'}`}
+                >
+                  <span className="text-base leading-none">{c.flag}</span>
+                  <span>{c.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Phone number */}
+        <input
+          ref={ref}
+          id="setup-phone"
+          name={name}
+          type="tel"
+          onBlur={onBlur}
+          onChange={handleChange}
+          aria-invalid={!!error}
+          placeholder="712-345-678"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          className={`min-w-0 flex-1 rounded-r-full border bg-white/[0.03] px-4 py-2 text-sm text-zinc-100 placeholder-zinc-600 transition-all duration-200
+            focus:outline-none focus:ring-2 focus:ring-offset-0
+            ${error
+              ? 'border-red-500/50 focus:border-red-400 focus:ring-red-500/20'
+              : 'border-white/[0.08] hover:border-white/[0.15] focus:border-zinc-400/50 focus:ring-zinc-400/20'
+            }`}
         />
       </div>
       {error && (
@@ -203,7 +324,7 @@ function SubmitButton({
     <button
       type="submit"
       disabled={loading}
-      className={`group relative overflow-hidden rounded-full bg-white px-6 py-3 text-sm font-semibold text-zinc-900 transition-all duration-200
+      className={`group relative overflow-hidden rounded-full bg-white px-5 py-2 text-sm font-semibold text-zinc-900 transition-all duration-200
         hover:bg-zinc-100 active:scale-[0.97]
         disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100
         ${className}`}
@@ -228,6 +349,8 @@ export function LoginPage(): ReactNode {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordSetup, setShowPasswordSetup] = useState(false);
+  const [countryCode, setCountryCode] = useState('+591');
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
 
@@ -346,7 +469,7 @@ export function LoginPage(): ReactNode {
                   <InputField label="CI" id="setup-ci" placeholder="12345678" error={eSetup.ci} registration={rSetup('ci')} icon={<IdIcon className="h-4 w-4" />} />
                 </div>
                 <div className="animate-fade-in-up" style={{ animationDelay: '250ms', animationDuration: '500ms' }}>
-                  <InputField label="Teléfono" id="setup-phone" type="tel" placeholder="712-345-678" error={eSetup.phone} registration={rSetup('phone')} icon={<PhoneIcon className="h-4 w-4" />} transform={formatPhone} />
+                  <PhoneInput countryCode={countryCode} onCountryCodeChange={setCountryCode} error={eSetup.phone} registration={rSetup('phone')} />
                 </div>
               </div>
 
@@ -359,7 +482,22 @@ export function LoginPage(): ReactNode {
               </div>
 
               <div className="animate-fade-in-up" style={{ animationDelay: '400ms', animationDuration: '500ms' }}>
-                <InputField label="Contraseña" id="setup-password" type="password" placeholder="Se usará el CI" error={eSetup.password} registration={rSetup('password')} icon={<LockIcon className="h-4 w-4" />} readOnly value={setupPw} />
+                <InputField
+                  label="Contraseña" id="setup-password" type={showPasswordSetup ? 'text' : 'password'}
+                  placeholder="Se usará el CI" error={eSetup.password} registration={rSetup('password')}
+                  icon={<LockIcon className="h-4 w-4" />} readOnly value={setupPw}
+                  rightElement={
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordSetup((s) => !s)}
+                      tabIndex={-1}
+                      className="flex items-center justify-center rounded-full p-1.5 text-zinc-500 hover:bg-white/[0.08] hover:text-zinc-300 transition-colors duration-150"
+                      aria-label={showPasswordSetup ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    >
+                      {showPasswordSetup ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                    </button>
+                  }
+                />
                 <input type="hidden" {...rSetup('password')} />
                 <p className="mt-1.5 text-xs text-zinc-500">La contraseña se genera automáticamente a partir del CI.</p>
               </div>
@@ -418,17 +556,22 @@ export function LoginPage(): ReactNode {
             </div>
 
             <div className="animate-fade-in-up" style={{ animationDelay: '180ms', animationDuration: '500ms' }}>
-              <InputField label="Contraseña" id="password" type={showPassword ? 'text' : 'password'} placeholder="••••••••" error={eLogin.password} registration={rLogin('password')} icon={<LockIcon className="h-4 w-4" />} />
-              <div className="mt-1.5 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((s) => !s)}
-                  className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors duration-150"
-                >
-                  {showPassword ? <EyeOffIcon className="h-3.5 w-3.5" /> : <EyeIcon className="h-3.5 w-3.5" />}
-                  {showPassword ? 'Ocultar' : 'Mostrar'}
-                </button>
-              </div>
+              <InputField
+                label="Contraseña" id="password" type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••" error={eLogin.password} registration={rLogin('password')}
+                icon={<LockIcon className="h-4 w-4" />}
+                rightElement={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((s) => !s)}
+                    tabIndex={-1}
+                    className="flex items-center justify-center rounded-full p-1.5 text-zinc-500 hover:bg-white/[0.08] hover:text-zinc-300 transition-colors duration-150"
+                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  >
+                    {showPassword ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                  </button>
+                }
+              />
             </div>
 
             {error && (
