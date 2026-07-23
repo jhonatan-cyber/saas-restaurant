@@ -31,5 +31,43 @@ export { SelectField } from './select-field';
 export { Skeleton } from './skeleton';
 export { StatusBadge } from './status-badge';
 export { SubmitButton } from './submit-button';
+export {
+  OrderHeader,
+  OrderInfoCard,
+  OrderTotalsCard,
+  OrderItemsTable,
+  OrderActions,
+  OrderTimeline,
+} from './order';
 export { TableFloorPlan } from './table-floor-plan';
 export { TextareaField } from './textarea-field';
+export {
+  DashboardIcon,
+  PosIcon,
+  KdsIcon,
+  ReceiptIcon,
+  BranchIcon,
+  CashIcon,
+  CashMovementIcon,
+  TagIcon,
+  BoxIcon,
+  TruckIcon,
+  PackageIcon,
+  InventoryIcon,
+  ReportsIcon,
+  FireIcon,
+  TableIcon,
+  UsersIcon,
+  UserManagementIcon,
+  SettingsIcon,
+  PlanIcon,
+  AuditIcon,
+  MenuIcon,
+  LogoutIcon,
+  CollapseIcon,
+  SunIcon,
+  MoonIcon,
+  UserIcon,
+  ChevronDownIcon,
+  CheckIcon,
+} from './icons';

@@ -4,7 +4,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { tablesApi, ApiClientError } from '~/lib/api';
+import { tablesApi } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { tableFormSchema, type TableFormValues } from '~/lib/schemas';
 import { FormField, RoutePending, SelectField, SubmitButton, TextareaField } from '~/components';
 import { useAuthStore } from '~/lib/auth-store';
@@ -65,9 +66,7 @@ function NewTablePage(): ReactNode {
       void queryClient.invalidateQueries({ queryKey: ['tables'] });
       void navigate({ to: '/tables' });
     },
-    onError: (err: unknown) => {
-      setServerError(err instanceof ApiClientError ? err.message : 'Error al crear la mesa');
-    },
+    onError: handleMutationError(setServerError, { fallback: 'Error al crear la mesa' }),
   });
 
   const onSubmit = (values: TableFormValues): void => {

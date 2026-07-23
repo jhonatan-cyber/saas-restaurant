@@ -5,7 +5,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate, Link, useParams } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { tablesApi, ApiClientError } from '~/lib/api';
+import { tablesApi } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { tableFormSchema, type TableFormValues } from '~/lib/schemas';
 import { FormField, RoutePending, SelectField, SubmitButton, TextareaField } from '~/components';
 import { TABLE_LOCATION_LABELS, type TableLocation } from '@saas/shared';
@@ -78,9 +79,7 @@ function EditTablePage(): ReactNode {
       void queryClient.invalidateQueries({ queryKey: ['tables'] });
       void navigate({ to: '/tables' });
     },
-    onError: (err: unknown) => {
-      setServerError(err instanceof ApiClientError ? err.message : 'Error al actualizar');
-    },
+    onError: handleMutationError(setServerError, { fallback: 'Error al actualizar' }),
   });
 
   const onSubmit = (values: TableFormValues): void => {

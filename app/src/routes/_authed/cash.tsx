@@ -2,7 +2,8 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { cashApi, ApiClientError, type ShiftListItem } from '~/lib/api';
+import { cashApi, type ShiftListItem } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { useAuthStore } from '~/lib/auth-store';
 import { useBranchStore } from '~/lib/branch-store';
 import { RoutePending, SubmitButton } from '~/components';
@@ -65,10 +66,7 @@ function CashPage(): ReactNode {
       setOpeningAmount('0');
       void queryClient.invalidateQueries({ queryKey: ['cash'] });
     },
-    onError: (err: unknown) => {
-      if (err instanceof ApiClientError) setError(err.message);
-      else setError('Error al abrir el turno');
-    },
+    onError: handleMutationError(setError, { fallback: 'Error al abrir el turno' }),
   });
 
   const closeMutation = useMutation({
@@ -81,10 +79,7 @@ function CashPage(): ReactNode {
       setArqueoPreview(null);
       void queryClient.invalidateQueries({ queryKey: ['cash'] });
     },
-    onError: (err: unknown) => {
-      if (err instanceof ApiClientError) setError(err.message);
-      else setError('Error al cerrar el turno');
-    },
+    onError: handleMutationError(setError, { fallback: 'Error al cerrar el turno' }),
   });
 
   const arqueoQuery = useMutation({
@@ -93,10 +88,7 @@ function CashPage(): ReactNode {
       setError(null);
       setArqueoPreview(data);
     },
-    onError: (err: unknown) => {
-      if (err instanceof ApiClientError) setError(err.message);
-      else setError('Error al obtener el arqueo');
-    },
+    onError: handleMutationError(setError, { fallback: 'Error al obtener el arqueo' }),
   });
 
   if (!branchId) {

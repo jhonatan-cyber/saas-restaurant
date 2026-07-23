@@ -4,7 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { branchesApi, ApiClientError } from '~/lib/api';
+import { branchesApi } from '~/lib/api';
+import { extractErrorMessage } from '~/lib/error-handler';
 import { branchFormSchema, type BranchFormValues } from '~/lib/schemas';
 
 interface BranchFormProps {
@@ -61,13 +62,7 @@ export function BranchForm({ branchId, initialData, onSuccess }: BranchFormProps
       }
     },
     onError: (err: unknown) => {
-      setServerError(
-        err instanceof ApiClientError
-          ? err.message
-          : isEditing
-            ? 'Error al actualizar la sucursal'
-            : 'Error al crear la sucursal',
-      );
+      setServerError(extractErrorMessage(err, isEditing ? 'Error al actualizar la sucursal' : 'Error al crear la sucursal'));
     },
   });
 

@@ -4,7 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { customersApi, ApiClientError } from '~/lib/api';
+import { customersApi } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { customerFormSchema, type CustomerFormValues } from '~/lib/schemas';
 import { FormField, RoutePending, TextareaField, SubmitButton } from '~/components';
 
@@ -60,11 +61,7 @@ function NewCustomerPage(): ReactNode {
       void queryClient.invalidateQueries({ queryKey: ['customers'] });
       void navigate({ to: '/customers' });
     },
-    onError: (err: unknown) => {
-      setServerError(
-        err instanceof ApiClientError ? err.message : 'Error al crear el cliente',
-      );
-    },
+    onError: handleMutationError(setServerError, { fallback: 'Error al crear el cliente' }),
   });
 
   const onSubmit = (values: CustomerFormValues): void => {

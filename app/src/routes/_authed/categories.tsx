@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { categoriesApi, ApiClientError, type Category, type CategoryFilters } from '~/lib/api';
+import { categoriesApi, type Category, type CategoryFilters } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { useAuthStore } from '~/lib/auth-store';
 import { ConfirmDialog, RoutePending, StatusBadge, Skeleton } from '~/components';
 
@@ -40,15 +41,7 @@ function CategoriesListPage(): ReactNode {
       setCategoryToDelete(null);
       setDeleteError(null);
     },
-    onError: (err: unknown) => {
-      const msg =
-        err instanceof ApiClientError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Error al eliminar';
-      setDeleteError(msg);
-    },
+    onError: handleMutationError(setDeleteError, { fallback: 'Error al eliminar' }),
   });
 
   const reorderMutation = useMutation({

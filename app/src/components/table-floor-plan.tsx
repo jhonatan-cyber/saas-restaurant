@@ -9,6 +9,7 @@ import {
   type TableLocation,
 } from '@saas/shared';
 import { OrbSpinner } from '@saas/ui';
+import { GridIcon, RefreshIcon, PlusIcon, ChevronDownSolidIcon } from './icons';
 
 const LOCATION_ORDER: Record<string, number> = {
   INDOOR: 0,
@@ -182,10 +183,7 @@ export function TableFloorPlan({
       {/* Header + Mini Summary */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <svg className="h-5 w-5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <rect x="4" y="4" width="16" height="16" rx="2" />
-            <path d="M4 10h16M10 4v16M14 4v16" />
-          </svg>
+          <GridIcon className="h-5 w-5 text-slate-500" />
           <h3 className="text-sm font-semibold text-slate-900">Plano de mesas</h3>
         </div>
         <div className="flex items-center gap-3 text-xs">
@@ -211,10 +209,7 @@ export function TableFloorPlan({
           onClick={() => queryClient.invalidateQueries({ queryKey: ['tables', 'floor-plan', branchId] })}
           className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
         >
-          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polyline points="23 4 23 10 17 10" />
-            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-          </svg>
+          <RefreshIcon className="h-3.5 w-3.5" />
           Refrescar
         </button>
       </div>
@@ -223,10 +218,7 @@ export function TableFloorPlan({
       {selectedTableId && selectedTableNumber && (
         <div className="flex items-center justify-between rounded-lg border border-brand-200 bg-brand-50 px-3 py-2">
           <div className="flex items-center gap-2">
-            <svg className="h-4 w-4 text-brand-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="2" y="2" width="20" height="20" rx="2" />
-              <path d="M12 8v8M8 12h8" />
-            </svg>
+            <PlusIcon className="h-4 w-4 text-brand-600" />
             <span className="text-sm font-medium text-brand-800">
               Mesa {selectedTableNumber}
             </span>
@@ -302,17 +294,9 @@ export function TableFloorPlan({
                     </span>
                   )}
                 </div>
-                <svg
+                <ChevronDownSolidIcon
                   className={`h-4 w-4 text-slate-400 transition-transform ${isActive ? 'rotate-180' : ''}`}
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                />
               </button>
 
               {/* Zone content */}

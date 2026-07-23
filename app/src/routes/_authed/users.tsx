@@ -3,6 +3,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { usersApi, ApiClientError, type UserFilters } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { useAuthStore } from '~/lib/auth-store';
 import { ConfirmDialog, RoutePending, StatusBadge } from '~/components';
 import { Role, ROLE_LABELS } from '@saas/shared';
@@ -60,15 +61,7 @@ function UsersListPage(): ReactNode {
       setUserToDeactivate(null);
       setActionError(null);
     },
-    onError: (err: unknown) => {
-      const msg =
-        err instanceof ApiClientError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Error al desactivar';
-      setActionError(msg);
-    },
+    onError: handleMutationError(setActionError, { fallback: 'Error al desactivar' }),
   });
 
   const handleSearch = (): void => {

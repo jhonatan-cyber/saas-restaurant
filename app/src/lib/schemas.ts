@@ -190,3 +190,34 @@ export const customerFormSchema = z.object({
   isActive: z.boolean(),
 });
 export type CustomerFormValues = z.infer<typeof customerFormSchema>;
+
+// =================== Business Settings ===================
+
+export const businessFormSchema = z.object({
+  name: z.string().trim().min(1, 'El nombre es obligatorio').max(160),
+  legalName: z.string().trim().max(160).optional().or(z.literal('').transform(() => undefined)),
+  taxId: z.string().trim().max(40).optional().or(z.literal('').transform(() => undefined)),
+  email: z.string().trim().min(1, 'El email es obligatorio').email('Email inválido').max(160),
+  phone: z.string().trim().max(40).optional().or(z.literal('').transform(() => undefined)),
+  currency: z.string().trim().min(1, 'La moneda es obligatoria'),
+  timezone: z.string().trim().min(1, 'La zona horaria es obligatoria'),
+  moduleReports: z.boolean(),
+  moduleInventory: z.boolean(),
+  modulePosStations: z.boolean(),
+  moduleDeliveryApp: z.boolean(),
+});
+export type BusinessFormValues = z.infer<typeof businessFormSchema>;
+
+export const businessFormDefaults: BusinessFormValues = {
+  name: '',
+  legalName: undefined as unknown as string,
+  taxId: undefined as unknown as string,
+  email: '',
+  phone: undefined as unknown as string,
+  currency: 'BOB',
+  timezone: 'America/La_Paz',
+  moduleReports: false,
+  moduleInventory: false,
+  modulePosStations: false,
+  moduleDeliveryApp: false,
+};

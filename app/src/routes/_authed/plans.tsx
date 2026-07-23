@@ -3,6 +3,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { plansApi, ApiClientError, type PlanFilters } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { useAuthStore } from '~/lib/auth-store';
 import { ConfirmDialog, RoutePending } from '~/components';
 import { BillingPeriod, BILLING_PERIOD_LABELS } from '@saas/shared';
@@ -56,15 +57,7 @@ function PlansListPage(): ReactNode {
       setPlanToDelete(null);
       setActionError(null);
     },
-    onError: (err: unknown) => {
-      const msg =
-        err instanceof ApiClientError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Error al eliminar';
-      setActionError(msg);
-    },
+    onError: handleMutationError(setActionError, { fallback: 'Error al eliminar' }),
   });
 
   const handleSearch = (): void => {

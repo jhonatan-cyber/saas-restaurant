@@ -3,7 +3,8 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { createFileRoute, useNavigate, useParams } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { RoutePending } from '~/components';
-import { usersApi, ApiClientError, branchesApi, type Branch } from '~/lib/api';
+import { usersApi, branchesApi, ApiClientError, type Branch } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { Role, ROLE_LABELS, SaaSRole } from '@saas/shared';
 
 export const Route = createFileRoute('/_authed/users/$id')({
@@ -54,15 +55,7 @@ function UserEditPage(): ReactNode {
       void queryClient.invalidateQueries({ queryKey: ['user', id] });
       void navigate({ to: '/users' });
     },
-    onError: (err: unknown) => {
-      const msg =
-        err instanceof ApiClientError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Error al actualizar';
-      setError(msg);
-    },
+    onError: handleMutationError(setError, { fallback: 'Error al actualizar' }),
   });
 
   const handleSubmit = (e: React.FormEvent): void => {

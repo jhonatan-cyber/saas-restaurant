@@ -4,10 +4,10 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import {
   tablesApi,
-  ApiClientError,
   type RestaurantTable,
   type TableFilters,
 } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { useAuthStore } from '~/lib/auth-store';
 import { ConfirmDialog, RoutePending, Skeleton } from '~/components';
 import {
@@ -55,11 +55,7 @@ function TablesListPage(): ReactNode {
       setTableToDelete(null);
       setDeleteError(null);
     },
-    onError: (err: unknown) => {
-      setDeleteError(
-        err instanceof ApiClientError ? err.message : 'Error al eliminar',
-      );
-    },
+    onError: handleMutationError(setDeleteError, { fallback: 'Error al eliminar' }),
   });
 
   const canWrite = user?.role === 'OWNER' || user?.role === 'ADMIN';

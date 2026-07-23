@@ -9,8 +9,8 @@ import {
   productsApi,
   categoriesApi,
   preparationAreasApi,
-  ApiClientError,
 } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { productFormSchema, type ProductFormValues } from '~/lib/schemas';
 import { slugify } from '~/lib/slugify';
 import { BulkPricingEditor, ComboItemsEditor, FormField, RoutePending, SelectField, SubmitButton, TextareaField } from '~/components';
@@ -116,11 +116,7 @@ function NewProductPage(): ReactNode {
       void queryClient.invalidateQueries({ queryKey: ['products'] });
       void navigate({ to: '/products' });
     },
-    onError: (err: unknown) => {
-      setServerError(
-        err instanceof ApiClientError ? err.message : 'Error al crear el producto',
-      );
-    },
+    onError: handleMutationError(setServerError, { fallback: 'Error al crear el producto' }),
   });
 
   const onSubmit = (values: ProductFormValues): void => {

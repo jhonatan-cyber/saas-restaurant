@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { inventoryApi, productsApi, type InventoryFilters } from '~/lib/api';
+import { extractErrorMessage } from '~/lib/error-handler';
 import { RoutePending, StatusBadge } from '~/components';
 
 export const Route = createFileRoute('/_authed/inventory')({
@@ -64,8 +65,8 @@ function InventoryPage(): ReactNode {
       setAdjustForm({ productId: '', productSearch: '', branchId: 'branch-1', type: 'IN', quantity: 0, reason: '' });
       setAdjustError(null);
     },
-    onError: (err: any) => {
-      setAdjustError(err?.message || 'Error al realizar el ajuste');
+    onError: (err: unknown) => {
+      setAdjustError(extractErrorMessage(err, 'Error al realizar el ajuste'));
     },
   });
 

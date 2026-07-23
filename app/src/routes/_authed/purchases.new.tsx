@@ -3,7 +3,8 @@ import { useFieldArray, useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { purchasesApi, productsApi, suppliersApi, ApiClientError } from '~/lib/api';
+import { purchasesApi, productsApi, suppliersApi } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { useAuthStore } from '~/lib/auth-store';
 import { useBranchStore } from '~/lib/branch-store';
 import { FormField, RoutePending, SubmitButton } from '~/components';
@@ -100,11 +101,7 @@ function NewPurchasePage(): ReactNode {
       void queryClient.invalidateQueries({ queryKey: ['purchases'] });
       void navigate({ to: '/purchases' });
     },
-    onError: (err: unknown) => {
-      setServerError(
-        err instanceof ApiClientError ? err.message : 'Error al crear la compra',
-      );
-    },
+    onError: handleMutationError(setServerError, { fallback: 'Error al crear la compra' }),
   });
 
   const onSubmit = (values: PurchaseFormData): void => {

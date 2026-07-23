@@ -3,9 +3,9 @@ import type { ReactNode } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import {
   paymentsApi,
-  ApiClientError,
   type Order,
 } from '../lib/api';
+import { handleMutationError } from '../lib/error-handler';
 import type {
   PaymentMethod,
   PaymentItemInput,
@@ -84,13 +84,7 @@ export function PaymentModal({
       setItems([newDraft('CASH')]);
       onPaid();
     },
-    onError: (err: unknown) => {
-      if (err instanceof ApiClientError) {
-        setError(err.message);
-        return;
-      }
-      setError('Error al procesar el pago');
-    },
+    onError: handleMutationError(setError, { fallback: 'Error al procesar el pago' }),
   });
 
   if (!open || !order) return null;

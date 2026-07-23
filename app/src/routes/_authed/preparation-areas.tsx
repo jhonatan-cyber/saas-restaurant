@@ -4,10 +4,10 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import {
   preparationAreasApi,
-  ApiClientError,
   type PreparationArea,
   type PreparationAreaFilters,
 } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { useAuthStore } from '~/lib/auth-store';
 import { ConfirmDialog, RoutePending, StatusBadge } from '~/components';
 
@@ -37,15 +37,7 @@ function PrepAreasListPage(): ReactNode {
       setAreaToDelete(null);
       setDeleteError(null);
     },
-    onError: (err: unknown) => {
-      const msg =
-        err instanceof ApiClientError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Error al eliminar';
-      setDeleteError(msg);
-    },
+    onError: handleMutationError(setDeleteError, { fallback: 'Error al eliminar' }),
   });
 
   const reorderMutation = useMutation({

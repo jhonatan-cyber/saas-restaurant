@@ -5,7 +5,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate, Link, useParams } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { customersApi, ApiClientError } from '~/lib/api';
+import { customersApi } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { customerFormSchema, type CustomerFormValues } from '~/lib/schemas';
 import { FormField, RoutePending, TextareaField, SubmitButton } from '~/components';
 
@@ -87,11 +88,7 @@ function EditCustomerPage(): ReactNode {
       void queryClient.invalidateQueries({ queryKey: ['customers'] });
       void navigate({ to: '/customers' });
     },
-    onError: (err: unknown) => {
-      setServerError(
-        err instanceof ApiClientError ? err.message : 'Error al actualizar el cliente',
-      );
-    },
+    onError: handleMutationError(setServerError, { fallback: 'Error al actualizar el cliente' }),
   });
 
   const onSubmit = (values: CustomerFormValues): void => {

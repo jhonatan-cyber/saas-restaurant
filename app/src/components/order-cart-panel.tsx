@@ -4,9 +4,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import {
   ordersApi,
-  ApiClientError,
   type Order,
 } from '../lib/api';
+import { handleMutationError } from '../lib/error-handler';
 import {
   useOrdersCartStore,
   computeSubtotal,
@@ -19,6 +19,7 @@ import { SubmitButton } from './submit-button';
 import { TableFloorPlan } from './table-floor-plan';
 import { CustomerPicker } from './customer-picker';
 import { CustomerOrderHistory } from './customer-order-history';
+import { PlusIcon, GridIcon, ChevronDownSolidIcon } from './icons';
 
 function AutoCloseFloorPlan({
   success,
@@ -112,27 +113,13 @@ export function OrderCartPanel({ branchId }: OrderCartPanelProps): ReactNode {
       // Auto-dismiss a los 5s
       setTimeout(() => setSuccess(null), 5000);
     },
-    onError: (err: unknown) => {
-      setSuccess(null);
-      if (err instanceof ApiClientError) {
-        const code = (err.body as { code?: string })?.code;
-        if (code === ERROR_CODES.CASH_SESSION_REQUIRED) {
-          setErrorMsg(
-            'Debe abrir caja y turno en esta sucursal antes de tomar órdenes.',
-          );
-          return;
-        }
-        if (code === ERROR_CODES.STALE_VERSION) {
-          setErrorMsg(
-            'Otro usuario modificó esta orden. Refrescá la pantalla e intentá de nuevo.',
-          );
-          return;
-        }
-        setErrorMsg(err.message);
-        return;
-      }
-      setErrorMsg('Error desconocido al crear la orden');
-    },
+    onError: handleMutationError(setErrorMsg, {
+      fallback: 'Error desconocido al crear la orden',
+      knownErrors: {
+        [ERROR_CODES.CASH_SESSION_REQUIRED]: 'Debe abrir caja y turno en esta sucursal antes de tomar órdenes.',
+        [ERROR_CODES.STALE_VERSION]: 'Otro usuario modificó esta orden. Refrescá la pantalla e intentá de nuevo.',
+      },
+    }),
   });
 
 
@@ -196,33 +183,19 @@ export function OrderCartPanel({ branchId }: OrderCartPanelProps): ReactNode {
               <span className="flex items-center gap-2">
                 {tableId && tableNumber ? (
                   <>
-                    <svg className="h-4 w-4 text-brand-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="2" y="2" width="20" height="20" rx="2" />
-                      <path d="M12 8v8M8 12h8" />
-                    </svg>
+                    <PlusIcon className="h-4 w-4 text-brand-600" />
                     Mesa {tableNumber}
                   </>
                 ) : (
                   <>
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                      <rect x="4" y="4" width="16" height="16" rx="2" />
-                      <path d="M4 10h16M10 4v16M14 4v16" />
-                    </svg>
+                    <GridIcon className="h-4 w-4" />
                     Sin mesa
                   </>
                 )}
               </span>
-              <svg
+              <ChevronDownSolidIcon
                 className={`h-4 w-4 transition-transform ${showFloorPlan ? 'rotate-180' : ''}`}
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
-                  clipRule="evenodd"
-                />
-              </svg>
+              />
             </button>
           </div>
         </div>

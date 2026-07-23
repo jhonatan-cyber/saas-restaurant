@@ -9,8 +9,8 @@ import {
   productsApi,
   categoriesApi,
   preparationAreasApi,
-  ApiClientError,
 } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { productFormSchema, type ProductFormValues } from '~/lib/schemas';
 import { BulkPricingEditor, ComboItemsEditor, FormField, RoutePending, SelectField, SubmitButton, TextareaField } from '~/components';
 import { useAuthStore } from '~/lib/auth-store';
@@ -135,11 +135,7 @@ function EditProductPage(): ReactNode {
       void queryClient.invalidateQueries({ queryKey: ['products'] });
       void navigate({ to: '/products' });
     },
-    onError: (err: unknown) => {
-      setServerError(
-        err instanceof ApiClientError ? err.message : 'Error al actualizar el producto',
-      );
-    },
+    onError: handleMutationError(setServerError, { fallback: 'Error al actualizar el producto' }),
   });
 
   const onSubmit = (values: ProductFormValues): void => {

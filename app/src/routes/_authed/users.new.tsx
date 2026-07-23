@@ -3,7 +3,8 @@ import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { RoutePending } from '~/components';
-import { usersApi, ApiClientError, branchesApi, type Branch } from '~/lib/api';
+import { usersApi, branchesApi, type Branch } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { Role, ROLE_LABELS, SaaSRole } from '@saas/shared';
 
 export const Route = createFileRoute('/_authed/users/new')({
@@ -35,15 +36,7 @@ function UserNewPage(): ReactNode {
       void queryClient.invalidateQueries({ queryKey: ['users'] });
       void navigate({ to: '/users' });
     },
-    onError: (err: unknown) => {
-      const msg =
-        err instanceof ApiClientError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Error al crear usuario';
-      setError(msg);
-    },
+    onError: handleMutationError(setError, { fallback: 'Error al crear usuario' }),
   });
 
   const handleSubmit = (e: React.FormEvent): void => {

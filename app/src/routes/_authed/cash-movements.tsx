@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { cashMovementsApi } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { useAuthStore } from '~/lib/auth-store';
 import { useBranchStore } from '~/lib/branch-store';
 import { RoutePending, SubmitButton } from '~/components';
@@ -73,10 +74,7 @@ function CashMovementsPage(): ReactNode {
       setReason('');
       void queryClient.invalidateQueries({ queryKey: ['cash-movements'] });
     },
-    onError: (err: unknown) => {
-      if (err instanceof Error) setError(err.message);
-      else setError('Error al crear el movimiento');
-    },
+    onError: handleMutationError(setError, { fallback: 'Error al crear el movimiento' }),
   });
 
   if (!branchId) {

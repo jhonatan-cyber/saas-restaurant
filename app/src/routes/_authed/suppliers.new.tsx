@@ -4,7 +4,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { suppliersApi, ApiClientError } from '~/lib/api';
+import { suppliersApi } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { supplierFormSchema, type SupplierFormValues } from '~/lib/schemas';
 import { BranchSelect, FormField, RoutePending, SubmitButton } from '~/components';
 
@@ -44,11 +45,7 @@ function NewSupplierPage(): ReactNode {
       void queryClient.invalidateQueries({ queryKey: ['suppliers'] });
       void navigate({ to: '/suppliers' });
     },
-    onError: (err: unknown) => {
-      setServerError(
-        err instanceof ApiClientError ? err.message : 'Error al crear el proveedor',
-      );
-    },
+    onError: handleMutationError(setServerError, { fallback: 'Error al crear el proveedor' }),
   });
 
   const onSubmit = (values: SupplierFormValues): void => {

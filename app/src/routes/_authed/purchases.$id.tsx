@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { createFileRoute, Link, useParams } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { purchasesApi, ApiClientError } from '~/lib/api';
+import { purchasesApi } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { useAuthStore } from '~/lib/auth-store';
 import { ConfirmDialog, RoutePending, StatusBadge } from '~/components';
 
@@ -44,9 +45,7 @@ function PurchaseDetailPage(): ReactNode {
       setCompleteDialogOpen(false);
       setActionError(null);
     },
-    onError: (err: unknown) => {
-      setActionError(err instanceof ApiClientError ? err.message : 'Error al completar');
-    },
+    onError: handleMutationError(setActionError, { fallback: 'Error al completar' }),
   });
 
   const cancelMutation = useMutation({
@@ -56,9 +55,7 @@ function PurchaseDetailPage(): ReactNode {
       setCancelDialogOpen(false);
       setActionError(null);
     },
-    onError: (err: unknown) => {
-      setActionError(err instanceof ApiClientError ? err.message : 'Error al cancelar');
-    },
+    onError: handleMutationError(setActionError, { fallback: 'Error al cancelar' }),
   });
 
   const canWrite = user?.role === 'OWNER' || user?.role === 'ADMIN';

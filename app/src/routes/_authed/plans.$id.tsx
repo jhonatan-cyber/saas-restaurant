@@ -3,6 +3,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { createFileRoute, useNavigate, useParams } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { plansApi, ApiClientError } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { BillingPeriod } from '@saas/shared';
 import { PLAN_FEATURE_OPTIONS } from '@saas/shared/rbac';
 
@@ -91,15 +92,7 @@ function PlanEditPage(): ReactNode {
       void queryClient.invalidateQueries({ queryKey: ['plans'] });
       void navigate({ to: '/plans' });
     },
-    onError: (err: unknown) => {
-      const msg =
-        err instanceof ApiClientError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Error al actualizar';
-      setError(msg);
-    },
+    onError: handleMutationError(setError, { fallback: 'Error al actualizar' }),
   });
 
   const update = <K extends keyof PlanForm>(key: K, value: PlanForm[K]) => {

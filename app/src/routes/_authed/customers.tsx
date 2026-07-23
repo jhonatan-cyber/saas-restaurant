@@ -4,10 +4,10 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import {
   customersApi,
-  ApiClientError,
   type Customer,
   type CustomerFilters,
 } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { useAuthStore } from '~/lib/auth-store';
 import { ConfirmDialog, RoutePending, StatusBadge, Skeleton } from '~/components';
 
@@ -43,9 +43,7 @@ function CustomersListPage(): ReactNode {
       setCustomerToDelete(null);
       setDeleteError(null);
     },
-    onError: (err: unknown) => {
-      setDeleteError(err instanceof ApiClientError ? err.message : 'Error al eliminar');
-    },
+    onError: handleMutationError(setDeleteError, { fallback: 'Error al eliminar' }),
   });
 
   const handleSearch = (): void => {

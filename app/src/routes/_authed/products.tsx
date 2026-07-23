@@ -5,10 +5,10 @@ import type { ReactNode } from 'react';
 import {
   productsApi,
   categoriesApi,
-  ApiClientError,
   type Product,
   type ProductFilters,
 } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { PRODUCT_TYPE_LABELS } from '@saas/shared';
 import { useAuthStore } from '~/lib/auth-store';
 import { ConfirmDialog, RoutePending, StatusBadge, Skeleton } from '~/components';
@@ -54,15 +54,7 @@ function ProductsListPage(): ReactNode {
       setProductToDelete(null);
       setDeleteError(null);
     },
-    onError: (err: unknown) => {
-      const msg =
-        err instanceof ApiClientError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Error al eliminar';
-      setDeleteError(msg);
-    },
+    onError: handleMutationError(setDeleteError, { fallback: 'Error al eliminar' }),
   });
 
   const handleSearch = (): void => {

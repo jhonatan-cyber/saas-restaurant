@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { plansApi, ApiClientError } from '~/lib/api';
+import { plansApi } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { RoutePending } from '~/components';
 import { BillingPeriod } from '@saas/shared';
 import { PLAN_FEATURE_OPTIONS } from '@saas/shared/rbac';
@@ -77,15 +78,7 @@ function PlanNewPage(): ReactNode {
       void queryClient.invalidateQueries({ queryKey: ['plans'] });
       void navigate({ to: '/plans' });
     },
-    onError: (err: unknown) => {
-      const msg =
-        err instanceof ApiClientError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Error al crear plan';
-      setError(msg);
-    },
+    onError: handleMutationError(setError, { fallback: 'Error al crear plan' }),
   });
 
   const update = <K extends keyof PlanForm>(key: K, value: PlanForm[K]) => {

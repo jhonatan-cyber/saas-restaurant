@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { branchesApi, ApiClientError, type Branch } from '~/lib/api';
+import { branchesApi, type Branch } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { useAuthStore } from '~/lib/auth-store';
 import { ConfirmDialog, BranchForm, RoutePending } from '~/components';
 import { OrbSpinner } from '@saas/ui';
@@ -47,15 +48,7 @@ function BranchesPage(): ReactNode {
       setSelectedBranchId(null);
       setActionError(null);
     },
-    onError: (err: unknown) => {
-      setActionError(
-        err instanceof ApiClientError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Error al desactivar',
-      );
-    },
+    onError: handleMutationError(setActionError, { fallback: 'Error al desactivar' }),
   });
 
   const reactivateMutation = useMutation({
@@ -65,15 +58,7 @@ function BranchesPage(): ReactNode {
       setBranchToReactivate(null);
       setActionError(null);
     },
-    onError: (err: unknown) => {
-      setActionError(
-        err instanceof ApiClientError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Error al reactivar',
-      );
-    },
+    onError: handleMutationError(setActionError, { fallback: 'Error al reactivar' }),
   });
 
   const canWrite = user?.role === 'OWNER' || user?.role === 'ADMIN';

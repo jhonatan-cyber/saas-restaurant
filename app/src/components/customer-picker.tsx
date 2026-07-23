@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { customersApi, type Customer } from '~/lib/api';
 import { useBarcodeCamera } from '~/lib/use-barcode-camera';
 import { OrbSpinner } from '@saas/ui';
+import { SearchIcon, BarcodeIcon, CloseIcon, PlusSmallIcon, ChevronDownSolidIcon, UserIcon } from './icons';
 
 interface CustomerPickerProps {
   selectedCustomerId: string | null;
@@ -208,10 +209,7 @@ export function CustomerPicker({
       {selectedCustomerId && selectedCustomerName ? (
         <div className="flex items-center justify-between rounded-lg border border-brand-200 bg-brand-50 px-3 py-2">
           <div className="flex items-center gap-2 min-w-0">
-            <svg className="h-4 w-4 shrink-0 text-brand-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
+            <UserIcon className="h-4 w-4 shrink-0 text-brand-600" />
             <span className="truncate text-sm font-medium text-brand-800">
               {selectedCustomerName}
             </span>
@@ -243,15 +241,10 @@ export function CustomerPicker({
           className="flex w-full items-center justify-between rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm text-slate-500 hover:border-slate-400 hover:text-slate-700 transition-colors"
         >
           <span className="flex items-center gap-2">
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
+            <UserIcon className="h-4 w-4" />
             Cliente (opcional)
           </span>
-          <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-          </svg>
+          <ChevronDownSolidIcon className="h-4 w-4" />
         </button>
       )}
 
@@ -264,16 +257,7 @@ export function CustomerPicker({
           {/* Search input with camera button */}
           <div className="border-b border-slate-100 p-2">
             <div className="relative">
-              <svg
-                className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
+              <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 ref={inputRef}
                 type="text"
@@ -294,13 +278,7 @@ export function CustomerPicker({
                 title="Escanear NIT/cédula con cámara"
                 aria-label="Escanear código de barras o QR"
               >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M2 4V2h4M2 20v2h4M22 4V2h-4M22 20v2h-4" />
-                  <rect x="4" y="6" width="16" height="12" rx="1" />
-                  <line x1="9" y1="10" x2="9" y2="14" />
-                  <line x1="12" y1="10" x2="12" y2="14" />
-                  <line x1="15" y1="10" x2="15" y2="14" />
-                </svg>
+                <BarcodeIcon className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -349,10 +327,7 @@ export function CustomerPicker({
                 className="absolute right-2 top-2 rounded-full bg-black/50 p-1.5 text-white/80 hover:bg-black/70 hover:text-white transition-colors"
                 aria-label="Cerrar escáner"
               >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
+                <CloseIcon className="h-4 w-4" />
               </button>
 
               {/* Error actions */}
@@ -539,10 +514,7 @@ export function CustomerPicker({
                 onClick={() => setShowCreate(true)}
                 className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs font-medium text-brand-700 hover:bg-brand-50 transition-colors"
               >
-                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
+                <PlusSmallIcon className="h-3.5 w-3.5" />
                 Crear nuevo cliente
               </button>
             )}

@@ -5,7 +5,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate, Link, useParams } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { categoriesApi, ApiClientError } from '~/lib/api';
+import { categoriesApi } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import { categoryFormSchema, type CategoryFormValues } from '~/lib/schemas';
 import { slugify } from '~/lib/slugify';
 import { FormField, RoutePending, SubmitButton } from '~/components';
@@ -100,11 +101,7 @@ function EditCategoryPage(): ReactNode {
       void queryClient.invalidateQueries({ queryKey: ['categories'] });
       void navigate({ to: '/categories' });
     },
-    onError: (err: unknown) => {
-      setServerError(
-        err instanceof ApiClientError ? err.message : 'Error al actualizar la categoría',
-      );
-    },
+    onError: handleMutationError(setServerError, { fallback: 'Error al actualizar la categoría' }),
   });
 
   const onSubmit = (values: CategoryFormValues): void => {

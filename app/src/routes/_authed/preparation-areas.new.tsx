@@ -4,7 +4,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { preparationAreasApi, ApiClientError } from '~/lib/api';
+import { preparationAreasApi } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
 import {
   preparationAreaFormSchema,
   type PreparationAreaFormValues,
@@ -63,11 +64,7 @@ function NewPrepAreaPage(): ReactNode {
       void queryClient.invalidateQueries({ queryKey: ['preparation-areas'] });
       void navigate({ to: '/preparation-areas' });
     },
-    onError: (err: unknown) => {
-      setServerError(
-        err instanceof ApiClientError ? err.message : 'Error al crear el área',
-      );
-    },
+    onError: handleMutationError(setServerError, { fallback: 'Error al crear el área' }),
   });
 
   const onSubmit = (values: PreparationAreaFormValues): void => {

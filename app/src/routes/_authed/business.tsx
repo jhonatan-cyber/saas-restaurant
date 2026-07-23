@@ -1,10 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { RoutePending } from '~/components';
-import { businessApi, subscriptionApi, plansApi, ApiClientError, type UpdateBusinessData } from '~/lib/api';
-import { SUBSCRIPTION_STATUS_LABELS, BILLING_PERIOD_LABELS } from '@saas/shared';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { RoutePending, FormField, SubmitButton } from '~/components';
+import { businessApi, ApiClientError } from '~/lib/api';
+import { handleMutationError } from '~/lib/error-handler';
+import { businessFormSchema, type BusinessFormValues, businessFormDefaults } from '~/lib/schemas';
+import { SUBSCRIPTION_STATUS_LABELS } from '@saas/shared';
 
 export const Route = createFileRoute('/_authed/business')({
   component: BusinessSettingsPage,
@@ -40,40 +44,31 @@ const CURRENCIES = [
   { code: 'VES', name: 'Bolívar (Bs.S)' },
 ];
 
-interface BusinessForm {
-  name: string;
-  legalName: string;
-  taxId: string;
-  email: string;
-  phone: string;
-  currency: string;
-  timezone: string;
-  moduleReports: boolean;
-  moduleInventory: boolean;
-  modulePosStations: boolean;
-  moduleDeliveryApp: boolean;
-}
-
 function BusinessSettingsPage(): ReactNode {
   const queryClient = useQueryClient();
-  const [form, setForm] = useState<BusinessForm | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const form = useForm<BusinessFormValues>({
+    resolver: zodResolver(businessFormSchema),
+    defaultValues: businessFormDefaults,
+  });
+
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = form;
 
   const settingsQuery = useQuery({
     queryKey: ['business-settings'],
     queryFn: () => businessApi.getSettings(),
   });
 
-  /* Poblar form cuando se cargan los datos */
+  /* Reset form when data loads */
   useEffect(() => {
-    if (settingsQuery.data && !form) {
-      setForm({
+    if (settingsQuery.data) {
+      reset({
         name: settingsQuery.data.name,
-        legalName: settingsQuery.data.legalName ?? '',
-        taxId: settingsQuery.data.taxId ?? '',
+        legalName: settingsQuery.data.legalName ?? undefined,
+        taxId: settingsQuery.data.taxId ?? undefined,
         email: settingsQuery.data.email,
-        phone: settingsQuery.data.phone ?? '',
+        phone: settingsQuery.data.phone ?? undefined,
         currency: settingsQuery.data.currency,
         timezone: settingsQuery.data.timezone,
         moduleReports: settingsQuery.data.moduleReports,
@@ -82,39 +77,27 @@ function BusinessSettingsPage(): ReactNode {
         moduleDeliveryApp: settingsQuery.data.moduleDeliveryApp,
       });
     }
-  }, [settingsQuery.data, form]);
+  }, [settingsQuery.data, reset]);
 
   const updateMutation = useMutation({
-    mutationFn: (data: UpdateBusinessData) => businessApi.updateSettings(data),
+    mutationFn: (data: BusinessFormValues) => businessApi.updateSettings(data),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['business-settings'] });
       setSuccess('Configuración guardada correctamente');
-      setError(null);
       setTimeout(() => setSuccess(null), 3000);
     },
-    onError: (err: unknown) => {
-      const msg =
-        err instanceof ApiClientError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Error al guardar';
-      setError(msg);
-      setSuccess(null);
-    },
+    onError: handleMutationError(
+      (msg) => { form.setError('root', { message: msg }); },
+      { fallback: 'Error al guardar' },
+    ),
   });
 
-  const handleSubmit = (e: React.FormEvent): void => {
-    e.preventDefault();
-    if (!form) return;
-    setError(null);
+  const onSubmit = (data: BusinessFormValues): void => {
     setSuccess(null);
-    updateMutation.mutate(form);
+    updateMutation.mutate(data);
   };
 
-  const update = <K extends keyof BusinessForm>(key: K, value: BusinessForm[K]) => {
-    setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
-  };
+  const rootError = form.formState.errors.root?.message;
 
   if (settingsQuery.isLoading) {
     return <div className="p-8 text-center text-slate-500">Cargando configuración...</div>;
@@ -142,9 +125,9 @@ function BusinessSettingsPage(): ReactNode {
         </div>
       </div>
 
-      {error && (
+      {rootError && (
         <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
-          {error}
+          {rootError}
         </div>
       )}
       {success && (
@@ -153,166 +136,132 @@ function BusinessSettingsPage(): ReactNode {
         </div>
       )}
 
-      {form && (
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Información general */}
-          <div className="card p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">Información general</h2>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="space-y-1">
-                <label className="label" htmlFor="name">Nombre del negocio *</label>
-                <input
-                  id="name" className="input" required
-                  value={form.name}
-                  onChange={(e) => update('name', e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="label" htmlFor="slug">Slug (URL)</label>
-                <input
-                  id="slug" className="input bg-slate-50" readOnly
-                  value={settingsQuery.data?.slug ?? ''}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="label" htmlFor="legalName">Razón social</label>
-                <input
-                  id="legalName" className="input"
-                  value={form.legalName}
-                  onChange={(e) => update('legalName', e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="label" htmlFor="taxId">NIT / RFC / CUIT</label>
-                <input
-                  id="taxId" className="input"
-                  value={form.taxId}
-                  onChange={(e) => update('taxId', e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="label" htmlFor="email">Email de contacto *</label>
-                <input
-                  id="email" className="input" type="email" required
-                  value={form.email}
-                  onChange={(e) => update('email', e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="label" htmlFor="phone">Teléfono</label>
-                <input
-                  id="phone" className="input"
-                  value={form.phone}
-                  onChange={(e) => update('phone', e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="label" htmlFor="currency">Moneda</label>
-                <select
-                  id="currency" className="input"
-                  value={form.currency}
-                  onChange={(e) => update('currency', e.target.value)}
-                >
-                  {CURRENCIES.map((c) => (
-                    <option key={c.code} value={c.code}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="label" htmlFor="timezone">Zona horaria</label>
-                <select
-                  id="timezone" className="input"
-                  value={form.timezone}
-                  onChange={(e) => update('timezone', e.target.value)}
-                >
-                  {TIMEZONES.map((tz) => (
-                    <option key={tz} value={tz}>{tz}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* Información general */}
+        <div className="card p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-slate-900">Información general</h2>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <FormField label="Nombre del negocio" htmlFor="name" error={errors.name?.message} required>
+              <input id="name" className="input" {...register('name')} />
+            </FormField>
 
-          {/* Feature flags */}
-          <div className="card p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">Módulos</h2>
-            <p className="text-sm text-slate-500">
-              Activa o desactiva módulos del sistema según tu plan contratado
-            </p>
-            <div className="space-y-3">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600"
-                  checked={form.moduleReports}
-                  onChange={(e) => update('moduleReports', e.target.checked)}
-                />
-                <div>
-                  <div className="font-medium text-slate-900">Reportes</div>
-                  <div className="text-sm text-slate-500">Generación de reportes PDF y XLSX</div>
-                </div>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600"
-                  checked={form.moduleInventory}
-                  onChange={(e) => update('moduleInventory', e.target.checked)}
-                />
-                <div>
-                  <div className="font-medium text-slate-900">Inventario</div>
-                  <div className="text-sm text-slate-500">Control de inventario y kardex</div>
-                </div>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600"
-                  checked={form.modulePosStations}
-                  onChange={(e) => update('modulePosStations', e.target.checked)}
-                />
-                <div>
-                  <div className="font-medium text-slate-900">Estaciones POS</div>
-                  <div className="text-sm text-slate-500">Estaciones de venta POS</div>
-                </div>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600"
-                  checked={form.moduleDeliveryApp}
-                  onChange={(e) => update('moduleDeliveryApp', e.target.checked)}
-                />
-                <div>
-                  <div className="font-medium text-slate-900">Delivery App</div>
-                  <div className="text-sm text-slate-500">App de delivery para repartidores</div>
-                </div>
-              </label>
+            <div className="space-y-1">
+              <label className="label" htmlFor="slug">Slug (URL)</label>
+              <input
+                id="slug" className="input bg-slate-50" readOnly
+                value={settingsQuery.data?.slug ?? ''}
+              />
             </div>
-          </div>
 
-          {/* Plan y suscripción */}
-          <div className="rounded-lg border border-slate-200 bg-white p-4">
-            <h3 className="text-lg font-semibold text-slate-900">Plan y suscripción</h3>
-            <div className="mt-2 text-sm text-slate-600">
-              <p>Plan actual: {settingsQuery.data?.plan ?? 'Ninguno'}</p>
-              {settingsQuery.data?.subscription && (
-                <p>Estado: {settingsQuery.data.subscription.status}</p>
-              )}
-            </div>
-          </div>
+            <FormField label="Razón social" htmlFor="legalName" error={errors.legalName?.message}>
+              <input id="legalName" className="input" {...register('legalName')} />
+            </FormField>
 
-          <div className="flex items-center justify-end gap-3">
-            <button
-              type="submit"
-              className="btn-primary"
-              disabled={updateMutation.isPending}
-            >
-              {updateMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
-            </button>
+            <FormField label="NIT / RFC / CUIT" htmlFor="taxId" error={errors.taxId?.message}>
+              <input id="taxId" className="input" {...register('taxId')} />
+            </FormField>
+
+            <FormField label="Email de contacto" htmlFor="email" error={errors.email?.message} required>
+              <input id="email" className="input" type="email" {...register('email')} />
+            </FormField>
+
+            <FormField label="Teléfono" htmlFor="phone" error={errors.phone?.message}>
+              <input id="phone" className="input" {...register('phone')} />
+            </FormField>
+
+            <FormField label="Moneda" htmlFor="currency" error={errors.currency?.message}>
+              <select id="currency" className="input" {...register('currency')}>
+                {CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>{c.name}</option>
+                ))}
+              </select>
+            </FormField>
+
+            <FormField label="Zona horaria" htmlFor="timezone" error={errors.timezone?.message}>
+              <select id="timezone" className="input" {...register('timezone')}>
+                {TIMEZONES.map((tz) => (
+                  <option key={tz} value={tz}>{tz}</option>
+                ))}
+              </select>
+            </FormField>
           </div>
-        </form>
-      )}
+        </div>
+
+        {/* Feature flags */}
+        <div className="card p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-slate-900">Módulos</h2>
+          <p className="text-sm text-slate-500">
+            Activa o desactiva módulos del sistema según tu plan contratado
+          </p>
+          <div className="space-y-3">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-blue-600"
+                {...register('moduleReports')}
+              />
+              <div>
+                <div className="font-medium text-slate-900">Reportes</div>
+                <div className="text-sm text-slate-500">Generación de reportes PDF y XLSX</div>
+              </div>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-blue-600"
+                {...register('moduleInventory')}
+              />
+              <div>
+                <div className="font-medium text-slate-900">Inventario</div>
+                <div className="text-sm text-slate-500">Control de inventario y kardex</div>
+              </div>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-blue-600"
+                {...register('modulePosStations')}
+              />
+              <div>
+                <div className="font-medium text-slate-900">Estaciones POS</div>
+                <div className="text-sm text-slate-500">Estaciones de venta POS</div>
+              </div>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-blue-600"
+                {...register('moduleDeliveryApp')}
+              />
+              <div>
+                <div className="font-medium text-slate-900">Delivery App</div>
+                <div className="text-sm text-slate-500">App de delivery para repartidores</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        {/* Plan y suscripción */}
+        <div className="rounded-lg border border-slate-200 bg-white p-4">
+          <h3 className="text-lg font-semibold text-slate-900">Plan y suscripción</h3>
+          <div className="mt-2 text-sm text-slate-600">
+            <p>Plan actual: {settingsQuery.data?.plan ?? 'Ninguno'}</p>
+            {settingsQuery.data?.subscription && (
+              <p>Estado: {SUBSCRIPTION_STATUS_LABELS[settingsQuery.data.subscription.status] ?? settingsQuery.data.subscription.status}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3">
+          <SubmitButton
+            type="submit"
+            isSubmitting={isSubmitting || updateMutation.isPending}
+            loadingText="Guardando..."
+          >
+            Guardar cambios
+          </SubmitButton>
+        </div>
+      </form>
     </div>
   );
 }
